@@ -232,7 +232,7 @@ export const SHOTS: Shot[] = [
   // 5b — he stops; the reflection takes one more step, turns, smiles
   {
     id: "5b", a: 1080, b: 1200, look: "night", grade: "night",
-    cam: (f) => keys([{ f: 1080, pos: [-6.4, 1.5, heroZ5(1080) + 2.2], look: [-12.6, 1.3, heroZ5(1080) - 0.6], fov: 38 }, { f: 1128, pos: [-7.2, 1.5, -76.2], look: [-12.8, 1.35, -78.6], fov: 36 }, { f: 1200, pos: [-8.2, 1.52, -76.9], look: [-13.2, 1.45, -78.7], fov: 33 }], f),
+    cam: (f) => keys([{ f: 1080, pos: [-6.4, 1.5, heroZ5(1080) + 2.2], look: [-12.6, 1.3, heroZ5(1080) - 0.6], fov: 38 }, { f: 1128, pos: [-7.0, 1.5, -78.6], look: [-12.9, 1.35, -78.45], fov: 36 }, { f: 1200, pos: [-7.9, 1.52, -79.3], look: [-13.2, 1.45, -78.55], fov: 33 }], f),
     dof: () => ({ cInf: 6, focus: [-11.6, 1.5, -78.2] }),
     act: (f, w, cam) => act5(f, w, cam),
   },
