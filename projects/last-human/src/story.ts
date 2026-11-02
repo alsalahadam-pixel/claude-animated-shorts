@@ -146,7 +146,7 @@ export const SHOTS: Shot[] = [
     dof: () => ({ cInf: 11, focus: [-10.35, 0.82, -1.15] }),
     act: (f, w, cam) => {
       const d = (f - 462) / FPS * 1.0;
-      const p = V([-6.0, 0, -6.6 + d]);
+      const p = V([-6.0, 0, -3.9 + d]);
       w.place(w.hero, walk(World.psi(p, V([0.05, 0, 1]), cam), d / 1.5, { look: [-0.6, -0.2], browIn: 0.9 }), OVERCAST, BODY, p, cam);
     },
   },
