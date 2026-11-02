@@ -287,8 +287,8 @@ export const SHOTS: Shot[] = [
   // 6c — the photo: him, asleep, taken from inside this room
   {
     id: "6c", a: 1464, b: 1590, look: "aptNight", grade: "night",
-    cam: (f) => keys([{ f: 1464, pos: [2.15, 1.8, -1.5], look: [1.55, 0.92, -0.5], fov: 40 }, { f: 1590, pos: [1.78, 1.36, -1.02], look: [1.55, 0.92, -0.5], fov: 34 }], f),
-    dof: (f) => ({ cInf: 10, focus: [1.55, 0.94, -0.52] }),
+    cam: (f) => keys([{ f: 1464, pos: [1.95, 1.75, -1.2], look: [1.55, 0.92, -0.5], fov: 38 }, { f: 1530, pos: [1.64, 1.2, -0.74], look: [1.55, 0.92, -0.5], fov: 34 }, { f: 1590, pos: [1.6, 1.13, -0.69], look: [1.55, 0.92, -0.5], fov: 32 }], f),
+    dof: () => ({ cInf: 8, focus: [1.55, 0.94, -0.52] }),
     act: (f, w, cam) => {
       const pose = sitBed(f / FPS, { open: 1.1, look: [0, -0.8] }, { phone: 0, nod: 20, psi: World.psi(V([1.55, 0, -0.95]), V([0, 0, 1]), cam) });
       pose.handL = "fist"; pose.handR = "fist"; pose.phoneGlow = undefined;
