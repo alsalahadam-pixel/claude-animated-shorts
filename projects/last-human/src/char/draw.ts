@@ -742,7 +742,8 @@ export function drawWatcher(ctx: Ctx, F: Frame, o: { eyes: number; smile: number
     const band = new Path2D(); band.rect(-300, -300, 600, 600); band.addPath(body);
     ctx.globalAlpha = o.rim; ctx.fillStyle = "#4b3f8a"; ctx.fill(band, "evenodd"); ctx.restore();
   }
-  ctx.save(); ctx.rotate(o.tilt * D);
+  // the head tilts about its own centre (not the feet), so the face stays on the head
+  ctx.save(); ctx.translate(0, 222); ctx.rotate(o.tilt * D); ctx.translate(0, -222);
   // eyes: pale, no pupils
   if (o.eyes > 0.02) {
     for (const k of [-1, 1]) {
