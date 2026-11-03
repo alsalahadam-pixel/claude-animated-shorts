@@ -1,0 +1,4 @@
+audio/*.wav
+audio/_cache/
+audio/__pycache__/
+qa/out/
