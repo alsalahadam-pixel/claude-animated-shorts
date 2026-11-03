@@ -8,7 +8,7 @@ import { APT } from "./world/apartment";
 import { CITY } from "./world/city";
 
 export const FPS = 30;
-export const TOTAL = 1800;
+export const TOTAL = 1860;   // 60 s film + 2 s "PART 2?" card
 type V3 = [number, number, number];
 export type Cam = { pos: V3; look: V3; fov: number; roll?: number; up?: V3 };
 type Key = { f: number; pos: V3; look: V3; fov?: number; roll?: number };
@@ -333,7 +333,7 @@ export const SHOTS: Shot[] = [
   },
   // 7c — black; the title
   {
-    id: "7c", a: 1767, b: 1800, look: "aptNight", grade: "night",
+    id: "7c", a: 1767, b: 1860, look: "aptNight", grade: "night",
     cam: () => ({ pos: [-0.9, 1.6, -1.55], look: [-3.05, 1.95, -2.65], fov: 34 }),
     dof: () => ({ cInf: 0 }),
     act: () => {},

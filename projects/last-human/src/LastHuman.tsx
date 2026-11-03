@@ -169,11 +169,23 @@ const EndCard: React.FC<{ f: number }> = ({ f }) => {
   const k = f - 1767;
   const a = interpolate(k, [3, 9], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const jit = k < 12 && k % 3 === 0 ? 6 : 0;
+  // "PART 2?" glitches in at 60.0 s (frame 1800) and holds to the end
+  const p = f - 1800;
+  const pa = p < 0 ? 0 : p < 2 ? 0.6 : p === 3 ? 0.2 : 1;
+  const pj = p >= 0 && p < 10 && p % 3 !== 1 ? (p % 2 ? -10 : 8) : 0;
+  const scale = p < 0 ? 1 : interpolate(p, [0, 6], [1.25, 1], { extrapolateRight: "clamp" });
+  const lift = p < 0 ? 0 : interpolate(p, [0, 8], [0, -220], { extrapolateRight: "clamp" });
   return (
     <AbsoluteFill style={{ background: "#020205", justifyContent: "center", alignItems: "center" }}>
-      <div style={{ opacity: a, transform: `translateX(${jit}px)`, fontFamily: "Anton", fontSize: 92, lineHeight: 1.05, color: "#f2efe9", textAlign: "center", textTransform: "uppercase", letterSpacing: 1 }}>
+      <div style={{ opacity: a * (p >= 0 ? 0.55 : 1), transform: `translate(${jit}px, ${lift}px) scale(${p >= 0 ? 0.8 : 1})`, fontFamily: "Anton", fontSize: 92, lineHeight: 1.05, color: "#f2efe9", textAlign: "center", textTransform: "uppercase", letterSpacing: 1 }}>
         Something<br />is watching<br /><span style={{ color: "#ff5a3a" }}>you.</span>
       </div>
+      {p >= 0 && (
+        <div style={{ position: "absolute", top: 1060, left: 0, right: 0, textAlign: "center", opacity: pa, transform: `translateX(${pj}px) scale(${scale})` }}>
+          <div style={{ fontFamily: "Anton", fontSize: 210, lineHeight: 1, color: "#ff8a3a", letterSpacing: 4, WebkitTextStroke: "6px #07060c", paintOrder: "stroke fill",
+            textShadow: `${pj ? 10 : 0}px 0 0 rgba(63,240,224,0.75), ${pj ? -10 : 0}px 0 0 rgba(255,60,90,0.75), 0 0 40px rgba(255,120,40,0.45)` }}>PART 2?</div>
+        </div>
+      )}
     </AbsoluteFill>
   );
 };

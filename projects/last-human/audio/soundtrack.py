@@ -17,7 +17,7 @@ sys.path.insert(0, HERE)
 from dsp import (SR, bp, colored, convolve_st, curve, dbg, fades, hp, integrated, lp, make_ir, ns, pan, peq,  # noqa: E402
                  read_wav, rng, smooth_noise, true_peak, write_wav)
 
-DUR = 60.0
+DUR = 62.0   # 60 s film + 2 s PART 2? card
 N = ns(DUR)
 R = rng(2026)
 CUES = []
@@ -253,8 +253,10 @@ def glass(dur, gain=1.0):
 
 # ================================================================ build
 def build():
+    global sfx_glitch
     music = np.zeros((2, N))
     sfx = np.zeros((2, N))
+    sfx_glitch = sfx
     amb = np.zeros((2, N))
     rev_room = make_ir(1.1, 3, hf=1.4)
     rev_big = make_ir(3.4, 5, hf=1.1, pre=0.02)
@@ -310,6 +312,11 @@ def build():
     add(music, cluster([220, 233.1, 246.9, 261.6, 277.2], 5.6, 4.0, 0.05, 0.09, trem=11), 53.3)
     cue(58.9, "cut to black: stinger, tail to 60")
     add(music, stinger(3.6), 58.9)
+    cue(60.0, "PART 2? glitch hit + low drone tail")
+    add(music, boom(2.0, 80, 34, 1.6), 60.0)
+    g = hp(colored(ns(0.35), R, 0.0), 1500) * np.exp(-T(ns(0.35)) / 0.08)
+    add(sfx_glitch, g * 0.5, 60.0); add(sfx_glitch, g * 0.3, 60.1, 1.0, 0.6); add(sfx_glitch, g * 0.3, 60.2, 1.0, -0.6)
+    add(music, drone(41.2, 1.9, 0.6, 0.1, 1.2), 60.05)
 
     # ---------- ambience
     add(amb, np.stack([hp(lp(colored(ns(12.0), R, 1.0), 400), 40)] * 2) * 0.05, 0.0)            # room tone (morning)
@@ -401,7 +408,8 @@ def limiter(x, ceil_db=-1.2, look=0.003, rel=0.08):
 
 def main():
     voice, sr = read_wav(os.path.join(ROOT, "voice", "voice.wav"))
-    assert sr == SR and voice.shape[1] == N, (sr, voice.shape)
+    assert sr == SR, sr
+    voice = np.pad(voice, ((0, 0), (0, max(0, N - voice.shape[1]))))[:, :N]
     words = json.load(open(os.path.join(ROOT, "src", "data", "words.json")))
     music, sfx, amb = build()
     # stem levels relative to the voice (-18 LUFS)

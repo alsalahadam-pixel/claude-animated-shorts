@@ -24,5 +24,6 @@
 |  54.70 | head turn: cloth + whoosh |
 |  57.07 | eyes open in the dark: click + low hit |
 |  58.90 | cut to black: stinger, tail to 60 |
+|  60.00 | PART 2? glitch hit + low drone tail |
 
-mix: -14.2 LUFS integrated, true peak -1.2 dBTP, 60.000 s
+mix: -14.3 LUFS integrated, true peak -1.2 dBTP, 62.000 s
