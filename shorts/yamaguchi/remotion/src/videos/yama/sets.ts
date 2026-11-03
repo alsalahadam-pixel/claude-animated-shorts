@@ -197,10 +197,21 @@ export function buildSets(kit: Kit): Sets {
       b.add(ground(Math.min(x0, x1), Math.max(x0, x1), z - 42, z, 0.03, 4, 3), paddy);
       b.add(boxGeo(V(Math.min(x0, x1), 0, z - 0.5), V(Math.max(x0, x1), 0.25, z)), solid("dyke", "#7aa04e")); // paddy dyke
     }
-    b.add(ground(-2.4, 2.4, -900, 300, 0.05, 2, 240), lam("gravel", () => ({ map: gravelTex() })));
+    const END = -604; // the line ends at Nagasaki's terminus
+    b.add(ground(-2.4, 2.4, END - 2, 300, 0.05, 2, 150), lam("gravel", () => ({ map: gravelTex() })));
     const sleeper = solid("sleeper", "#5a4434"), rail = phong("#6f737c", "#c8c8c8", 50);
-    for (let z = 300; z > -900; z -= 0.9) b.add(boxGeo(V(-1.35, 0.06, z - 0.12), V(1.35, 0.2, z + 0.12)), sleeper);
-    for (const x of [-0.72, 0.72]) b.add(boxGeo(V(x - 0.05, 0.2, -900), V(x + 0.05, 0.34, 300)), rail);
+    for (let z = 300; z > END; z -= 0.9) b.add(boxGeo(V(-1.35, 0.06, z - 0.12), V(1.35, 0.2, z + 0.12)), sleeper);
+    for (const x of [-0.72, 0.72]) b.add(boxGeo(V(x - 0.05, 0.2, END), V(x + 0.05, 0.34, 300)), rail);
+    // terminus: buffer stop, two platforms, a canopy, the station building across the end of the line
+    b.add(boxGeo(V(-1.2, 0, END - 0.6), V(1.2, 1.2, END + 0.4)), solid("buffer", "#b23a2e"));
+    b.add(boxGeo(V(-1.25, 0.95, END + 0.35), V(1.25, 1.15, END + 0.5)), solid("bufferWhite", "#ece6d6"));
+    for (const sd of [-1, 1]) {
+      b.add(boxGeo(V(sd > 0 ? 1.9 : -6.5, 0, END - 2), V(sd > 0 ? 6.5 : -1.9, 0.95, END + 70)), lam("platform", () => ({ map: rep(plasterTex("platP", "#b8ad9c"), 2, 20) })));
+      b.add(boxGeo(V(sd * 1.9 - 0.12, 0.95, END - 2), V(sd * 1.9 + 0.12, 1.0, END + 70)), solid("platEdge", "#e8dca0"));
+    }
+    for (let z = END + 4; z < END + 64; z += 6) for (const x of [4.2]) b.add(cyl(0.1, 0.1, 3.4, 8), solid("canopyPost", "#4a3226"), M4(x, 0.95, z));
+    b.add(boxGeo(V(2.0, 4.35, END), V(6.5, 4.55, END + 66)), solid("canopy", "#4f5566"));
+    for (let i = 0; i < 3; i++) machiya(b, -12 + i * 12, END - 8.5, 0, 12, 9, 7.2, 40 + i);
     // telegraph line on the window side, every 30 m (the inside shot sees them whip past); trackside bushes for speed
     for (let z = 100; z > -560; z -= 30) { pole(b, 4.6, z, 7.2); wire(b, [3.9, 6.72, z], [3.9, 6.72, z - 30], 8, 0.4); wire(b, [5.3, 6.72, z], [5.3, 6.72, z - 30], 8, 0.4); }
     for (let z = 120; z > -560; z -= 7 + r() * 9) for (const sd of [-1, 1]) { const x = sd * (6.5 + r() * 4); if (sd > 0 && z < -84 && z > -102) continue; prop(b, kit, "plant_bush", x, 0, z, 0.9 + r() * 0.9); }
@@ -218,6 +229,7 @@ export function buildSets(kit: Kit): Sets {
       let y = 0;
       for (const h of HL) y = Math.max(y, hillY(x, z, h[0], h[1], h[2], h[3], h[4]));
       if (y < 0.5 && (z < -640 || Math.abs(x) > 80)) continue; // the bay
+      if (Math.abs(x) < 11 && z > -625) continue;              // keep the railway corridor and the station clear
       if (y > 45) continue;
       farHouse(b, x, y, z, 6 + r() * 4, 5 + r() * 3, 3 + r() * 2, i);
     }
@@ -243,7 +255,7 @@ export function buildSets(kit: Kit): Sets {
         b.add(boxGeo(V(sx - L / 2 + 3, 3.5, sz - 3), V(sx - L / 2 + 11, 9, sz + 3)), solid("bayShipHouse", "#efe9dc"));
       }
     }
-    for (let i = 0; i < 60; i++) { const x = (r() - 0.5) * 500, z = -600 - r() * 400; let y = -1; for (const h of HL) y = Math.max(y, hillY(x, z, h[0], h[1], h[2], h[3], h[4])); if (y > 30) tree(b, kit, x, z, 9 + r() * 5, "tree_oak", y - 1); }
+    for (let i = 0; i < 60; i++) { const x = (r() - 0.5) * 500, z = -600 - r() * 400; if (Math.abs(x) < 14 && z > -630) continue; let y = -1; for (const h of HL) y = Math.max(y, hillY(x, z, h[0], h[1], h[2], h[3], h[4])); if (y > 30) tree(b, kit, x, z, 9 + r() * 5, "tree_oak", y - 1); }
     b.build(R);
   }
   // the train (own group, nose at z; wheels and rods animated by world.ts)
