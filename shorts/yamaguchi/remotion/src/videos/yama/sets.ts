@@ -8,6 +8,7 @@ import { twoTone } from "./shade";
 import { NOINK } from "./ink";
 import { Pen } from "./toon";
 import { fxSeal } from "./fx";
+import { buildTrain, buildYard, Train, Yard } from "./vehicles";
 import { SHIP_AT, CLOCK_AT, TARGETS, TUNNEL, PODIUM, BENCH, AWARD, DESK_INSERT, V3 } from "./story";
 
 const M4 = (x: number, y: number, z: number, ry = 0, s: V3 = [1, 1, 1]) =>
@@ -176,10 +177,9 @@ const wire = (b: Batch, a: V3, c: V3, n = 10, sag = 0.5) => {
 };
 
 // ---------------- handles for moving parts ----------------
-export type Train = { g: THREE.Group; smokeAt: () => THREE.Vector3; place: (z: number) => void };
 export type Sets = {
   zones: Record<string, THREE.Group>;
-  train: Train; plane: THREE.Group; hanko: THREE.Group; seal: THREE.Mesh; paper: THREE.Mesh; certTex: THREE.Texture; noteTex: THREE.Texture;
+  train: Train; yard: Yard; plane: THREE.Group; hanko: THREE.Group; seal: THREE.Mesh; paper: THREE.Mesh; certTex: THREE.Texture; noteTex: THREE.Texture;
   lanterns: { m: THREE.Group; x0: number; z: number; k: number }[]; view: THREE.MeshBasicMaterial; fireGlow: THREE.Mesh; windowGlow: THREE.MeshBasicMaterial;
 };
 
@@ -201,7 +201,9 @@ export function buildSets(kit: Kit): Sets {
     const sleeper = solid("sleeper", "#5a4434"), rail = phong("#6f737c", "#c8c8c8", 50);
     for (let z = 300; z > -900; z -= 0.9) b.add(boxGeo(V(-1.35, 0.06, z - 0.12), V(1.35, 0.2, z + 0.12)), sleeper);
     for (const x of [-0.72, 0.72]) b.add(boxGeo(V(x - 0.05, 0.2, -900), V(x + 0.05, 0.34, 300)), rail);
-    for (let z = 100; z > -560; z -= 40) { pole(b, -4.6, z, 7.2); wire(b, [-5.3, 6.72, z], [-5.3, 6.72, z - 40], 8, 0.45); wire(b, [-3.9, 6.72, z], [-3.9, 6.72, z - 40], 8, 0.45); }
+    // telegraph line on the window side, every 30 m (the inside shot sees them whip past); trackside bushes for speed
+    for (let z = 100; z > -560; z -= 30) { pole(b, 4.6, z, 7.2); wire(b, [3.9, 6.72, z], [3.9, 6.72, z - 30], 8, 0.4); wire(b, [5.3, 6.72, z], [5.3, 6.72, z - 30], 8, 0.4); }
+    for (let z = 120; z > -560; z -= 7 + r() * 9) for (const sd of [-1, 1]) { const x = sd * (6.5 + r() * 4); if (sd > 0 && z < -84 && z > -102) continue; prop(b, kit, "plant_bush", x, 0, z, 0.9 + r() * 0.9); }
     for (const [x, z, sx, sy, sz, c] of [[-220, -150, 160, 70, 140, "#6aa24e"], [240, -90, 170, 80, 160, "#78b257"], [-300, 160, 200, 60, 160, "#8bbf63"],
       [300, 200, 180, 70, 140, "#6aa24e"], [-150, -420, 110, 55, 120, "#78b257"], [170, -380, 120, 60, 110, "#6aa24e"]] as const) hill(b, x, z, sx, sy, sz, c);
     for (let i = 0; i < 70; i++) { const s = r() < 0.5 ? -1 : 1, x = s * (14 + r() * 140), z = 150 - r() * 680; if (x > 10 && x < 45 && z > -40 && z < 20) continue; tree(b, kit, x, z, 6 + r() * 5, r() < 0.3 ? "tree_cone" : "tree_oak"); }
@@ -219,48 +221,35 @@ export function buildSets(kit: Kit): Sets {
       if (y > 45) continue;
       farHouse(b, x, y, z, 6 + r() * 4, 5 + r() * 3, 3 + r() * 2, i);
     }
+    // Nagasaki landmarks: the Urakami cathedral (twin brick towers) on the left hill, harbour gantries, ships in the bay
+    {
+      const cx = -95, cz = -660; let cy = 0; for (const h of HL) cy = Math.max(cy, hillY(cx, cz, h[0], h[1], h[2], h[3], h[4]));
+      const brick = solid("cathBrick", "#b5543c"), stoneC = solid("cathStone", "#e9dcc0"), dome = solid("cathDome", "#3f6a6a");
+      b.add(boxGeo(V(cx - 9, cy - 2, cz - 6), V(cx + 9, cy + 9, cz + 6)), brick);
+      b.add(quad(V(cx - 9.5, cy + 9, cz + 6.5), V(cx + 9.5, cy + 9, cz + 6.5), V(cx + 9.5, cy + 13, cz), V(cx - 9.5, cy + 13, cz)), solid("cathRoof", "#4f5566"));
+      b.add(quad(V(cx + 9.5, cy + 9, cz - 6.5), V(cx - 9.5, cy + 9, cz - 6.5), V(cx - 9.5, cy + 13, cz), V(cx + 9.5, cy + 13, cz)), solid("cathRoof", "#4f5566"));
+      for (const dx of [-6.5, 6.5]) {
+        b.add(boxGeo(V(cx + dx - 2.2, cy - 2, cz + 4), V(cx + dx + 2.2, cy + 22, cz + 8.4)), brick);
+        b.add(boxGeo(V(cx + dx - 2.4, cy + 22, cz + 3.8), V(cx + dx + 2.4, cy + 23, cz + 8.6)), stoneC);
+        b.add(new THREE.SphereGeometry(2.1, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), dome, M4(cx + dx, cy + 23, cz + 6.2));
+      }
+      for (const gx of [-60, -30, 40, 70]) {
+        const gz = -655; b.add(boxGeo(V(gx - 0.6, 0, gz - 0.6), V(gx + 0.6, 26, gz + 0.6)), solid("hGantry", "#c75a35"));
+        b.add(boxGeo(V(gx - 0.8, 24, gz - 14), V(gx + 0.8, 26, gz + 4)), solid("hGantry", "#c75a35"));
+      }
+      for (const [sx, sz, L] of [[-40, -720, 46], [30, -760, 60], [-10, -840, 38]] as const) {
+        b.add(boxGeo(V(sx - L / 2, -0.6, sz - 4), V(sx + L / 2, 3.5, sz + 4)), solid("bayShip", "#2f343e"));
+        b.add(boxGeo(V(sx - L / 2, -0.6, sz - 4.02), V(sx + L / 2, 0.6, sz + 4.02)), solid("bayShipRed", "#a8402e"));
+        b.add(boxGeo(V(sx - L / 2 + 3, 3.5, sz - 3), V(sx - L / 2 + 11, 9, sz + 3)), solid("bayShipHouse", "#efe9dc"));
+      }
+    }
     for (let i = 0; i < 60; i++) { const x = (r() - 0.5) * 500, z = -600 - r() * 400; let y = -1; for (const h of HL) y = Math.max(y, hillY(x, z, h[0], h[1], h[2], h[3], h[4])); if (y > 30) tree(b, kit, x, z, 9 + r() * 5, "tree_oak", y - 1); }
     b.build(R);
   }
-  // the train (own group; place(z) puts the locomotive nose at z)
-  const train: Train = (() => {
-    const g = new THREE.Group(), b = new Batch();
-    const black = phong("#2a2b31", "#7a7a80", 40), red = solid("wheelRed", "#a8352e"), body = solid("carriage", "#5a3428"), roof = solid("croof", "#3b3a40"), trim = solid("ctrim", "#d9c27a");
-    // locomotive (nose at z 0, runs toward -z)
-    const boiler = new THREE.CylinderGeometry(1.05, 1.05, 7.2, 20); boiler.rotateX(Math.PI / 2);
-    b.add(boiler, black, M4(0, 2.35, 4.0));
-    b.add(cyl(0.32, 0.38, 1.2, 12), black, M4(0, 3.3, 1.2)); // chimney
-    b.add(cyl(0.42, 0.42, 0.55, 12), solid("dome", "#3a3b42"), M4(0, 3.3, 3.6));
-    b.add(boxGeo(V(-1.5, 1.3, 7.4), V(1.5, 4.3, 10.6)), black); // cab
-    b.add(boxGeo(V(-1.6, 4.3, 7.2), V(1.6, 4.5, 10.9)), roof);
-    b.add(boxGeo(V(-1.45, 0.75, 0.2), V(1.45, 1.3, 11)), black); // frame
-    b.add(boxGeo(V(-1.3, 0.3, -0.25), V(1.3, 1.0, 0.3)), red); // buffer beam
-    for (const z of [2.2, 4.2, 6.2]) for (const s of [-1, 1]) { const w = new THREE.CylinderGeometry(0.75, 0.75, 0.22, 18); w.rotateZ(Math.PI / 2); b.add(w, red, M4(s * 1.18, 0.78, z)); }
-    b.add(boxGeo(V(-1.25, 3.0, 7.9), V(1.25, 3.9, 8.0)), solid("cabwin", "#e6d9a0"));
-    // two carriages: z 11.6..26.6 and 27.2..42.2, floor 1.1, windows 1.0 x 0.9 at y 1.75..2.65, every 1.6 m
-    const winM = solid("cabin", "#2a2224");
-    for (const z0 of [11.6, 27.2]) {
-      const z1 = z0 + 15, wy0 = 1.75, wy1 = 2.65;
-      b.add(boxGeo(V(-1.4, 1.1, z0), V(1.4, wy0, z1)), body);
-      b.add(boxGeo(V(-1.4, wy1, z0), V(1.4, 3.4, z1)), body);
-      b.add(boxGeo(V(-1.4, 1.1, z1 - 0.1), V(1.4, 3.4, z1)), body); b.add(boxGeo(V(-1.4, 1.1, z0), V(1.4, 3.4, z0 + 0.1)), body); // end walls
-      for (let zz = z0; zz < z1 - 0.05; zz += 1.6) for (const s of [-1, 1]) b.add(boxGeo(V(s * 1.4 - 0.05, wy0, zz), V(s * 1.4 + 0.05, wy1, zz + 0.6)), body); // piers between windows
-      b.add(boxGeo(V(-1.38, 1.15, z0 + 0.05), V(-1.3, 3.35, z1 - 0.05)), winM); // dark interior behind the -x windows only
-      b.add(boxGeo(V(-1.25, 1.1, z0 + 0.1), V(1.25, 1.15, z1 - 0.1)), winM); // floor
-      b.add(boxGeo(V(-1.25, 3.3, z0 + 0.1), V(1.25, 3.38, z1 - 0.1)), winM);
-      b.add(boxGeo(V(-1.25, 1.15, z0 + 0.06), V(1.25, 3.3, z0 + 0.1)), winM); b.add(boxGeo(V(-1.25, 1.15, z1 - 0.1), V(1.25, 3.3, z1 - 0.06)), winM);
-      b.add(boxGeo(V(-1.42, wy0 - 0.12, z0), V(1.42, wy0 - 0.02, z1)), trim);
-      const rf = new THREE.CylinderGeometry(2.0, 2.0, 15.2, 20, 1, false, -0.8, 1.6); rf.rotateX(-Math.PI / 2);
-      b.add(rf, roof, M4(0, 2.0, z0 + 7.5));
-      b.add(boxGeo(V(-1.2, 0.5, z0 + 0.3), V(1.2, 1.1, z1 - 0.3)), black);
-      for (const z of [z0 + 2, z0 + 3.4, z1 - 3.4, z1 - 2]) for (const s of [-1, 1]) { const w = new THREE.CylinderGeometry(0.45, 0.45, 0.2, 16); w.rotateZ(Math.PI / 2); b.add(w, red, M4(s * 1.05, 0.48, z)); }
-    }
-    b.build(g);
-    g.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.frustumCulled = false; });
-    zones.rail.add(g);
-    return { g, smokeAt: () => V(0, 4.0, g.position.z + 1.2), place: (z: number) => { g.position.set(0, 0, z); } };
-  })();
-
+  // the train (own group, nose at z; wheels and rods animated by world.ts)
+  const train = buildTrain();
+  train.g.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.frustumCulled = false; });
+  zones.rail.add(train.g);
   // ======== STREET: Hiroshima street (z +34..-96), shipyard (z < -100), river (z 40..60) ========
   {
     const b = new Batch(), R = zones.street, r = rng(9);
@@ -287,26 +276,6 @@ export function buildSets(kit: Kit): Sets {
     face.position.set(clk[0] + 0.13, 3.45, clk[2]); face.rotation.y = Math.PI / 2; R.add(face);
     // shipyard: concrete apron, ship on the slip (hull along x), gantry crane, harbour water
     b.add(ground(-120, 120, -160, -100, 0.01, 30, 8), lam("apron", () => ({ color: "#b9b2a6" })));
-    const hullM = lam("hull", () => ({ map: hullTex() }));
-    const hx0 = -24, hx1 = 30, hz = -128, hb = 5, hh = 9;
-    b.add(quad(V(hx0, 0, hz + hb), V(hx1, 0, hz + hb), V(hx1, hh, hz + hb), V(hx0, hh, hz + hb), 3, 1), hullM);
-    b.add(quad(V(hx1, 0, hz - hb), V(hx0, 0, hz - hb), V(hx0, hh, hz - hb), V(hx1, hh, hz - hb), 3, 1), hullM);
-    b.add(quad(V(hx1, 0, hz + hb), V(hx1 + 9, 0.5, hz), V(hx1 + 9, hh + 1, hz), V(hx1, hh, hz + hb), 0.5, 1), hullM); // bow
-    b.add(quad(V(hx1 + 9, 0.5, hz), V(hx1, 0, hz - hb), V(hx1, hh, hz - hb), V(hx1 + 9, hh + 1, hz), 0.5, 1), hullM);
-    b.add(quad(V(hx0, 0, hz - hb), V(hx0, 0, hz + hb), V(hx0, hh, hz + hb), V(hx0, hh, hz - hb), 0.3, 1), hullM);
-    b.add(ground(hx0, hx1, hz - hb, hz + hb, hh, 4, 1), solid("deck", "#8a7a66"));
-    b.add(tri(V(hx1, hh, hz + hb), V(hx1 + 9, hh + 1, hz), V(hx1, hh, hz - hb)), solid("deck", "#8a7a66"));
-    b.add(boxGeo(V(hx0 + 3, hh, hz - 3.5), V(hx0 + 13, hh + 5, hz + 3.5)), solid("bridgeHouse", "#efe9dc"));
-    b.add(cyl(1.2, 1.1, 5, 14), solid("funnel", "#2b2e36"), M4(hx0 + 8, hh + 5, hz));
-    for (let x = hx0; x < hx1; x += 5) b.add(boxGeo(V(x, 0, hz + hb + 1.2), V(x + 0.2, hh + 2, hz + hb + 1.4)), solid("scaff", "#7a6a58"));
-    b.add(boxGeo(V(hx0, hh + 1.8, hz + hb + 1.15), V(hx1, hh + 2.0, hz + hb + 1.45)), solid("scaff", "#7a6a58"));
-    const craneM = solid("crane", "#c75a35");
-    for (const [x, z] of [[40, -112], [48, -112], [40, -142], [48, -142]]) b.add(boxGeo(V(x - 0.5, 0, z - 0.5), V(x + 0.5, 30, z + 0.5)), craneM);
-    for (const z of [-112, -142]) b.add(boxGeo(V(39, 29, z - 0.6), V(49, 31, z + 0.6)), craneM);
-    b.add(boxGeo(V(-20, 31, -128.8), V(52, 33, -126.2)), craneM);
-    b.add(boxGeo(V(38, 31, -144), V(50, 35, -110)), craneM);
-    b.add(boxGeo(V(41, 35, -131), V(47, 39, -125)), solid("craneCab", "#e9e1cf"));
-    for (let x = -20; x < 52; x += 4) b.add(boxGeo(V(x, 30.6, -128.6), V(x + 0.3, 33.2, -126.4)), craneM);
     b.add(ground(-600, 600, -800, -160, -0.8, 60, 40), lam("harbour", () => ({ color: "#2f86b8" })));
     hill(b, -200, -520, 240, 110, 160, "#6aa24e"); hill(b, 220, -480, 220, 90, 150, "#78b257");
     // river across the top of the street + far bank
@@ -317,6 +286,8 @@ export function buildSets(kit: Kit): Sets {
     for (let i = 0; i < 10; i++) tree(b, kit, -60 + i * 13 + r() * 4, 66, 6 + r() * 2);
     b.build(R);
   }
+  const yard = buildYard();
+  zones.street.add(yard.g);
   // B-29 (silver, flying +x at ~300 m)
   const plane = (() => {
     const g = new THREE.Group(), b = new Batch(), sil = phong("#c9ced6", "#ffffff", 80);
@@ -488,5 +459,5 @@ export function buildSets(kit: Kit): Sets {
       lanterns.push({ m, x0, z, k: r() });
     }
   }
-  return { zones, train, plane, hanko, seal: seal!, paper: paper!, certTex, noteTex, lanterns, view: officeView, fireGlow: fireGlow!, windowGlow };
+  return { zones, train, yard, plane, hanko, seal: seal!, paper: paper!, certTex, noteTex, lanterns, view: officeView, fireGlow: fireGlow!, windowGlow };
 }

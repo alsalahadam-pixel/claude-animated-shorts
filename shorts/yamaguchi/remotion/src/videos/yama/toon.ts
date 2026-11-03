@@ -461,7 +461,7 @@ const hatOn = (p: Pen, o: Outfit, hp: P2[], H: Blob, cx: number, hc: number, lig
 // ---------------- bodies ----------------
 export type Arms = [P2[], P2[]];
 /** held prop; for the hammer the number is the strike 0 (raised) .. 1 (struck) */
-export type Prop = null | "icecream" | "shako" | ["hammer", number] | "suitcase" | "baby" | "paper" | "one" | "sling";
+export type Prop = null | "icecream" | "shako" | ["hammer", number] | "suitcase" | "baby" | "paper" | "one" | "sling" | "blueprint";
 
 const BUILD: Record<Build, { a: number; torso: number; legs: number; tw: number }> = {
   adult: { a: 118, torso: 1.1, legs: 1.4, tw: 0.8 },
@@ -561,11 +561,11 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
   else if (mode === "fall") for (const side of [-1, 1]) arms.push({ pts: [sh(side), [tcx + side * (1.15 * T.a + 12 * u), sh(side)[1] - 0.25 * HH], [tcx + side * (1.3 * T.a + 24 * u), sh(side)[1] - 0.68 * HH]], front: false });
   else {
     const S0 = sh(-1), S1 = sh(1), chest = chin + 0.42 * HH;
-    if (prop === "baby" || prop === "paper") {
+    if (prop === "baby" || prop === "paper" || prop === "blueprint") {
       arms.push({ pts: [S0, [tcx - 1.15 * T.a, S0[1] + 0.42 * HH], [tcx - 0.28 * T.a, chest + (prop === "baby" ? 0.08 : 0.02) * HH]], front: true });
       arms.push({ pts: [S1, [tcx + 1.15 * T.a, S1[1] + 0.42 * HH], [tcx + 0.3 * T.a, chest + (prop === "baby" ? 0.14 : 0.02) * HH]], front: true });
     } else arms.push({ pts: prop === "shako" || prop === "suitcase" ? hang(-1, 0) : hang(-1, -sw), front: false });
-    if (prop === "baby" || prop === "paper") { /* both arms placed above */ }
+    if (prop === "baby" || prop === "paper" || prop === "blueprint") { /* both arms placed above */ }
     else if (prop === "sling") {
       arms.push({ pts: [S1, [tcx + 0.95 * T.a, S1[1] + 0.5 * HH], [tcx - 0.25 * T.a, S1[1] + 0.36 * HH]], front: true });
     } else if (prop === "one") {
@@ -686,6 +686,14 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
     p.poly([[x0 + 4 * u, y0 + 4 * u], [x1 - 4 * u, y0 + 4 * u], [x1 - 4 * u, y1 - 4 * u], [x0 + 4 * u, y1 - 4 * u]], null, 1.2 * u);
     for (let i = 0; i < 4; i++) p.stroke([[x0 + 9 * u, y0 + (10 + i * 6) * u], [x1 - (i === 3 ? 22 : 9) * u, y0 + (10 + i * 6) * u]], 1.4 * u, "#9c9282");
     p.ell(x1 - 12 * u, y1 - 10 * u, 5 * u, 5 * u, "#d0312d", 0);
+    for (const a of arms) if (a.front) drawArm(a);
+  }
+  if (prop === "blueprint") { // ship drawing held up at the chest: blue sheet, white hull lines
+    const x0 = tcx - 0.62 * T.a, x1 = tcx + 0.64 * T.a, y0 = chin + 0.08 * HH, y1 = chin + 0.6 * HH;
+    p.poly([[x0, y0], [x1, y0 - 2 * u], [x1, y1], [x0, y1 + 2 * u]], "#2f5f9a", 2.2 * u);
+    p.stroke([[x0 + 6 * u, y0 + 26 * u], [x1 - 6 * u, y0 + 24 * u], [x1 - 14 * u, y0 + 36 * u], [x0 + 10 * u, y0 + 37 * u], [x0 + 6 * u, y0 + 26 * u]], 1.4 * u, "#eef4ff");
+    p.stroke([[x0 + 16 * u, y0 + 26 * u], [x0 + 16 * u, y0 + 16 * u], [x0 + 28 * u, y0 + 16 * u], [x0 + 28 * u, y0 + 25 * u]], 1.2 * u, "#eef4ff");
+    for (let i = 0; i < 3; i++) p.stroke([[x0 + 8 * u, y1 - (6 + i * 4) * u], [x0 + 30 * u, y1 - (6 + i * 4) * u]], 0.9 * u, "#cfe0ff");
     for (const a of arms) if (a.front) drawArm(a);
   }
   if (prop === "shako") { // carried by the left hand

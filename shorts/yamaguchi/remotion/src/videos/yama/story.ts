@@ -19,9 +19,9 @@ export type ShotDef = { id: number; a: number; b: number; zone: Zone; light: Lig
 
 // ---------------- shots ----------------
 export const SHOTS: ShotDef[] = [
-  { id: 1, a: 0, b: 60, zone: "rail", light: "day", tau: (t) => t + 2, sunAz: 120 },          // bandaged at the train window
-  { id: 2, a: 60, b: 114, zone: "rail", light: "day", tau: (t) => t + 2 },                     // train through the fields
-  { id: 3, a: 114, b: 160, zone: "rail", light: "day", tau: (t) => t + 29, sunAz: 110 },        // "Home was Nagasaki"
+  { id: 1, a: 0, b: 60, zone: "rail", light: "day", tau: (t) => t + 2, sunAz: 160, sunEl: 40 },          // bandaged at the train window
+  { id: 2, a: 60, b: 114, zone: "rail", light: "day", tau: (t) => t + 2, sunAz: 140, sunEl: 35 },                     // train through the fields
+  { id: 3, a: 114, b: 160, zone: "rail", light: "day", tau: (t) => t + 13.8, sunAz: 150, sunEl: 40 },        // "Home was Nagasaki"
   { id: 4, a: 160, b: 328, zone: "street", light: "day", tau: (t) => t, sunAz: 150, sunEl: 40 },                      // shipyard, the ship designer
   { id: 5, a: 328, b: 405, zone: "street", light: "day", tau: (t) => t },                      // walking home, thinking of family
   { id: 6, a: 405, b: 467, zone: "street", light: "day", tau: (t) => t },                      // forgot his hanko
@@ -33,8 +33,8 @@ export const SHOTS: ShotDef[] = [
   { id: 12, a: 754, b: 794, zone: "field", light: "blast", tau: (t) => t },                    // 3 km away: the cloud
   { id: 13, a: 794, b: 877, zone: "field", light: "blast", tau: (t) => t },                    // eardrums, burns
   { id: 14, a: 877, b: 915, zone: "field", light: "night", tau: (t) => t },                    // night in a shelter
-  { id: 15, a: 915, b: 991, zone: "rail", light: "golden", tau: (t) => t - 30.5, sunAz: 60 },  // catches a train home
-  { id: 16, a: 991, b: 1043, zone: "rail", light: "day", tau: (t) => t - 4.3, sunAz: 110 },    // "Home is Nagasaki"
+  { id: 15, a: 915, b: 991, zone: "rail", light: "golden", tau: (t) => t - 30.5, sunAz: 150, sunEl: 12 },  // catches a train home
+  { id: 16, a: 991, b: 1043, zone: "rail", light: "day", tau: (t) => t - 15.0, sunAz: 150, sunEl: 40 },    // "Home is Nagasaki"
   { id: 17, a: 1043, b: 1157, zone: "office", light: "office", tau: (t) => t },                // back to work, bandaged
   { id: 18, a: 1157, b: 1250, zone: "office", light: "office", tau: (t) => t },                // tells his boss
   { id: 19, a: 1250, b: 1291, zone: "office", light: "office", tau: (t) => t },                // "that's crazy"
@@ -79,11 +79,11 @@ export const layersAt = (f: number): { id: number; alpha: number }[] => {
 
 // ---------------- places (world coordinates per zone, metres) ----------------
 // rail: track along z at x = 0, the train runs toward -z; Nagasaki's harbour lies ahead at z -560 .. -800
-export const TRAIN_V = 11;
+export const TRAIN_V = 17;
 export const trainZ = (tau: number) => -TRAIN_V * tau; // z of the locomotive's nose
-export const WIN_DZ = 19.1; // Yamaguchi's window: z = trainZ + WIN_DZ, on the +x side
+export const WIN_DZ = 25.1; // Yamaguchi's window (first carriage, +x side): z = trainZ + WIN_DZ
 // street: Hiroshima street along z (x -4..4), shipyard beyond z -100, river across z 40..60
-export const SHIP_AT: V3 = [2, 0, -112];   // where Yamaguchi stands at the shipyard
+export const SHIP_AT: V3 = [-2, 0, -112];  // where Yamaguchi stands at the shipyard
 export const CLOCK_AT: V3 = [-3.85, 0, -56]; // street clock pole
 export const LOOK_AT: V3 = [0.4, 0, -60];   // where he stops and looks up
 // camp: fire at the origin; targets at x 60 / 92
@@ -138,16 +138,32 @@ export const walkBack = (f: number): V3 => [0.6, 0, -34 - 1.3 * Math.max(0, T(f)
 export const camperDist = (f: number) => (f < 1846 ? 2.4 : f < 1896 ? 2.4 - 1.25 * smooth((f - 1846) / 12) : 1.15 + 2.6 * smooth((f - 1900) / 30));
 
 // rail framings
-const R1a = (f: number) => { const z = trainZ(tauOf(1, f)) + WIN_DZ; return dolly([5.2, 2.75, z + 1.5], [1.3, 2.35, z - 0.15], pushK(f, 0, 0.0028), { fov: 42 }); };
-const R1b = (f: number) => { const z = trainZ(tauOf(1, f)) + WIN_DZ; return dolly([3.9, 2.4, z + 0.7], [1.3, 2.2, z - 0.05], pushK(f, 38, 0.002, 0.006, 25), { fov: 36, roll: 0.035 }); };
-const R2a = (f: number) => { const z = trainZ(tauOf(2, f)); return { pos: [26, 7.5, -12] as V3, look: [0, 2.4, z + 14] as V3, fov: 42 }; };
-const R3a = (f: number) => { const z = trainZ(tauOf(3, f)); return dolly([1.1, 6.4, z + 9], [0, 2.0, z - 260], pushK(f, 114, 0.0018, 0.0055, 30), { fov: 34 }); };
-const R15a = (f: number) => { const z = trainZ(tauOf(15, f)); return { pos: [-22, 3.2, z - 30] as V3, look: [0, 2.2, z + 8] as V3, fov: 40 }; };
-const R16a = (f: number) => { const z = trainZ(tauOf(16, f)); return dolly([1.1, 6.4, z + 9], [0, 2.0, z - 260], pushK(f, 991, 0.0018, 0.0055, 30), { fov: 34 }); };
+/** carriage rocking for the inside shot: a slow roll and a small bounce on the rail joints */
+const rock = (f: number, c: Shot): Shot => {
+  const t = T(f);
+  return { ...c, pos: [c.pos[0], c.pos[1] + 0.012 * Math.sin(t * 21.4) + 0.006 * Math.sin(t * 9.1), c.pos[2]] as V3, roll: (c.roll ?? 0) + 0.011 * Math.sin(t * 10.7) };
+};
+const R1a = (f: number) => { const z = trainZ(tauOf(1, f)) + WIN_DZ; return rock(f, dolly([-0.95, 2.0, z + 0.55], [1.0, 2.22, z], pushK(f, 0, 0.0028), { fov: 54 })); };
+const R1b = (f: number) => { const z = trainZ(tauOf(1, f)) + WIN_DZ; return rock(f, dolly([-0.35, 2.12, z + 0.3], [1.0, 2.28, z], pushK(f, 38, 0.002, 0.006, 22), { fov: 46, roll: 0.03 })); };
+/** pass-by: low lens beside the track, the locomotive thunders past, whip pan with it */
+const R2a = (f: number) => { const z = trainZ(tauOf(2, f)); return { pos: [4.0, 0.85, -93] as V3, look: [0, 2.3, z + 6] as V3, fov: 56, roll: -0.03 }; };
+/** crane up from behind the cab to reveal the valley and Nagasaki harbour ahead */
+const crane = (f: number, nose: number, f0: number): Shot => {
+  const k = glide((f - f0) / 44), u = clamp01((f - f0) / 46);
+  return { pos: [1.5 + 6.5 * k, 5.0 + 16 * k, nose + 13.5 + 26.5 * k] as V3, look: [0, 3.2 - 2.7 * k, nose - 60 - 50 * k] as V3, fov: 50 - 6 * k, roll: 0.04 * Math.sin(u * Math.PI) };
+};
+const R3a = (f: number) => crane(f, trainZ(tauOf(3, f)), 114);
+/** golden tracking shot: the lens runs ahead-right of the locomotive and arcs to its side; poles whip past between */
+const R15a = (f: number) => { const z = trainZ(tauOf(15, f)), k = glide((f - 915) / 76); return { pos: [9.5, 2.7, z - 12 + 6 * k] as V3, look: [0, 2.4, z + 6 + 8 * k] as V3, fov: 48, roll: 0.02 }; };
+const R16a = (f: number) => crane(f - 991 + 114, trainZ(tauOf(16, f)), 114);
 // street framings
-const S4a = (f: number) => zoom([1.2, 3.2, -99.5], [6, 9.5, -127], 50, pushK(f, 160, 0.0018));
-const S4b = (f: number) => dolly([3.6, 1.75, -104.5], add(SHIP_AT, [0, 1.5, 0]), pushK(f, 220, 0.0022), { fov: 40 });
-const S4c = (f: number) => dolly([1.3, 1.65, -107.4], add(SHIP_AT, [0, 1.55, 0]), pushK(f, 272, 0.0022), { fov: 38, roll: 0.03 });
+/** low sweep along the tanker on the slip, from under the raked bow to amidships (sparks, crane plate overhead) */
+const S4a = (f: number): Shot => {
+  const k = glide((f - 160) / 62);
+  return { pos: [40 - 26 * k, 1.1 + 0.4 * k, -113 + 4.5 * k] as V3, look: [31 - 29 * k, 9.5 - 2 * k, -127 + 1 * k] as V3, fov: 56, roll: -0.03 + 0.05 * k };
+};
+const S4b = (f: number) => dolly([-0.6, 0.7, -106.9], add(SHIP_AT, [0, 2.3, 0]), pushK(f, 223, 0.0022), { fov: 50 });
+const S4c = (f: number) => dolly([4.5, 1.6, -105.8], add(SHIP_AT, [0.4, 2.6, -1]), pushK(f, 272, 0.0022), { fov: 46, roll: 0.03 });
 const S5a = (f: number) => { const p = walkHome(f); return dolly([p[0] + 1.2, 1.7, p[2] + 6.4], [p[0], 1.45, p[2]], pushK(f, 328, 0.0012), { fov: 40 }); };
 const S5b = (f: number) => { const p = walkHome(f); return dolly([p[0] - 0.9, 1.75, p[2] + 4.6], [p[0] + 0.5, 1.75, p[2]], pushK(f, 365, 0.0018), { fov: 40 }); };
 const S6a = (f: number) => { const p = walkHome(Math.min(f, 418)); return dolly([p[0] + 0.5, 1.7, p[2] + 3.4], [p[0], 1.62, p[2]], pushK(f, 405, 0.0022), { fov: 38 }); };
@@ -205,8 +221,8 @@ const G32b = (f: number): Shot => {
 const CAMS: Record<number, Key[]> = {
   1: [{ f: 0, s: R1a }, { f: 38, dur: 22, s: R1b }],
   2: [{ f: 60, s: R2a }],
-  3: [{ f: 114, s: R3a }, { f: 124, dur: 20, s: rolled(R3a, 0.05) }],
-  4: [{ f: 160, s: S4a }, { f: 210, dur: 30, s: S4b }, { f: 272, cut: true, s: S4c }],
+  3: [{ f: 114, s: R3a }],
+  4: [{ f: 160, s: S4a }, { f: 223, cut: true, s: S4b }, { f: 272, cut: true, s: S4c }],
   5: [{ f: 328, s: S5a }, { f: 362, dur: 26, s: S5b }],
   6: [{ f: 405, s: S6a }, { f: 436, cut: true, s: S6b }],
   7: [{ f: 467, s: O7a }],
@@ -217,8 +233,8 @@ const CAMS: Record<number, Key[]> = {
   12: [{ f: 754, s: F12a }],
   13: [{ f: 794, s: F13a }, { f: 833, cut: true, s: F13b }],
   14: [{ f: 872, s: F14a }],
-  15: [{ f: 910, s: R15a }],
-  16: [{ f: 986, s: R16a }, { f: 1001, dur: 20, s: rolled(R16a, -0.05) }],
+  15: [{ f: 905, s: R15a }],
+  16: [{ f: 986, s: R16a }],
   17: [{ f: 1043, s: O17a }, { f: 1092, cut: true, s: O17b }],
   18: [{ f: 1157, s: O18a }],
   19: [{ f: 1250, s: O19a }],
@@ -238,7 +254,7 @@ const CAMS: Record<number, Key[]> = {
 };
 
 // impact kicks: image offset flips sign every frame, decays over 7 f
-const KICKS: [number, number][] = [[449 / FPS, 0.8], [496 / FPS, 0.7], [724 / FPS, 1.2], [1269 / FPS, 0.4], [1378 / FPS, 1.2], [1868 / FPS, 0.6], [2384 / FPS, 0.7]];
+const KICKS: [number, number][] = [[103 / FPS, 0.9], [449 / FPS, 0.8], [496 / FPS, 0.7], [724 / FPS, 1.2], [1269 / FPS, 0.4], [1378 / FPS, 1.2], [1868 / FPS, 0.6], [2384 / FPS, 0.7]];
 export const kickAt = (t: number) => {
   let a = 0;
   for (const [t0, g] of KICKS) {
@@ -261,10 +277,10 @@ export const camAt = (id: number, f: number): Cam => {
 export type Dof = { f: number; dur?: number; cInf: number; focus?: (f: number) => V3 };
 const yEyes = (p: V3, h = 1.62): V3 => [p[0], h, p[2]];
 export const DOF: Dof[] = [
-  { f: 0, cInf: 14, focus: (f) => [1.0, 2.15, trainZ(tauOf(1, f)) + WIN_DZ] },
+  { f: 0, cInf: 9, focus: (f) => [1.0, 2.32, trainZ(tauOf(1, f)) + WIN_DZ] },
   { f: 60, cInf: 0 },
   { f: 160, cInf: 0 },
-  { f: 210, dur: 30, cInf: 12, focus: () => yEyes(SHIP_AT) },
+  { f: 223, cInf: 11, focus: () => yEyes(SHIP_AT) },
   { f: 328, cInf: 10, focus: (f) => yEyes(walkHome(f)) },
   { f: 405, cInf: 12, focus: (f) => yEyes(walkHome(Math.min(f, 418))) },
   { f: 467, cInf: 14 },

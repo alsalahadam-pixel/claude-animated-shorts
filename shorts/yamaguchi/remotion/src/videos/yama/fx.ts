@@ -201,4 +201,24 @@ export const fxHand = (p: Pen, sleeve: string, skin = "#f6d3b0") => {
   for (let i = 0; i < 4; i++) p.arc(108 + i * 26, 362, 14, 10, 20, 160, 5);
   p.ell(204, 300, 22, 34, skin, 7, 0, 360, -20);
 };
+/** welding spark shower on a 300 x 400 canvas (source near the top), t = time (s) */
+export const fxSparks = (p: Pen, t: number) => {
+  const g = p.g;
+  g.lineCap = "round";
+  for (let i = 0; i < 26; i++) {
+    const ph = (t * 2.2 + i * 0.137) % 1, a = -Math.PI / 2 + (((i * 73) % 100) / 100 - 0.5) * 2.6;
+    const v = 120 + ((i * 37) % 60), x = 150 + Math.cos(a) * v * ph, y = 60 + Math.sin(a) * v * ph + 330 * ph * ph;
+    g.strokeStyle = ph < 0.35 ? "#fffbe0" : ph < 0.7 ? "#ffd25a" : "#ff8a2a"; g.lineWidth = 7 * (1 - ph) + 2;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x - Math.cos(a) * 14, y - Math.sin(a) * 14 - 10 * ph); g.stroke();
+  }
+  const gr = g.createRadialGradient(150, 60, 0, 150, 60, 60); gr.addColorStop(0, "rgba(255,255,240,1)"); gr.addColorStop(1, "rgba(255,220,120,0)");
+  g.fillStyle = gr; g.fillRect(90, 0, 120, 120);
+};
+/** gull in flight on a 300 x 160 canvas, flap 0..1 */
+export const fxGull = (p: Pen, flap: number) => {
+  const up = 40 - 70 * flap;
+  p.poly([[150, 90], [96, 90 - up * 0.6], [30, 60 - up], [80, 96 - up * 0.3], [150, 104], [220, 96 - up * 0.3], [270, 60 - up], [204, 90 - up * 0.6]], "#f4f1ea", 7);
+  p.ell(150, 98, 18, 12, "#f4f1ea", 6);
+  p.poly([[166, 96], [184, 100], [166, 103]], "#e8b030", 4);
+};
 export { INK };

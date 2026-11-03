@@ -6,10 +6,11 @@ import {
   Pen, bodyFront, bodySide, YAMA, YAMA_BAND, YAMA_BAND2, YAMA_SOOT, BOSS, WORKER, WIFE, OLD, OFFICIAL, CAMPER, AUDIENCE, fxBurst, fxShadow, fxContact, fxStars,
   Outfit, Expr, FrontOpts, SideOpts, Prop,
 } from "./toon";
-import { fxThought, fxParachute, fxFire, fxSteam, fxSweat, fxRings, fxTiles, fxTarget, fxDash, fxCrane, fxPetal, fxDust, fxBack, fxHand } from "./fx";
+import { fxThought, fxParachute, fxFire, fxSteam, fxSweat, fxRings, fxTiles, fxTarget, fxDash, fxCrane, fxPetal, fxDust, fxBack, fxHand, fxSparks, fxGull } from "./fx";
+import { CAR0, CAR1, WELDERS } from "./vehicles";
 import {
   FPS, SHOTS, V3, clamp01, smooth, trainZ, WIN_DZ, SHIP_AT, LOOK_AT, TARGETS, TARGET_R, TUNNEL, PODIUM, BENCH, AWARD, DESK_INSERT,
-  walkHome, walkBack, camperDist,
+  walkHome, walkBack, camperDist, TRAIN_V,
 } from "./story";
 import { NOINK } from "./ink";
 import { cardShade, blobMaterial, CARD_K } from "./cardshade";
@@ -222,21 +223,37 @@ export const stage = (id: number, t: number, cam: CamInfo, sun: THREE.Vector3): 
   const s = SHOTS[id - 1], f = Math.round(t * FPS), tau = s.tau(t);
   LNAME = s.light; SUN = sun.clone().normalize();
   switch (id) {
-    case 1: case 2: case 15: { // Yamaguchi bandaged at the train window (+x side), two other passengers
+    case 1: { // inside the carriage: bandaged, on the bench under the window, the country flashing past behind him
       const z = trainZ(tau);
-      const expr: Expr = id === 1 ? (f < 44 ? "smile_closed" : "relief") : "relief";
-      put(out, cam, t, 1, YAMA_BAND, "yb", [1.12, 0.78, z + WIN_DZ], { expr, look: 1 }, { noBlob: true });
-      put(out, cam, t, 2, WORKER(1), "w1", [0.75, 0.72, z + 11.6 + 0.6 + 1.6 * 2 + 0.5], { expr: "neutral" }, { noBlob: true });
-      put(out, cam, t, 3, AUDIENCE(3), "a3", [0.75, 0.72, z + 27.2 + 0.6 + 1.6 * 3 + 0.5], { expr: "smile" }, { noBlob: true });
-      trainSmoke(out, t, z);
+      put(out, cam, t, 1, YAMA_BAND, "yb", [1.0, 1.1, z + WIN_DZ], { mode: "bench", expr: f < 44 ? "smile_closed" : "relief", look: -1 }, { noBlob: true });
+      put(out, cam, t, 2, WORKER(1), "w1", [1.0, 1.1, z + WIN_DZ + 2.6], { mode: "bench", expr: "neutral", look: -1 }, { noBlob: true });
+      put(out, cam, t, 3, AUDIENCE(3), "a3", [1.0, 1.1, z + WIN_DZ - 2.4], { mode: "bench", expr: "smile" }, { noBlob: true });
       break;
     }
-    case 3: case 16: trainSmoke(out, t, trainZ(tau)); break;
-    case 4: { // shipyard: proud, then waves goodbye to the ship
-      const wave = f >= 280 ? q(Math.sin(t * 9), 20) : undefined;
-      put(out, cam, t, 1, YAMA, "y", SHIP_AT, { expr: f < 223 ? "smile" : f < 280 ? "smile_closed" : "grin", prop: "suitcase", wave, facing: 0 });
-      put(out, cam, t, 11, WORKER(0), "w0", [SHIP_AT[0] - 9, 0, SHIP_AT[2] - 9], { expr: "neutral" });
-      put(out, cam, t, 12, WORKER(2), "w2", [SHIP_AT[0] + 12, 0, SHIP_AT[2] - 8], { expr: "smile" });
+    case 2: case 15: { // from outside: heads at the windows, smoke and steam
+      const z = trainZ(tau);
+      put(out, cam, t, 1, YAMA_BAND, "yb", [1.12, 0.78, z + WIN_DZ], { expr: "relief", look: 1, wave: id === 15 ? q(Math.sin(t * 9), 20) : undefined }, { noBlob: true });
+      put(out, cam, t, 2, WORKER(1), "w1", [0.95, 0.72, z + CAR0 + 0.6 + 1.6 * 2 + 0.5], { expr: "neutral" }, { noBlob: true });
+      put(out, cam, t, 3, AUDIENCE(3), "a3", [0.95, 0.72, z + CAR1 + 0.6 + 1.6 * 3 + 0.5], { expr: "smile" }, { noBlob: true });
+      trainSmoke(out, t, tau, id === 15 ? 1.3 : 1);
+      break;
+    }
+    case 3: case 16: trainSmoke(out, t, tau, 1.2); break;
+    case 4: { // shipyard: the tanker on the slip, welders' sparks, gulls; the designer with his drawing, then goodbye
+      const wave = f >= 284 ? q(Math.sin(t * 9), 20) : undefined;
+      const prop: Prop = f >= 223 && f < 278 ? "blueprint" : "suitcase";
+      put(out, cam, t, 1, YAMA, "y", SHIP_AT, { expr: f < 223 ? "smile" : f < 278 ? (f < 250 ? "smile_closed" : "grin") : "grin", prop, wave, up: f >= 223 && f < 250 ? 0.6 : 0 });
+      YARD_WELDERS.forEach((w, i) => {
+        put(out, cam, t, 30 + i, WORKER(i), `w${i % 3}`, [w[0], w[1], w[2]], { expr: "stern" }, { noBlob: true });
+        const u = q(t % 3, 12);
+        out.fx.push({ key: `sparks${u}|${i}`, cw: 300, ch: 400, draw: (p) => fxSparks(p, u + i * 0.3), x: w[0] + 0.45, y: w[1] + 0.2, z: w[2] + 0.35, w: 2.0, h: 2.67, additive: true, glow: 3.2, order: 3 });
+      });
+      put(out, cam, t, 11, WORKER(0), "w0", [SHIP_AT[0] - 10, 0, SHIP_AT[2] - 4], { expr: "neutral" });
+      put(out, cam, t, 12, WORKER(2), "w2", [SHIP_AT[0] + 16, 0, SHIP_AT[2] - 3], { expr: "smile" });
+      for (let k = 0; k < 5; k++) {
+        const ph = q((t * 2.4 + k * 0.31) % 1, 8), gx = -30 + ((t * (5 + k) + k * 23) % 90), gy = 20 + 8 * hh(k, 3) + 1.2 * Math.sin(t + k), gz = -112 - 20 * hh(k, 4);
+        out.fx.push({ key: `gull${ph}`, cw: 300, ch: 160, draw: (p) => fxGull(p, ph), x: gx, y: gy, z: gz, w: 1.6, h: 0.85, noFog: true });
+      }
       break;
     }
     case 5: { // walking home up the street, a thought of his wife and son
@@ -401,14 +418,24 @@ export const stage = (id: number, t: number, cam: CamInfo, sun: THREE.Vector3): 
 // ---------------- recurring effects ----------------
 /** B-29 x position at time t (s) for shot 11 */
 export const planeX = (t: number) => -150 + 70 * (t - W(624));
-const trainSmoke = (out: Stage, t: number, z: number) => {
-  for (let k = 0; k < 7; k++) {
-    const u = (t * 0.55 + k / 7) % 1, age = u * 1.8;
-    const x = 0.2 * Math.sin(k * 2.1), y = 4.4 + 2.6 * u + 0.6 * u * u, zz = z + 1.2 + age * 11 + 2.5 * u; // drifts back along the train
-    const sz = 1.2 + 3.6 * u;
-    out.fx.push({ key: `smoke${k % 3}`, cw: 400, ch: 300, draw: (p) => fxDust(p, 0.15 + 0.1 * (k % 3), "#d9d4cc"), x, y, z: zz, w: sz * 1.33, h: sz, soft: true, order: 3 });
+/** chimney smoke left in the still air as the train runs on (so it streams back over the carriages), plus cylinder
+ *  steam puffing low at the front twice per wheel turn */
+const trainSmoke = (out: Stage, t: number, tau: number, k = 1) => {
+  const nose = trainZ(tau);
+  for (let i = 0; i < 26; i++) {
+    const age = ((tau * 7.2) % 1) / 7.2 + i / 7.2;     // a puff every 0.14 s (one per chimney beat)
+    const zEmit = trainZ(tau - age) + 1.25, rise = 4.3 + 1.9 * age + 0.35 * age * age;
+    const sz = (1.1 + 1.9 * age) * k;
+    out.fx.push({ key: `smoke${i % 3}`, cw: 400, ch: 300, draw: (p) => fxDust(p, 0.12 + 0.1 * (i % 3), i < 4 ? "#bdb8b0" : "#e2ded6"), x: 0.4 * Math.sin(i * 2.1) + 0.6 * age, y: rise, z: zEmit + 0.8 * age, w: sz * 1.33, h: sz, soft: true, order: 3 });
+  }
+  const cyc = (tau * TRAIN_V) / (2 * Math.PI * 0.75);
+  for (const sd of [-1, 1]) for (let j = 0; j < 3; j++) {
+    const a = ((cyc * 2 + j / 3) % 1), ze = trainZ(tau - a * 0.25) + 1.3;
+    if (j > 1) continue;
+    out.fx.push({ key: `steamC${j}`, cw: 400, ch: 300, draw: (p) => fxDust(p, 0.3 + 0.2 * j, "#f4f2ee"), x: sd * (1.55 + 0.9 * a), y: 0.45 + 0.35 * a, z: ze, w: (0.35 + 1.1 * a) * 1.33, h: 0.35 + 1.1 * a, soft: true, order: 3 });
   }
 };
+const YARD_WELDERS = WELDERS;
 const dust = (out: Stage, t: number, k: number) => {
   for (let i = 0; i < 6; i++) {
     const u = (t * 0.12 + i / 6) % 1, x = -6 + 12 * hh(i, 3), z = -3 - 8 * hh(i, 4);

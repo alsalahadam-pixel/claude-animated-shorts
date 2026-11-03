@@ -176,15 +176,55 @@ def clack(r, k=1.0):
     return modal(0.25, [(r.uniform(900, 1000), 1.0, 0.03), (r.uniform(2100, 2300), 0.6, 0.02), (r.uniform(320, 360), 0.8, 0.04)], r) * k
 
 
-def steam_whistle(r, dur=1.4):
+def steam_whistle(r, dur=1.4, pitch=1.0):
     t = tt(dur)
     env = np.clip(t / 0.06, 0, 1) * np.clip((dur - t) / 0.25, 0, 1)
     y = np.zeros_like(t)
     for f in (494, 587, 740):  # a soft chord whistle
-        ph = phase(f * (1 + 0.004 * np.sin(2 * np.pi * 5 * t)))
+        ph = phase(f * pitch * (1 + 0.004 * np.sin(2 * np.pi * 5 * t)))
         y += np.sin(ph) + 0.3 * np.sin(2 * ph) + 0.1 * np.sin(3 * ph)
     y += bp(r.standard_normal(len(t)), 800, 5000, 1) * 0.6
     return y * env * 0.3
+
+
+def gull(r):
+    """herring-gull 'kee-ow': falling squeal with a rough edge, twice"""
+    out = np.zeros(ns(0.8))
+    for k, t0 in enumerate((0.0, 0.34)):
+        d = 0.28; t = tt(d)
+        f = (2300 - 900 * (t / d) ** 0.7) * (1 - 0.05 * k)
+        y = np.sin(phase(f)) + 0.45 * np.sin(2 * phase(f)) + 0.2 * np.sin(3 * phase(f))
+        y *= (0.7 + 0.3 * np.sin(2 * np.pi * 60 * t)) * np.sin(np.pi * t / d) ** 0.6
+        place_mono(out, y, t0)
+    return out
+
+
+def place_mono(buf, x, t):
+    k = ns(t); n = min(len(x), len(buf) - k)
+    if n > 0: buf[k:k + n] += x[:n]
+
+
+def ship_horn(r, dur=1.7):
+    """deep two-note ship's horn (a low major third), slight swell and flutter"""
+    t = tt(dur)
+    env = np.clip(t / 0.12, 0, 1) * np.clip((dur - t) / 0.35, 0, 1)
+    y = np.zeros_like(t)
+    for f0 in (98.0, 123.5):
+        ph = phase(f0 * (1 + 0.003 * np.sin(2 * np.pi * 4.5 * t)))
+        for k in range(1, 14):
+            y += np.sin(k * ph) / k ** 0.9
+    y = lp(y, 1400, 2) + 0.15 * bp(r.standard_normal(len(t)), 200, 1200, 1)
+    return y * env * 0.4
+
+
+def crane_hum(dur, r):
+    n = ns(dur); t = np.arange(n) / SR
+    y = 0.6 * np.sin(phase(np.full(n, 58.0))) + 0.3 * np.sin(phase(np.full(n, 116.0)))
+    y += 0.25 * np.sin(phase(380 + 40 * np.sin(2 * np.pi * 0.2 * t))) * (0.6 + 0.4 * np.sin(2 * np.pi * 0.31 * t))
+    chain = np.zeros(n); tm = 0.3
+    while tm < dur - 0.2:
+        place_mono(chain, modal(0.12, [(r.uniform(1800, 2600), 0.6, 0.02), (r.uniform(3800, 4600), 0.3, 0.01)], r), tm); tm += r.uniform(0.25, 0.9)
+    return y * 0.5 + chain
 
 
 def cicadas(dur, r):
@@ -315,27 +355,60 @@ def build_sfx():
         x = fades(x, fin, fout) if x.ndim == 1 else np.stack([fades(c, fin, fout) for c in x])
         ev(t0, x, g_db, name=name)
 
-    # --- train (shots 1-3, 15-16): chuffs at ~4/s, rail clacks in pairs, whistle
-    for (a, b, g) in ((0.0, fr(160), -16), (fr(915), fr(1043), -15)):
-        t = a
-        k = 0
+    # --- train: two exhaust beats per wheel turn (17 m/s on 1.5 m drivers = 7.2 beats/s), rail-joint clack pairs
+    BEAT = 1 / 7.2
+    def chuffs(a, b, g_of, lpf=None, pan_of=lambda t: -0.2):
+        t, k = a, 0
         while t < b:
-            ev(t, chuff(r, 1.0 if k % 4 == 0 else 0.6), g, -0.2)
-            t += 0.24; k += 1
-        t = a + 0.3
+            x = chuff(r, 1.0 if k % 2 == 0 else 0.7)
+            if lpf: x = lp(x, lpf, 2)
+            ev(t, x, g_of(t), pan_of(t)); t += BEAT; k += 1
+    def clacks(a, b, g, period=1.47, lpf=None):
+        t = a + 0.2
         while t < b:
-            ev(t, clack(r), g - 4, 0.3); ev(t + 0.11, clack(r), g - 5, 0.3)
-            t += 1.15
-    cues.append((0.0, "train: chuffs + clacks"))
-    ev(fr(918), steam_whistle(r, 1.3), -20, 0.2, "steam whistle (train leaves)")
-    ev(fr(116), steam_whistle(r, 0.9) * 0.6, -24, 0.3, "distant whistle under 'Home was Nagasaki'")
-    # --- shipyard: riveting hammer and clanks, gulls-ish chirps
+            for dt, dg in ((0, 0), (0.11, -1), (0.62, -2), (0.73, -3)):   # front + rear bogie of a car
+                x = clack(r); x = lp(x, lpf, 2) if lpf else x
+                ev(t + dt, x, g + dg, 0.25)
+            t += period
+    # shot 1: inside the carriage: wheels and joints loud, the engine muffled ahead
+    chuffs(0.0, fr(60), lambda t: -25, lpf=700)
+    clacks(0.0, fr(60), -16, lpf=2500)
+    bed(0.0, fr(60), lambda d: lp(colored(ns(d), rng(21), 1.5), 260, 2), -24, "carriage rumble", 0.05, 0.05)
+    # shot 2: pass-by: the engine bears down on the lens, whistle with Doppler, the rush and the clatter
+    def dist2(t):
+        nose = -17 * (t + 2)
+        return float(np.hypot(4.0, max(0.5, abs((nose + 1.3) - (-93)))))
+    chuffs(fr(60), fr(114), lambda t: float(np.clip(-12 + 20 * np.log10(6 / dist2(t)), -30, -6)), pan_of=lambda t: float(np.clip(-0.9 * (1 - dist2(t) / 30), -0.9, 0.0)))
+    ev(fr(70), steam_whistle(r, 1.1, 1.05), -13, 0.0, "whistle blast (approach)")
+    ev(fr(98), swish(0.7, r, 120, 1800) * 1.6, -9, -0.4, "pass-by rush")
+    ev(fr(102), rumble(1.4, r), -10, -0.3, "pass-by thunder")
+    t = fr(104)
+    while t < fr(114):
+        ev(t, clack(r), -11, -0.5); t += 0.09
+    cues.append((fr(60), "train pass-by: chuffs swell, whistle, rush, clatter"))
+    # shots 3 / 16: crane up over the engine: chuffs below, wind as the lens climbs
+    chuffs(fr(114), fr(160), lambda t: -18)
+    ev(fr(114), swish(1.6, r, 200, 2200), -20, 0.2, "crane-up wind")
+    ev(fr(116), steam_whistle(r, 0.9) * 0.6, -22, 0.3, "whistle under 'Home was Nagasaki'")
+    chuffs(fr(991), fr(1043), lambda t: -18)
+    ev(fr(991), swish(1.6, r, 200, 2200), -20, 0.2, "crane-up wind")
+    # shot 15: golden tracking: full engine, joints, whistle
+    chuffs(fr(915), fr(991), lambda t: -14)
+    clacks(fr(915), fr(991), -19)
+    ev(fr(918), steam_whistle(r, 1.3), -17, 0.2, "steam whistle (train leaves)")
+    # --- shipyard: riveting, welding sizzle, the gantry's motor and chain, gulls, harbour water, the ship's horn
     t = fr(165)
     while t < fr(328):
         for j in range(4):
             ev(t + j * 0.09, G.hammer_hit(r, 0.35), -30, -0.6)
         t += r.uniform(0.9, 1.6)
-    cues.append((fr(165), "shipyard riveting"))
+    bed(fr(160), fr(328), lambda d: hp(crackle(d, rng(23), 40), 1800), -30, "welding sizzle", 0.3, 0.3)
+    bed(fr(160), fr(328), lambda d: crane_hum(d, rng(24)), -33, "gantry crane motor + chain", 0.5, 0.5)
+    bed(fr(160), fr(328), lambda d: G.water_bed(d, rng(25), 0.2, 0.3), -38, "harbour water", 0.5, 0.3)
+    for fg in (182, 236, 268, 312):
+        ev(fr(fg), gull(r), -27, float(r.uniform(-0.7, 0.7)), "gull")
+    ev(fr(288), ship_horn(r), -19, 0.3, "ship's horn (goodbye)")
+    cues.append((fr(165), "shipyard: riveting, welding, crane"))
     # --- street ambience: cicadas
     bed(fr(160), fr(706), lambda d: cicadas(d, rng(3)), -34, "cicadas (summer street)", 1.0, 0.1)
     # walking footsteps (shot 5: 2 m/s, a step per 0.7 m; shot 6 until 418; shot 8 hurried)

@@ -11,7 +11,7 @@ import { TONE, CHAR, untone } from "./shade";
 import { NOINK } from "./ink";
 import { Pool, Actor, Fx, stage, planeX } from "./cast";
 import { buildSets, Sets } from "./sets";
-import { FPS, SHOTS, camAt, ShotDef, trainZ, DESK_INSERT, smooth } from "./story";
+import { FPS, SHOTS, camAt, ShotDef, trainZ, DESK_INSERT, smooth, TRAIN_V } from "./story";
 
 export const loadKit = () => Promise.resolve({} as Kit); // no Kenney models: all plants are the cartoon vegetation
 
@@ -170,7 +170,8 @@ export class World {
       mat.map = this.cloudMaps[s.light === "golden" ? "golden" : "day"][i % 4];
     }
     // ---- moving parts ----
-    if (s.zone === "rail") S.train.place(trainZ(tau));
+    if (s.zone === "rail") S.train.update(trainZ(tau), TRAIN_V * tau);
+    if (s.zone === "street") S.yard.update(t);
     S.plane.visible = id === 11;
     if (id === 11) { S.plane.position.set(planeX(t), 300, -200); S.plane.rotation.set(0.05, 0, 0.04 * Math.sin(t)); }
     for (const l of S.lanterns) {
