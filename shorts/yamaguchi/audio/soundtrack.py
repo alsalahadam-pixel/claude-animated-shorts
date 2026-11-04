@@ -16,11 +16,21 @@ import sfx_gen as G
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FPS = 30
-TOTAL = 2715
+# v2 narration: cue frames below are written on the v1 picture timeline; warp.json maps output (v2) frames to v1
+WARPJ = json.load(open(os.path.join(HERE, "..", "voice", "warp.json")))
+TOTAL = WARPJ["total"]
+_W1 = np.array(WARPJ["warp"]); _F2 = np.arange(len(_W1), dtype=float)
 DUR = TOTAL / FPS
 N = ns(DUR)
-fr = lambda f: f / FPS
+fr = lambda f: float(np.interp(f, _W1, _F2)) / FPS          # v1 frame -> v2 seconds
+t_v1 = lambda t: float(np.interp(t * FPS, _F2, _W1)) / FPS   # v2 seconds -> v1 seconds
 WORDS = json.load(open(os.path.join(HERE, "..", "voice", "words.json")))
+LINES = json.load(open(os.path.join(HERE, "..", "voice", "lines.json")))
+def wt(word, line):
+    """v2 start time of `word` in narration line `line` (0-based)"""
+    a = sum(len(l["text"].split()) for l in LINES[:line])
+    n = len(LINES[line]["text"].split())
+    return next(w["s"] for w in WORDS[a:a + n] if w["w"].lower() == word.lower())
 
 # ---------------------------------------------------------------- picture constants (mirrors story.ts)
 FLASH1 = (fr(706), fr(724), fr(754), fr(776))     # ramp start, full white, hold end, clear
@@ -88,17 +98,49 @@ class Score:
             b += 0.5
 
 
+def taiko(r, vel=1.0):
+    """o-daiko 'don': low membrane with a pitch drop, second mode, skin slap; long-ish decay"""
+    d = 0.9; t = tt(d)
+    f0 = 68 * (1 + 0.25 * np.exp(-t / 0.03))
+    y = np.sin(phase(f0)) * np.exp(-t / 0.32) + 0.45 * np.sin(phase(f0 * 2.3)) * np.exp(-t / 0.12) + 0.2 * np.sin(phase(f0 * 3.6)) * np.exp(-t / 0.06)
+    y += lp(r.standard_normal(len(t)), 900, 2) * np.exp(-t / 0.012) * 0.9
+    return fades(y * vel, 0.0005, 0.08)
+
+
+def taiko_ka(r, vel=0.5):
+    """rim 'ka': dry wooden click"""
+    return modal(0.1, [(r.uniform(1750, 1850), 1.0, 0.012), (r.uniform(3100, 3300), 0.5, 0.006), (620, 0.6, 0.02)], r) * vel
+
+
 def woodblock(r, vel):
     return modal(0.12, [(r.uniform(1180, 1240), 1.0, 0.025), (r.uniform(2600, 2700), 0.4, 0.012)], r) * vel
 
 
 def build_score():
     S = Score(); r = S.r
-    # hook: theme under the first line, stop hit on "Home was Nagasaki"
-    S.theme(0.05, fr(110), vel=0.5)
-    S.add(I.timpani(M("D2") * 2, 0.9, r), fr(124), 1.0, 0, 0.4)
-    S.add(I.pad([M("D3"), M("A3"), M("F4")], 1.2, 0.6, r, att=0.05, rel=0.6, warm=900), fr(124), 0.9, 0, 0.5)
-    S.add(I.cymbal(0.25, r, 2.0), fr(158), 1.0, 0.3, 0.6)
+    # hook: taiko-driven theme under the first two lines, a dead stop, then the hit on "Nagasaki"
+    t_naga, t_str = wt("Nagasaki", 2), LINES[2]["s"]
+    S.theme(0.05, t_str - 0.1, vel=0.55)
+    t = 0.05; k = 0
+    while t < t_str - 0.15:                                         # don on every beat, ka between, louder toward the pass-by
+        v = 0.55 + 0.4 * t / t_str
+        S.add(taiko(r, v * (1.0 if k % 4 == 0 else 0.8)), t, 1.0, -0.1, 0.25)
+        S.add(taiko_ka(r, 0.45 * v), t + Q / 2, 1.0, 0.2, 0.15)
+        t += Q; k += 1
+    S.add(taiko(r, 1.3), fr(103), 1.0, 0, 0.3)                      # the engine passes the lens
+    S.add(taiko(r, 1.0), t_naga - 0.24, 1.0, 0, 0.3); S.add(taiko(r, 1.5), t_naga - 0.02, 1.0, 0, 0.4)
+    S.add(I.timpani(M("D2") * 2, 0.9, r), t_naga - 0.02, 1.0, 0, 0.4)
+    S.add(I.pad([M("D3"), M("A3"), M("F4")], HOOK_FLASH - t_naga + 0.3, 0.6, r, att=0.05, rel=0.6, warm=900), t_naga - 0.02, 0.9, 0, 0.5)
+    S.add(I.cymbal(0.25, r, 2.0), HOOK_FLASH - 0.05, 1.0, 0.3, 0.6)
+    # taiko rolls building into both flashes (cut by the white-out gate)
+    for a0, a1 in ((fr(640), fr(722)), (fr(1342), fr(1377))):
+        t = a0
+        while t < a1:
+            u = (t - a0) / (a1 - a0)
+            S.add(taiko(r, 0.35 + 0.95 * u ** 1.5), t, 1.0, (-0.3 if int(t * 10) % 2 else 0.3), 0.3)
+            t += 0.42 - 0.3 * u
+    S.add(taiko(r, 0.8), fr(1003) - 0.02, 1.0, 0, 0.4)              # "Home is Nagasaki"
+    S.add(taiko(r, 0.7), wt("ninety", 27) - 0.02, 1.0, 0, 0.5)       # "ninety-three"
     # Hiroshima, morning: theme with chords until the shock
     S.theme(HOOK_FLASH + 0.1, fr(436), vel=0.55, chords=True)
     S.add(I.glock(M("D5") * 2, 0.8, r), fr(447), 1.0, 0.2, 0.5)      # "hanko!" ding
@@ -117,7 +159,7 @@ def build_score():
     S.add(I.pad([M("D3"), M("A3"), M("F4")], fr(915) - fr(877), 0.35, r, att=0.8, rel=0.8, warm=700), fr(877), 0.7, 0, 0.6)
     S.theme(fr(915), fr(988), beat=0.62, inst="pluck", vel=0.42, perc=False, chords=True)
     # "Home is Nagasaki": the same stop hit as the hook
-    S.add(I.timpani(M("D2") * 2, 1.0, r), fr(1001), 1.0, 0, 0.4)
+    S.add(I.timpani(M("D2") * 2, 1.0, r), fr(1001), 1.0, 0, 0.4)  # (v1 frame of "Nagasaki")
     S.add(I.pad([M("D3"), M("A3"), M("F4")], 1.3, 0.6, r, att=0.05, rel=0.7, warm=900), fr(1001), 0.9, 0, 0.5)
     # office: deadpan walking pizzicato, glock answers; ba-dum after "of course he does"
     S.theme(fr(1043), fr(1150), beat=0.6, inst="glock", vel=0.4, chords=False, start_beat=0)
@@ -376,7 +418,7 @@ def build_sfx():
     bed(0.0, fr(60), lambda d: lp(colored(ns(d), rng(21), 1.5), 260, 2), -24, "carriage rumble", 0.05, 0.05)
     # shot 2: pass-by: the engine bears down on the lens, whistle with Doppler, the rush and the clatter
     def dist2(t):
-        nose = -17 * (t + 2)
+        nose = -17 * (t_v1(t) + 2)
         return float(np.hypot(4.0, max(0.5, abs((nose + 1.3) - (-93)))))
     chuffs(fr(60), fr(114), lambda t: float(np.clip(-12 + 20 * np.log10(6 / dist2(t)), -30, -6)), pan_of=lambda t: float(np.clip(-0.9 * (1 - dist2(t) / 30), -0.9, 0.0)))
     ev(fr(70), steam_whistle(r, 1.1, 1.05), -13, 0.0, "whistle blast (approach)")
@@ -511,6 +553,28 @@ def limiter(x, ceil_db=-1.2):
     return x * np.minimum(g, 1.0)[None, :]
 
 
+def punch(v):
+    """narration chain: rumble cut, low-mid clean-up, presence lift, 3:1 compression, gentle saturation, a little room"""
+    from scipy import ndimage
+    x = hp(v, 75, 2)
+    x = peq(x, 260, -2.5, 1.0)
+    x = peq(x, 3400, 3.5, 0.9)
+    x = shelf_hi(x, 9000, 1.5)
+    env = np.sqrt(ndimage.uniform_filter1d(x ** 2, ns(0.012)) + 1e-12)
+    lvl = 20 * np.log10(env); thr = np.percentile(lvl[lvl > -60], 70)
+    gr = np.where(lvl > thr, (thr - lvl) * (1 - 1 / 3.0), 0.0)
+    gr = ndimage.uniform_filter1d(gr, ns(0.008))
+    x = x * 10 ** (gr / 20)
+    x = np.tanh(1.4 * x / (np.abs(x).max() + 1e-9)) / np.tanh(1.4)
+    wet = convolve_st(x, make_ir(0.35, 31, hf=1.6))[0]
+    return x + 0.06 * wet / (np.abs(wet).max() + 1e-9) * np.abs(x).max()
+
+
+def shelf_hi(x, f0, db):
+    from dsp import shelf
+    return shelf(x, f0, db, "high")
+
+
 def main():
     v, sr = read_wav(os.path.join(HERE, "..", "voice", "voice.wav"))
     v = v.mean(0)
@@ -518,7 +582,7 @@ def main():
         from scipy import signal
         v = signal.resample_poly(v, SR, sr)
     voice = np.zeros(N); voice[: min(N, len(v))] = v[:N]
-    voice = st(voice)
+    voice = st(punch(voice))
     print("score..."); music = build_score()
     print("sfx..."); sfx, cues = build_sfx()
     Lv = integrated(voice)

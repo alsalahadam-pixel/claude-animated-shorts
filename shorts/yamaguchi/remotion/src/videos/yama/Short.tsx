@@ -17,7 +17,12 @@ import { GradeEffect, GRADES, gradeFor } from "./grade";
 import { Kit } from "./build";
 import { TOTAL, FLASH_AT, SHOTS, layersAt, dofAt, whiteAt } from "./story";
 
-export const YAMA_FRAMES = TOTAL;
+// v2 narration: the picture was built on the v1 voice; warp.json maps every output frame to the (fractional) v1 frame
+// the world is posed at (voice/warp.py), so all shot timing follows the new words.
+import WARP_JSON from "./warp.json";
+const WARP: number[] = (WARP_JSON as { total: number; warp: number[] }).warp;
+export const YAMA_FRAMES = (WARP_JSON as { total: number }).total;
+const v1Frame = (f: number) => WARP[Math.max(0, Math.min(WARP.length - 1, f))] ?? TOTAL;
 
 type PostToggles = { ink: boolean; lens: boolean; bloom: boolean; grade: boolean; fxaa: boolean };
 const toggles = (): PostToggles => ({ ink: true, lens: true, bloom: true, grade: true, fxaa: false, ...((getInputProps() as { post?: Partial<PostToggles> }).post ?? {}) });
@@ -38,8 +43,7 @@ const useKit = () => {
   return kit;
 };
 
-const Inner: React.FC<{ id: number; kit: Kit }> = ({ id, kit }) => {
-  const f = useCurrentFrame();
+const Inner: React.FC<{ id: number; kit: Kit; f: number }> = ({ id, kit, f }) => {
   const { camera, scene } = useThree();
   const world = useMemo(() => new World(kit), [kit]);
   const on = useMemo(toggles, []);
@@ -75,24 +79,24 @@ const Inner: React.FC<{ id: number; kit: Kit }> = ({ id, kit }) => {
 };
 
 const dprOverride = () => (getInputProps() as { post?: { dpr?: number } }).post?.dpr;
-const ShotView: React.FC<{ id: number; kit: Kit; alpha: number }> = ({ id, kit, alpha }) => (
+const ShotView: React.FC<{ id: number; kit: Kit; alpha: number; f: number }> = ({ id, kit, alpha, f }) => (
   <AbsoluteFill style={{ opacity: alpha }}>
     <ThreeCanvas width={1080} height={1920} {...(dprOverride() ? { dpr: dprOverride() } : {})} shadows gl={{ antialias: false, stencil: false, powerPreference: "high-performance", toneMappingExposure: 1.0 }}
       camera={{ fov: 40, near: 0.12, far: 2200 }}>
-      <Inner id={id} kit={kit} />
+      <Inner id={id} kit={kit} f={f} />
     </ThreeCanvas>
   </AbsoluteFill>
 );
 
 export const YamaShort: React.FC = () => {
-  const f = useCurrentFrame();
+  const f = v1Frame(useCurrentFrame());
   const kit = useKit();
   if (!kit) return null;
-  const flash = f >= FLASH_AT && f < FLASH_AT + 4 ? [1, 0.75, 0.45, 0.2][f - FLASH_AT] : 0;
+  const fl = Math.floor(f - FLASH_AT), flash = fl >= 0 && fl < 4 ? [1, 0.75, 0.45, 0.2][fl] : 0;
   const white = Math.max(flash, whiteAt(f));
   return (
     <AbsoluteFill style={{ background: "#cfe3f2" }}>
-      {white < 0.999 && layersAt(f).map((l, i) => <ShotView key={i ? "over" : "base"} id={l.id} kit={kit} alpha={l.alpha} />)}
+      {white < 0.999 && layersAt(f).map((l, i) => <ShotView key={i ? "over" : "base"} id={l.id} kit={kit} alpha={l.alpha} f={f} />)}
       {white > 0 && <AbsoluteFill style={{ background: "#fffaf0", opacity: white }} />}
     </AbsoluteFill>
   );

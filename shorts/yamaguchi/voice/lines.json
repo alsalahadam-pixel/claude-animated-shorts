@@ -1,137 +1,142 @@
 [
  {
-  "text": "This man survived an atomic bomb, so he took a train home to recover.",
-  "s": 0.108,
-  "e": 3.623
+  "text": "This man survived the atomic bomb on Hiroshima!",
+  "s": 0.086,
+  "e": 1.788
  },
  {
-  "text": "Home was Nagasaki.",
-  "s": 3.815,
-  "e": 5.065
+  "text": "Then he hopped on a train to get away from it all...",
+  "s": 1.882,
+  "e": 3.627
+ },
+ {
+  "text": "Straight to Nagasaki.",
+  "s": 3.802,
+  "e": 4.878
  },
  {
   "text": "It's August nineteen forty five, and ship designer Tsutomu Yamaguchi is wrapping up a work trip in Hiroshima.",
-  "s": 5.537,
-  "e": 10.733
+  "s": 5.432,
+  "e": 11.095
  },
  {
-  "text": "He's packed and ready to go home to his wife and baby son, when he realizes he forgot his hanko.",
-  "s": 10.941,
-  "e": 15.373
+  "text": "He's packed and ready to go home to his wife and baby son, when he realizes he forgot his hanko!",
+  "s": 11.225,
+  "e": 15.355
  },
  {
   "text": "That's his official name stamp, so he heads back to the shipyard to get it.",
-  "s": 15.561,
-  "e": 18.543
+  "s": 15.485,
+  "e": 18.024
  },
  {
   "text": "At a quarter past eight, he looks up at a plane and sees two tiny parachutes drifting down.",
-  "s": 18.838,
-  "e": 22.733
+  "s": 18.198,
+  "e": 22.431
  },
  {
-  "text": "Then the whole sky turns white.",
-  "s": 23.102,
-  "e": 24.527
+  "text": "Then... the whole sky turns white.",
+  "s": 22.714,
+  "e": 24.302
  },
  {
   "text": "He's three kilometers away, and it still bursts his eardrums and burns his whole left side.",
-  "s": 25.124,
-  "e": 28.959
+  "s": 24.881,
+  "e": 28.701
  },
  {
   "text": "After a night in a shelter, he does the sensible thing and catches a train home.",
-  "s": 29.235,
-  "e": 32.703
+  "s": 28.85,
+  "e": 31.893
  },
  {
   "text": "Home is Nagasaki.",
-  "s": 33.026,
-  "e": 34.297
+  "s": 32.146,
+  "e": 33.243
  },
  {
   "text": "Two days later, wrapped in bandages, he goes back to work, because of course he does.",
-  "s": 34.766,
-  "e": 38.409
+  "s": 33.653,
+  "e": 36.909
  },
  {
   "text": "He tells his boss that one single bomb destroyed an entire city.",
-  "s": 38.571,
-  "e": 41.471
+  "s": 37.043,
+  "e": 39.705
  },
  {
-  "text": "His boss says that's crazy.",
-  "s": 41.66,
-  "e": 42.871
+  "text": "His boss says that's crazy!",
+  "s": 39.835,
+  "e": 40.936
  },
  {
-  "text": "No bomb could ever do that.",
-  "s": 43.023,
-  "e": 44.273
+  "text": "No bomb could ever do that!",
+  "s": 41.025,
+  "e": 42.063
  },
  {
-  "text": "And right then, the same white light fills the room.",
-  "s": 44.664,
-  "e": 46.835
+  "text": "And right then... the same white light fills the room.",
+  "s": 42.376,
+  "e": 44.664
  },
  {
   "text": "He later said he thought the mushroom cloud had followed him from Hiroshima.",
-  "s": 47.432,
-  "e": 50.606
+  "s": 45.243,
+  "e": 48.456
  },
  {
   "text": "Those two bombs killed well over a hundred thousand people, and somehow, he survived both.",
-  "s": 50.874,
-  "e": 55.242
+  "s": 48.689,
+  "e": 53.542
  },
  {
   "text": "You see, both times, he was about three kilometers from the center, and distance is everything.",
-  "s": 55.613,
-  "e": 59.722
+  "s": 53.871,
+  "e": 58.151
  },
  {
   "text": "Ever sat by a campfire?",
-  "s": 59.972,
-  "e": 61.197
+  "s": 58.3,
+  "e": 59.38
  },
  {
-  "text": "Lean in close and it scorches your face.",
-  "s": 61.357,
-  "e": 63.077
+  "text": "Lean in close, and it scorches your face!",
+  "s": 59.47,
+  "e": 60.911
  },
  {
-  "text": "Take a few steps back and it's just warm.",
-  "s": 63.201,
-  "e": 65.119
+  "text": "Take a few steps back, and it's just warm.",
+  "s": 61.0,
+  "e": 62.816
  },
  {
   "text": "The heat spreads out in every direction, so every time you double the distance, only a quarter of it reaches you.",
-  "s": 65.327,
-  "e": 70.068
+  "s": 62.965,
+  "e": 67.437
  },
  {
   "text": "Three kilometers was close enough to hurt him, but far enough to let him live.",
-  "s": 70.322,
-  "e": 73.492
+  "s": 67.611,
+  "e": 71.354
  },
  {
   "text": "His wife and son survived too, sheltering in a tunnel.",
-  "s": 73.84,
-  "e": 76.309
+  "s": 71.664,
+  "e": 74.193
  },
  {
   "text": "In two thousand nine, he became the only person officially recognized as surviving both bombs.",
-  "s": 76.541,
-  "e": 81.161
+  "s": 74.376,
+  "e": 79.25
  },
  {
   "text": "He spent his last years asking the world never to build another one.",
-  "s": 81.369,
-  "e": 84.585
+  "s": 79.378,
+  "e": 82.591
  },
  {
-  "text": "Two atomic bombs, three days apart, and Tsutomu Yamaguchi still lived to be ninety three.",
-  "s": 84.954,
-  "e": 89.439
+  "text": "Two atomic bombs. Three days apart. And Tsutomu Yamaguchi still lived to be ninety three.",
+  "s": 82.945,
+  "e": 88.118
  }
 ]

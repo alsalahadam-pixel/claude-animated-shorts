@@ -1,4 +1,4 @@
-# "Home Was Nagasaki" — original script v2 (2026-11-03)
+# "Home Was Nagasaki" — original script v3 (2026-11-03)
 Format: ~90 s vertical cartoon short, one steady narrator, our own characters and story. No captions.
 
 ## Facts (sources at the bottom)
@@ -18,34 +18,35 @@ Format: ~90 s vertical cartoon short, one steady narrator, our own characters an
 - Physics: radiant heat from a point source spreads over a sphere, so it falls with the square of the distance
   (double the distance -> a quarter of the heat).
 
-## Script (v2, as narrated: Kokoro am_michael at 1.345x, 89.4 s, 333 words)
-This man survived an atomic bomb, so he took a train home to recover.
-Home was Nagasaki.
+## Script (v3, as narrated: Kokoro am_fenrir at 1.31x with per-line pacing, 88.1 s, 339 words)
+This man survived the atomic bomb on Hiroshima!
+Then he hopped on a train to get away from it all...
+Straight to Nagasaki.
 It's August 1945, and ship designer Tsutomu Yamaguchi is wrapping up a work trip in Hiroshima.
-He's packed and ready to go home to his wife and baby son, when he realizes he forgot his hanko.
+He's packed and ready to go home to his wife and baby son, when he realizes he forgot his hanko!
 That's his official name stamp, so he heads back to the shipyard to get it.
 At a quarter past eight, he looks up at a plane and sees two tiny parachutes drifting down.
-Then the whole sky turns white.
+Then... the whole sky turns white.
 He's three kilometers away, and it still bursts his eardrums and burns his whole left side.
 After a night in a shelter, he does the sensible thing and catches a train home.
 Home is Nagasaki.
 Two days later, wrapped in bandages, he goes back to work, because of course he does.
 He tells his boss that one single bomb destroyed an entire city.
-His boss says that's crazy.
-No bomb could ever do that.
-And right then, the same white light fills the room.
+His boss says that's crazy!
+No bomb could ever do that!
+And right then... the same white light fills the room.
 He later said he thought the mushroom cloud had followed him from Hiroshima.
 Those two bombs killed well over a hundred thousand people, and somehow, he survived both.
 You see, both times, he was about three kilometers from the center, and distance is everything.
 Ever sat by a campfire?
-Lean in close and it scorches your face.
-Take a few steps back and it's just warm.
+Lean in close, and it scorches your face!
+Take a few steps back, and it's just warm.
 The heat spreads out in every direction, so every time you double the distance, only a quarter of it reaches you.
 Three kilometers was close enough to hurt him, but far enough to let him live.
 His wife and son survived too, sheltering in a tunnel.
 In 2009, he became the only person officially recognized as surviving both bombs.
 He spent his last years asking the world never to build another one.
-Two atomic bombs, three days apart, and Tsutomu Yamaguchi still lived to be ninety-three.
+Two atomic bombs. Three days apart. And Tsutomu Yamaguchi still lived to be ninety-three.
 
 ## Sources
 - Wikipedia, "Tsutomu Yamaguchi" (en.wikipedia.org/wiki/Tsutomu_Yamaguchi)

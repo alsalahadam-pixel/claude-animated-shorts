@@ -150,7 +150,7 @@ const R2a = (f: number) => { const z = trainZ(tauOf(2, f)); return { pos: [4.0, 
 /** crane up from behind the cab to reveal the valley and Nagasaki harbour ahead */
 const crane = (f: number, nose: number, f0: number): Shot => {
   const k = glide((f - f0) / 44), u = clamp01((f - f0) / 46);
-  return { pos: [1.5 + 6.5 * k, 5.0 + 16 * k, nose + 13.5 + 26.5 * k] as V3, look: [0, 3.2 - 2.7 * k, nose - 60 - 50 * k] as V3, fov: 50 - 6 * k, roll: 0.04 * Math.sin(u * Math.PI) };
+  return { pos: [-3.2 + 11.2 * k, 5.4 + 15.6 * k, nose + 12 + 28 * k] as V3, look: [0, 3.2 - 2.7 * k, nose - 60 - 50 * k] as V3, fov: 50 - 6 * k, roll: 0.04 * Math.sin(u * Math.PI) };
 };
 const R3a = (f: number) => crane(f, trainZ(tauOf(3, f)), 114);
 /** golden tracking shot: the lens runs ahead-right of the locomotive and arcs to its side; poles whip past between */

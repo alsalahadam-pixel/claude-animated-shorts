@@ -208,7 +208,7 @@ export class World {
     this.mush.visible = id === 12 || id === 13 || id === 22;
     if (this.mush.visible) {
       const g = id === 22 ? 0.25 + 0.75 * smooth((f - 1423) / 95) : 0.45 + 0.55 * smooth((f - 754) / 123);
-      const k = Math.round(g * 40) / 40;
+      const k = Math.round(g * 160) / 160;
       if (k !== this.mushK) {
         const ctx = this.mushCv.getContext("2d")!; ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, 1000, 1300);
         fxMushroom(new Pen(ctx), k); this.mushTex.needsUpdate = true; this.mushK = k;
