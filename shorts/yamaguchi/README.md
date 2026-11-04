@@ -9,7 +9,7 @@ A 90-second vertical cartoon short about Tsutomu Yamaguchi, the only person offi
 | `remotion/` | The Remotion project for this short (`src/videos/yama/`), plus helper scripts |
 | `audio/` | `soundtrack.py` (original score, synthesized SFX, the mix), DSP and instrument kit from `templates/audio/`, `cues.md` |
 | `qa/` | `short_qa.py` and `shots.json` for the frame-by-frame check |
-| `final/` | `home_was_nagasaki.mp4`: the finished 89 s short, 1080x1920, -15.0 LUFS (v3: mood-driven narration) |
+| `final/` | `home_was_nagasaki.mp4`: the finished 95 s short, 1080x1920, -15.3 LUFS (v4: natural narration) |
 
 ## Sets and shots
 There is one world with six sets, and each shot shows only its own set (`story.ts` `SHOTS`, `sets.ts`):
