@@ -3,3 +3,4 @@ audio/_cache/
 audio/__pycache__/
 qa/out/
 preview/*.mp4
+preview/*.mp3
