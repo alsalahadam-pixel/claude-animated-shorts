@@ -2,7 +2,40 @@
 // (+0.15 m) to x = ±13, building fronts at x = ±13. Cross street at z ∈ [-48, -32]. Café on the west side at z ≈ 0,
 // long dark shop window on the west side at z ∈ [-92, -68].
 import * as THREE from "three";
-import { asphalt, concrete, facade, rng } from "./paint";
+import { asphalt, canvas, concrete, facade, radial, rng, tex } from "./paint";
+
+/** an analogue clock face showing h:m */
+function clockFace(h: number, m: number) {
+  const { c, x } = canvas(256, 256);
+  x.fillStyle = "#f1ece2"; x.beginPath(); x.arc(128, 128, 124, 0, 7); x.fill();
+  x.strokeStyle = "#1a1a20"; x.lineWidth = 8; x.stroke();
+  for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; x.lineWidth = i % 3 ? 4 : 8; x.beginPath(); x.moveTo(128 + Math.sin(a) * 100, 128 - Math.cos(a) * 100); x.lineTo(128 + Math.sin(a) * 116, 128 - Math.cos(a) * 116); x.stroke(); }
+  const hand = (a: number, l: number, w: number) => { x.lineWidth = w; x.lineCap = "round"; x.beginPath(); x.moveTo(128, 128); x.lineTo(128 + Math.sin(a) * l, 128 - Math.cos(a) * l); x.stroke(); };
+  hand(((h % 12) + m / 60) / 12 * Math.PI * 2, 62, 10); hand((m / 60) * Math.PI * 2, 96, 6);
+  x.fillStyle = "#1a1a20"; x.beginPath(); x.arc(128, 128, 9, 0, 7); x.fill();
+  return tex(c);
+}
+
+/** steam caught in mid-air: soft curled ribbons and puffs that never move */
+function frozenSteam(base: THREE.Vector3) {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshBasicMaterial({ color: "#e8eef8", transparent: true, opacity: 0.07, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+  const curls: [number, number, number][][] = [
+    [[0, 0, 0], [0.01, 0.06, 0.005], [-0.02, 0.12, 0.0], [0.015, 0.19, -0.01], [-0.01, 0.26, 0.0]],
+    [[0.012, 0, 0.01], [0.03, 0.05, 0.01], [0.02, 0.11, 0.02], [0.045, 0.16, 0.015], [0.03, 0.21, 0.02]],
+    [[-0.012, 0, -0.008], [-0.028, 0.045, -0.01], [-0.012, 0.09, -0.02], [-0.035, 0.14, -0.01]],
+  ];
+  curls.forEach((pts, i) => {
+    const curve = new THREE.CatmullRomCurve3(pts.map(([x, y, z]) => new THREE.Vector3(x, y, z)));
+    for (const r of [0.006, 0.011, 0.018]) { const m = new THREE.Mesh(new THREE.TubeGeometry(curve, 48, r * (1 - i * 0.15), 10, false), mat); g.add(m); }
+  });
+  const puffM = new THREE.SpriteMaterial({ map: radial("rgba(235,242,255,0.55)"), transparent: true, depthWrite: false, opacity: 0.4 });
+  for (const [x, y, z, s] of [[0, 0.03, 0, 0.05], [0.01, 0.07, 0, 0.07], [-0.015, 0.11, 0, 0.08], [0.02, 0.15, 0.01, 0.09], [0.0, 0.19, 0, 0.1], [-0.01, 0.23, 0, 0.1], [0.035, 0.12, 0.01, 0.06], [-0.03, 0.08, -0.01, 0.06]]) {
+    const sp = new THREE.Sprite(puffM); sp.position.set(x, y, z); sp.scale.setScalar(s); g.add(sp);
+  }
+  g.position.copy(base);
+  return g;
+}
 import { bayTextures, mergedBlocks } from "./skyline";
 import { Cctv, cafeSet, car, cctv, glow, groundPool, mesh, neon, rbox, std, streetLamp, trafficLight, wetStreak } from "./props";
 
@@ -30,6 +63,7 @@ export class City {
   redLights: THREE.Object3D[] = [];
   glass: THREE.Mesh;
   pointLights: THREE.PointLight[] = [];
+  steam!: THREE.Group;
 
   constructor() {
     const R = this.root, r = rng(5150);
@@ -129,12 +163,13 @@ export class City {
     const [z0, z1] = CITY.shopZ;
     const shopIn = new THREE.Group(); shopIn.position.set(CITY.shopGlassX, 0, (z0 + z1) / 2); R.add(shopIn);
     shopIn.add(mesh(new THREE.BoxGeometry(0.1, 3.4, z1 - z0), std("#07080d"), [-6, 1.7, 0], false));
+    shopIn.add(mesh(new THREE.BoxGeometry(2.6, 0.15, z1 - z0), std("#1a2036", { map: concrete(), roughness: 0.35, metalness: 0.3, color: "#3a4a78" }), [-1.33, 0.075, 0], false));
     for (let i = 0; i < 6; i++) shopIn.add(mesh(rbox(1.2, 1.0, 2.2, 0.05), std("#121420", { roughness: 0.6 }), [-3.2, 0.5, -10 + i * 4], false));
     const g = new THREE.MeshStandardMaterial({ color: "#0d1220", roughness: 0.06, metalness: 0.85, transparent: true, opacity: 0.42, depthWrite: false });
     this.glass = new THREE.Mesh(new THREE.PlaneGeometry(z1 - z0, 3.3), g);
     this.glass.position.set(CITY.shopGlassX + 0.02, 1.85, (z0 + z1) / 2); this.glass.rotation.y = Math.PI / 2; this.glass.renderOrder = 20;
     R.add(this.glass);
-    for (let z = z0; z <= z1; z += 6) R.add(mesh(new THREE.BoxGeometry(0.12, 3.4, 0.12), std("#2a2c36", { metalness: 0.6, roughness: 0.4 }), [CITY.shopGlassX + 0.06, 1.85, z], false));
+    for (const z of [z0, -80, z1]) R.add(mesh(new THREE.BoxGeometry(0.12, 3.4, 0.12), std("#2a2c36", { metalness: 0.6, roughness: 0.4 }), [CITY.shopGlassX + 0.06, 1.85, z], false));
     R.add(mesh(new THREE.BoxGeometry(0.4, 0.3, z1 - z0), std("#2a2c36"), [CITY.shopGlassX + 0.15, 0.3, (z0 + z1) / 2], false));
     const ss = neon("ATELIER", "#b06bff", 4.2, 0.9, 1.6); ss.position.set(CITY.shopGlassX + 0.1, 3.95, (z0 + z1) / 2); ss.rotation.y = Math.PI / 2; R.add(ss); this.trackNeon(ss);
 
@@ -165,17 +200,35 @@ export class City {
       [6, -190, 3.2, false], [-6, -220, 0.1, false], [2, -250, 3.14, false], [-2, -290, 0.05, false], [6, -330, 3.1, false],
     ];
     slots.forEach(([x, z, ry, open], i) => {
-      const c = car(200 + i, { doorOpen: open }); c.position.set(x + (r() - 0.5) * 0.6, 0, z); c.rotation.y = ry + Math.PI / 2; R.add(c);
+      // frozen at 06:12: the queue at the light keeps its brake lights on, the oncoming cars their headlights
+      const queued = z < -8 && z > -28 && Math.abs(ry) < 0.4;
+      const oncoming = z < -8 && z > -28 && Math.abs(ry) > 2.5;
+      const c = car(200 + i, { doorOpen: open, tail: queued ? 0.9 : 0, lights: oncoming ? 0.5 : 0 }); c.position.set(x + (r() - 0.5) * 0.6, 0, z); c.rotation.y = ry + Math.PI / 2; R.add(c);
     });
+    // street clock on the corner by the light, stopped at 06:12
+    const post = new THREE.Group(); post.position.set(-8.7, 0.15, -29.2); R.add(post);
+    const dark = std("#1d2028", { roughness: 0.5, metalness: 0.5 });
+    post.add(mesh(new THREE.CylinderGeometry(0.09, 0.13, 4.0, 12), dark, [0, 2.0, 0]));
+    post.add(mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.16, 32), dark, [0, 4.45, 0]).rotateX(Math.PI / 2));
+    for (const sgn of [1, -1]) {
+      const f = mesh(new THREE.CircleGeometry(0.5, 40), std("#ffffff", { map: clockFace(6, 12), roughness: 0.5, emissive: new THREE.Color("#ffe8c8"), emissiveIntensity: 0.25 }), [0, 4.45, sgn * 0.085], false);
+      if (sgn < 0) f.rotation.y = Math.PI; post.add(f);
+    }
+    // frozen steam over the café cup (cup at the table's local (0.18, 0.805, -0.08))
+    const cup = CITY.cafeTable.clone().add(new THREE.Vector3(0.18, 0.84, -0.08));
+    this.steam = frozenSteam(cup); R.add(this.steam);
     void lanes;
 
     // CCTV: poles on the sidewalks + wall units on the facades
     const camSpots: [number, number, number, boolean][] = [
-      [8.7, 2.0, -5, true], [-9.2, 2.0, -20, true], [12.85, 5.2, -14, false], [-12.85, 4.8, -9, false], [12.85, 6.2, -26, false],
+      [12.85, 2.9, -11.5, false], [-9.2, 2.0, -20, true], [12.85, 5.2, -14, false], [-12.85, 4.8, -9, false], [12.85, 6.2, -26, false],
       [-12.85, 5.6, -27, false], [9.2, 2.0, -52, true], [12.85, 4.9, 2, false], [-12.85, 6.4, 6, false], [-9.2, 2.0, -60, true],
       // hanging under the traffic-light arms and from lamp posts: these sit inside the frame of the low wide shot
       [-7.6, 5.5, -30.6, false], [-4.6, 5.5, -30.6, false], [7.6, 5.5, -49.4, false], [4.4, 5.5, -49.4, false],
       [9.0, 5.6, -16, false], [-9.0, 5.6, -40, false], [-9.0, 5.8, -16, false],
+      // the facade by the Day 3 spot: a column of cameras that all turn at once (S10)
+      [12.85, 4.2, -10.4, false], [12.85, 5.6, -12.1, false], [12.85, 7.0, -10.5, false], [12.85, 8.4, -11.9, false],
+      [12.85, 9.8, -10.6, false], [12.85, 11.2, -11.7, false], [12.85, 4.6, -12.9, false],
     ];
     for (const [x, y, z, pole] of camSpots) {
       const c = cctv(pole ? { pole: 4.2 } : {});
@@ -188,6 +241,7 @@ export class City {
     for (let i = 0; i < 26; i++) {
       const sx = r() < 0.5 ? -1 : 1, z = 40 - r() * 380;
       if (z < -30 && z > -50) continue;
+      if (sx < 0 && z < -64 && z > -170) continue;
       const k = r();
       if (k < 0.35) { const b = mesh(new THREE.SphereGeometry(0.42, 10, 8), std("#14141a", { roughness: 0.3, metalness: 0.2 }), [sx * (12 - r() * 0.8), 0.45, z]); b.scale.y = 0.75; R.add(b); }
       else if (k < 0.55) R.add(mesh(new THREE.CylinderGeometry(0.3, 0.27, 0.95, 12), std("#2d4a3e", { roughness: 0.6 }), [sx * 8.8, 0.62, z]));
@@ -220,10 +274,12 @@ export class City {
   /** day = overcast, dusk, night; n = night amount 0..1 */
   setLook(look: "overcast" | "dusk" | "night", t: number) {
     const n = look === "night" ? 1 : look === "dusk" ? 0.35 : 0;
-    for (const L of this.neons) L.m.color.copy(L.base).multiplyScalar(look === "night" ? 1 : look === "dusk" ? 0.35 : 0.08);
-    // a couple of neons flicker at night
-    if (look === "night") this.neons.forEach((L, i) => { if (i % 7 === 3) { const on = Math.sin(t * 23 + i) + Math.sin(t * 7.3 + i * 2) > -0.4; L.m.color.copy(L.base).multiplyScalar(on ? 1 : 0.15); } });
-    this.lampsDay.visible = look !== "night"; this.lampsNight.visible = look === "night";
+    // neon stays lit in every scene and never flickers (story rule 1); daylight only washes it out
+    for (const L of this.neons) L.m.color.copy(L.base).multiplyScalar(look === "night" ? 1 : look === "dusk" ? 0.55 : 0.3);
+    void t;
+    // street lamps were on at 06:12, so they stay on; their haze cones only read in the dark
+    this.lampsDay.visible = false; this.lampsNight.visible = true;
+    this.lampsNight.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.ShaderMaterial; if (m && m.uniforms && m.uniforms.k) m.uniforms.k.value = look === "night" ? 0.16 : look === "dusk" ? 0.04 : 0.0; });
     this.streaks.visible = look !== "overcast";
     this.pools.visible = look === "night";
     for (const s of this.streaks.children) ((s as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = look === "night" ? 1 : 0.45;

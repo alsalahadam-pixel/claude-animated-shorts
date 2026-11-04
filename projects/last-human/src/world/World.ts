@@ -36,6 +36,8 @@ export class World {
   refl = new Card(1024, 1638, { castShadow: false });
   cu = new Card(1536, 1536, { castShadow: false });
   watcher = new Card(768, 1536, { castShadow: false });
+  pigeon = new Card(512, 512, { castShadow: false });
+  hand = new Card(1280, 384, { castShadow: false });
   fog = new THREE.FogExp2("#000", 0.01);
   photoTex: THREE.Texture | null = null;
   envs = new Map<string, THREE.Texture>();
@@ -51,7 +53,7 @@ export class World {
     this.aptRoot.add(this.skyline.root);
     this.cityRoot.add(this.city.root);
     S.add(this.aptRoot, this.cityRoot);
-    for (const c of [this.hero, this.refl, this.cu, this.watcher]) c.add(S);
+    for (const c of [this.hero, this.refl, this.cu, this.watcher, this.pigeon, this.hand]) c.add(S);
     this.refl.mat.opacity = 0.62;
     this.refl.blob.visible = false;
     // the phone of scenes 6-7 (screen shows the photo)
@@ -77,6 +79,8 @@ export class World {
       this.fog.density = look === "sunrise" || look === "morning" ? 0.0042 : 0.0045;
     } else this.city.setLook(look as "overcast" | "dusk" | "night", t);
     this.hero.visible = false; this.refl.visible = false; this.cu.visible = false; this.watcher.visible = false;
+    this.pigeon.visible = false; this.hand.visible = false;
+    for (const c of [this.hero, this.refl, this.cu]) c.pivot.rotation.set(0, 0, 0);
     this.phone.visible = false;
     for (const l of this.city.pointLights) l.intensity = 0;
     this.cu.mat.opacity = 1;

@@ -9,7 +9,7 @@
 export type Vec = [number, number];
 export type V3 = [number, number, number];
 export type HeadView = "front" | "q3" | "side" | "q3back" | "back";
-export type Mouth = "neutral" | "tight" | "open" | "gasp" | "creep" | "part";
+export type Mouth = "neutral" | "tight" | "open" | "gasp" | "creep" | "part" | "smile";
 
 export type Face = {
   open: number;          // eye openness 0 (closed) .. 1 (normal) .. 1.35 (wide)
@@ -20,6 +20,7 @@ export type Face = {
   mouth: Mouth;
   mouthOpen: number;     // 0..1
   shine: boolean;        // eye highlights (off = dead eyes)
+  tired?: number;        // 0..1: heavier under-eye lines, slightly lowered upper lids (days without sleep)
 };
 
 export type Pose = {
@@ -39,6 +40,7 @@ export type Pose = {
   face: Face;
   breathe?: number;      // -1..1
   phoneGlow?: number;    // 0..1 phone screen brightness when holding a phone
+  legsFront?: boolean;   // seated facing us: draw the legs in front of the body
 };
 
 export type Light = {
@@ -429,7 +431,7 @@ function drawEye(pt: Painter, cx: number, cy: number, w: number, h: number, side
     const fl = new Path2D(); fl.moveTo(outer[0], outer[1]); fl.lineTo(outer[0] + side * 0.7, outer[1] - 0.5); pt.line(fl, 0.6);
     return;
   }
-  const up = h * 0.62 * op, lo = h * 0.42 * Math.min(1, op + 0.2);
+  const up = h * 0.62 * op * (1 - 0.12 * (F.tired ?? 0)), lo = h * 0.42 * Math.min(1, op + 0.2);
   const top: Vec = [cx + side * w * 0.08, cy + up], bot: Vec = [cx - side * w * 0.05, cy - lo];
   const sclera = new Path2D();
   sclera.moveTo(inner[0], inner[1]);
@@ -466,7 +468,12 @@ function drawEye(pt: Painter, cx: number, cy: number, w: number, h: number, side
   // tired under-eye line
   const bag = new Path2D();
   bag.moveTo(cx - side * w * 0.25, bot[1] - 0.75); bag.quadraticCurveTo(cx + side * w * 0.05, bot[1] - 1.25, cx + side * w * 0.38, bot[1] - 0.6);
-  pt.line(bag, 0.3, mixHex(PAL.bag, "#000000", 0.2));
+  pt.line(bag, 0.3 + 0.35 * (F.tired ?? 0), mixHex(PAL.bag, "#000000", 0.2 + 0.25 * (F.tired ?? 0)));
+  if ((F.tired ?? 0) > 0.3) {
+    const b2 = new Path2D();
+    b2.moveTo(cx - side * w * 0.1, bot[1] - 1.55); b2.quadraticCurveTo(cx + side * w * 0.1, bot[1] - 1.9, cx + side * w * 0.32, bot[1] - 1.35);
+    pt.line(b2, 0.22, mixHex(PAL.bag, "#000000", 0.35));
+  }
 }
 
 function drawBrow(pt: Painter, cx: number, cy: number, w: number, side: number, F: Face, k = 1) {
@@ -487,6 +494,18 @@ function drawMouth(pt: Painter, cx: number, cy: number, w: number, F: Face, side
   const c = pt.c;
   const m = F.mouth, o = F.mouthOpen;
   const hw = w / 2;
+  if (m === "smile") {
+    // his own mouth, curved into a calm, closed smile; o = how far it has spread (0..1)
+    const k = Math.max(0, Math.min(1, o));
+    const ww = hw * (1 + 0.25 * k), lift = 0.25 + 1.0 * k;
+    const p = new Path2D();
+    p.moveTo(cx - ww, cy + lift * 0.6); p.quadraticCurveTo(cx, cy - 0.55 - lift * 0.35, cx + ww, cy + lift * 0.6);
+    pt.line(p, 0.75);
+    for (const sgn of [-1, 1]) { const d = new Path2D(); d.moveTo(cx + sgn * ww * 1.02, cy + lift * 0.6 + 0.35); d.quadraticCurveTo(cx + sgn * ww * 1.12, cy + lift * 0.6, cx + sgn * ww * 1.05, cy + lift * 0.6 - 0.35); pt.line(d, 0.35 * k); }
+    const l = new Path2D(); l.moveTo(cx - hw * 0.35, cy - 1.35 - 0.2 * k); l.quadraticCurveTo(cx, cy - 1.8 - 0.25 * k, cx + hw * 0.35, cy - 1.35 - 0.2 * k);
+    pt.line(l, 0.3, mixHex(PAL.lip, "#000000", 0.25));
+    return;
+  }
   if (m === "creep") {
     // too-wide thin smile with a row of teeth
     const p = new Path2D();
@@ -595,6 +614,7 @@ function drawHead(pt: Painter, view: HeadView, F: Face, flipFace: boolean) {
     }
     const mo = F.mouth === "gasp" || F.mouth === "open";
     if (mo) { const p = new Path2D(); p.moveTo(7.7, -7.6); p.quadraticCurveTo(6.6, -8.3, 7.5, -9.2); pt.line(p, 0.6); }
+    else if (F.mouth === "smile") { const p = new Path2D(); p.moveTo(7.8, -8.2); p.quadraticCurveTo(7.0, -8.6, 6.2, -7.9 + 0.3 * F.mouthOpen); pt.line(p, 0.55); }
     else { const p = new Path2D(); p.moveTo(7.8, -8.3); p.lineTo(6.4, -8.5); pt.line(p, 0.55); }
   }
   // hair cap over the crown (profile and three-quarter views), then fringe + spikes on top
@@ -647,8 +667,8 @@ export function drawCharacter(ctx: Ctx, P: Pose, L: Light, F: Frame, opts: { lin
   const dL = s + 0.001 * c, dR = -s + 0.001 * c; // depth of the character's left / right side
   const back = (Pm.psi % 360 + 360) % 360 > 100 && (Pm.psi % 360 + 360) % 360 < 260;
   const items: { d: number; fn: () => void }[] = [
-    { d: dL - 0.6, fn: () => drawLeg(pt, R, Pm, "L", dL < dR ? 0.86 : 1) },
-    { d: dR - 0.6, fn: () => drawLeg(pt, R, Pm, "R", dR < dL ? 0.86 : 1) },
+    { d: dL - 0.6 + (Pm.legsFront ? 2.5 : 0), fn: () => drawLeg(pt, R, Pm, "L", dL < dR ? 0.86 : 1) },
+    { d: dR - 0.6 + (Pm.legsFront ? 2.5 : 0), fn: () => drawLeg(pt, R, Pm, "R", dR < dL ? 0.86 : 1) },
     { d: 0, fn: () => { drawHood(pt, R, Pm, true); drawTorso(pt, R, Pm); } },
     { d: dL * 1.2 + (back ? -0.2 : 0.2) + (Pm.handL === "pocket" || Pm.handL === "phone" ? 2 : 0), fn: () => drawArm(pt, R, Pm, "L", dL < dR ? 0.86 : 1) },
     { d: dR * 1.2 + (back ? -0.2 : 0.2) + (Pm.handR === "pocket" || Pm.handR === "phone" ? 2 : 0), fn: () => drawArm(pt, R, Pm, "R", dR < dL ? 0.86 : 1) },
@@ -701,7 +721,7 @@ export function drawCharacter(ctx: Ctx, P: Pose, L: Light, F: Frame, opts: { lin
 }
 
 /** Just a head (and a little neck) — the pillow close-up. */
-export function drawHeadOnly(ctx: Ctx, view: HeadView, face: Face, L: Light, F: Frame, tilt = 0, lineK = 0.7) {
+export function drawHeadOnly(ctx: Ctx, view: HeadView, face: Face, L: Light, F: Frame, tilt = 0, lineK = 0.7, collar = false) {
   const W = ctx.canvas.width, Hc = ctx.canvas.height;
   ctx.clearRect(0, 0, W, Hc);
   ctx.save();
@@ -709,6 +729,12 @@ export function drawHeadOnly(ctx: Ctx, view: HeadView, face: Face, L: Light, F: 
   ctx.setTransform(sx, 0, 0, -sy, -F.x0 * sx, Hc + F.y0 * sy);
   ctx.rotate(tilt * D);
   const pt = new Painter(ctx, L, 0.62 * lineK);
+  if (collar) {
+    // shoulders in the rust hoodie and the bunched hood around the neck
+    pt.part(smooth([[-24, -40], [-23, -26], [-15, -19], [0, -18], [15, -19], [23, -26], [24, -40]], true, 0.5), PAL.hood, { shade: 1 });
+    pt.part(smooth([[-12, -24], [-11, -15], [0, -12.5], [11, -15], [12, -24], [0, -21]], true, 0.5), PAL.hood, { shade: 0.8 });
+    pt.litFill(smooth([[-7.5, -21], [0, -16], [7.5, -21], [0, -23]], true, 0.5), PAL.hoodIn, false);
+  }
   const neck = limbPath([[0, -22], [0, -9]], [8.4, 7.6]);
   pt.part(neck, PAL.skin, { shade: 0.5 });
   drawHead(pt, view, face, false);
@@ -793,4 +819,43 @@ export function walk(psi: number, phase: number, face: Partial<Face> = {}, o: { 
     handL: o.pockets ? "pocket" : "open", handR: o.pockets ? "pocket" : "open",
     face: { ...FACE0, ...face }, breathe: Math.sin(a),
   };
+}
+
+/** A forearm in the rust sleeve with an open hand reaching right (the frozen-steam close-up). */
+export function drawHand(ctx: Ctx, L: Light, F: Frame, spread = 0.3) {
+  const W = ctx.canvas.width, Hc = ctx.canvas.height;
+  ctx.clearRect(0, 0, W, Hc);
+  ctx.save();
+  const sx = W / F.w, sy = Hc / F.h;
+  ctx.setTransform(sx, 0, 0, -sy, -F.x0 * sx, Hc + F.y0 * sy);
+  const pt = new Painter(ctx, L, 0.45);
+  const fingers: [number, number][] = [[3.8, 9.5], [1.4, 10.6], [-1.0, 10.0], [-3.2, 8.2]];
+  fingers.forEach(([y, len], i) => {
+    const a = (i - 1.5) * 0.06 * (1 + spread);
+    const tip: Vec = [8 + len * Math.cos(a), y + len * Math.sin(a) - 0.6];
+    pt.part(limbPath([[6, y * 0.8], [6 + len * 0.55, y * 0.9 + 0.2], tip], [2.2, 2.0, 1.6]), PAL.skin, { shade: 0.4 });
+  });
+  pt.part(smooth([[-6, 4.6], [3, 5.6], [8.5, 4.4], [9, -2.5], [5, -5.2], [-6, -4.6]], true, 0.5), PAL.skin, { shade: 0.5 });
+  pt.part(limbPath([[2, -4], [6.5, -6.6], [10.5, -6.0]], [2.6, 2.3, 1.9]), PAL.skin, { shade: 0.4 });
+  pt.part(limbPath([[-60, 0.5], [-20, 0.3], [-5.5, 0]], [12.5, 11.5, 11]), PAL.hood, { shade: 1 });
+  const cuff = new Path2D(); cuff.moveTo(-9, 5.2); cuff.lineTo(-9, -5.2); pt.line(cuff, 0.6);
+  ctx.restore();
+}
+
+/** A pigeon caught mid-wingbeat (frozen in the air over the avenue). */
+export function drawPigeon(ctx: Ctx, L: Light, F: Frame) {
+  const W = ctx.canvas.width, Hc = ctx.canvas.height;
+  ctx.clearRect(0, 0, W, Hc);
+  ctx.save();
+  const sx = W / F.w, sy = Hc / F.h;
+  ctx.setTransform(sx, 0, 0, -sy, -F.x0 * sx, Hc + F.y0 * sy);
+  const pt = new Painter(ctx, L, 0.5);
+  pt.part(smooth([[-4, 4], [-20, 22], [-30, 30], [-24, 18], [-14, 6]], true, 0.4), "#8a8f9e", { shade: 0.6 });   // far wing up
+  pt.part(smooth([[-16, -2], [-4, -6], [8, -4], [14, 2], [10, 6], [-2, 6], [-12, 4]], true, 0.5), "#9aa0ae", { shade: 0.8 }); // body
+  pt.part(smooth([[-16, 0], [-26, -3], [-27, 3], [-17, 4]], true, 0.4), "#6c7180", { shade: 0.5 });  // tail
+  pt.part(smooth([[10, 4], [13, 9], [18, 9], [19, 5], [15, 2]], true, 0.5), "#6e7488", { shade: 0.6 }); // head
+  pt.fill(smooth([[18.5, 7], [22.5, 6.2], [18.8, 5.6]], true, 0.3), "#2a2224");
+  pt.fill(new Path2D("M 16.8 7.4 a 0.8 0.8 0 1 0 0.01 0"), "#ffb030");
+  pt.part(smooth([[-2, 4], [4, 16], [14, 26], [10, 12], [6, 4]], true, 0.4), "#a3a9b6", { shade: 0.7 });    // near wing up
+  ctx.restore();
 }

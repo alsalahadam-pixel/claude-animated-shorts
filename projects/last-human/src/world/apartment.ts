@@ -3,7 +3,16 @@
 // Bed against the north wall (headboard at z = -2.95), TV on the west wall, door in the south wall, wardrobe and the
 // dark corner at the north-west.
 import * as THREE from "three";
-import { fabric, plaster, poster, Static, woodFloor } from "./paint";
+import { canvas, fabric, plaster, poster, radial, Static, tex, woodFloor } from "./paint";
+
+/** red seven-segment-style digits on black: a clock that stopped */
+export function clockText(t: string) {
+  const { c, x } = canvas(256, 100);
+  x.fillStyle = "#050406"; x.fillRect(0, 0, 256, 100);
+  x.font = "bold 74px monospace"; x.textAlign = "center"; x.textBaseline = "middle";
+  x.shadowColor = "#ff2a1a"; x.shadowBlur = 14; x.fillStyle = "#ff3a28"; x.fillText(t, 128, 54);
+  const tt = tex(c); tt.wrapS = tt.wrapT = THREE.ClampToEdgeWrapping; return tt;
+}
 import { Dust, glow, mesh, rbox, shaft, std } from "./props";
 
 export const APT = {
@@ -33,6 +42,10 @@ export class Apartment {
   chainLocked: THREE.Group;
   blinds = new THREE.Group();
   phoneOnStand: THREE.Mesh;
+  duvet!: THREE.Mesh;
+  duvetBase!: Float32Array;
+  clock: THREE.Mesh;
+  fog: THREE.Mesh;
 
   constructor() {
     const R = this.root;
@@ -73,6 +86,14 @@ export class Apartment {
     const pillow = mesh(rbox(0.72, 0.16, 0.46, 0.07, 4), std("#ffffff", { map: fabric("#d8d6e2", 6), roughness: 0.95 }), [1.55, 0.6, -2.55]);
     pillow.rotation.x = -0.12; R.add(pillow);
     R.add(this.blanket());
+    // bedside clock: stopped at 06:12, facing the room
+    this.clock = mesh(rbox(0.07, 0.075, 0.17, 0.01), std("#121016", { roughness: 0.4 }), [2.82, 0.54, -2.42]);
+    const face = mesh(new THREE.PlaneGeometry(0.15, 0.06), new THREE.MeshBasicMaterial({ map: clockText("06:12"), transparent: true }), [2.784, 0.54, -2.42], false);
+    face.rotation.y = -Math.PI / 2; (face.material as THREE.MeshBasicMaterial).color.setScalar(2.2);
+    R.add(this.clock, face);
+    // breath fog on the window glass (scene S05)
+    this.fog = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.26), new THREE.MeshBasicMaterial({ map: radial("rgba(230,240,255,0.9)"), transparent: true, depthWrite: false, opacity: 0 }));
+    this.fog.position.set(3.475, 1.52, 0.55); this.fog.rotation.y = -Math.PI / 2; this.fog.renderOrder = 30; R.add(this.fog);
     // nightstand + lamp + phone
     R.add(mesh(rbox(0.48, 0.5, 0.42, 0.02), std("#3b3140", { roughness: 0.6 }), [2.95, 0.25, -2.6]));
     R.add(mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.06, 16), std("#c7b9a3"), [2.95, 0.53, -2.7]));
@@ -161,7 +182,20 @@ export class Apartment {
     g.computeVertexNormals();
     const m = mesh(g, std("#ffffff", { map: fabric("#4c4f7a", 12), roughness: 0.95, side: THREE.DoubleSide }), [1.55, 0.5, -1.52]);
     m.rotation.x = -Math.PI / 2;
+    this.duvet = m; this.duvetBase = (g.attributes.position.array as Float32Array).slice();
     return m;
+  }
+
+  /** a body under the duvet: torso k (0 = flat, 1 = someone lying there), breath phase in radians */
+  setBody(k: number, breath = 0) {
+    const g = this.duvet.geometry as THREE.PlaneGeometry, p = g.attributes.position as THREE.BufferAttribute, b = this.duvetBase;
+    for (let i = 0; i < p.count; i++) {
+      const x = b[i * 3], y = b[i * 3 + 1];
+      // local y: +0.75 near the pillow, -0.68 at the foot. Chest high, legs lower
+      const along = Math.exp(-(((y - 0.42) / 0.3) ** 2)) * (0.14 + 0.03 * Math.sin(breath)) + Math.exp(-(((y + 0.1) / 0.42) ** 2)) * 0.06;
+      p.setZ(i, b[i * 3 + 2] + k * along * Math.exp(-(x * x) * 6));
+    }
+    p.needsUpdate = true; g.computeVertexNormals();
   }
 
   /** light rig per look; t = seconds (for static, dust, flicker) */
@@ -171,15 +205,18 @@ export class Apartment {
     this.sun.intensity = look === "sunrise" ? 5.2 : 3.6;
     this.shafts.visible = day;
     this.dust.points.visible = day;
-    this.dust.update(t);
-    for (const s of this.shafts.children) ((s as THREE.Mesh).material as THREE.ShaderMaterial).uniforms.time.value = t;
+    this.dust.update(0);   // the air is frozen: dust hangs still (story rule 1)
+    for (const s of this.shafts.children) ((s as THREE.Mesh).material as THREE.ShaderMaterial).uniforms.time.value = 0;
+    void t;
     this.hemi.color.set(day ? "#6a74b8" : "#2c3570"); this.hemi.groundColor.set(day ? "#2a1f2c" : "#0d0b16");
     this.hemi.intensity = day ? 0.75 : 0.5;
-    this.tvLight.intensity = look === "morning" ? 2.2 : 0;
-    this.stat.update(frame);
+    this.tvLight.intensity = 0;   // v2: the TV is dark
+    void frame;
     this.cityGlowA.intensity = day ? 0 : 6; this.cityGlowB.intensity = day ? 0 : 4;
     this.lampLight.intensity = 0;
-    (this.tvScreen.material as THREE.MeshBasicMaterial).color.setRGB(0.55 * 1.3, 1.6 * 1.3, 1.55 * 1.3);
+    (this.tvScreen.material as THREE.MeshBasicMaterial).color.setRGB(0.02, 0.025, 0.035);
+    (this.fog.material as THREE.MeshBasicMaterial).opacity = 0;
+    this.setBody(0.35, 0);
   }
 }
 

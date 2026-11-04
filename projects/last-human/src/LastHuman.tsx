@@ -8,11 +8,12 @@ import { useThree } from "@react-three/fiber";
 import { BlendFunction, BloomEffect, Effect, ToneMappingEffect, ToneMappingMode } from "postprocessing";
 import "@fontsource/montserrat/800.css";
 import "@fontsource/anton/400.css";
+import "@fontsource/jetbrains-mono/500.css";
 import { useComposer } from "./post/Composer";
 import { LensBlur, GrainEffect } from "./post/lensblur";
 import { GradeEffect, GradeParams } from "./post/grade";
 import { World } from "./world/World";
-import { SHOTS, shotAt, FPS, TOTAL, Shot, PHOTO_SHOT } from "./story";
+import { SHOTS, shotAt, FPS, TOTAL, Shot, PHOTO_SHOT, FILM_END, PROMPT_AT } from "./story";
 import captions from "./data/captions.json";
 
 export const LAST_HUMAN_FRAMES = TOTAL;
@@ -31,7 +32,7 @@ class ExposureEffect extends Effect {
   }
   set exposure(v: number) { this.uniforms.get("exposure")!.value = v; }
 }
-const EXPOSURE: Record<string, number> = { "1a": 1.1, "1b": 1.1, "2a": 1.0, "2b": 1.15, "3a": 1.0, "3b": 1.1, "3c": 1.0, "4a": 1.35, "4b": 1.35, "4c": 1.35, "4d": 1.25, "5a": 1.4, "5b": 1.4, "5c": 1.4, "6a": 1.45, "6b": 1.3, "6c": 1.3, "7a": 1.3, "7b": 1.4, "7c": 1 };
+const EXPOSURE: Record<string, number> = { S01: 1.4, S02: 1.1, S03: 1.1, S04: 1.0, S05: 1.1, S06: 1.0, S07: 1.1, S08: 1.0, S09: 1.4, S10: 1.35, S11: 1.25, S12: 1.4, S13: 1.45, S14: 1.45, S15: 1.4, S16: 1.45, S17: 1.3, S18: 1.25, S19: 1.3, S20: 1.55, S21: 1.35, END: 1 };
 
 type Toggles = { lens: boolean; bloom: boolean; grade: boolean; grain: boolean; msaa: number };
 const toggles = (): Toggles => ({ lens: true, bloom: true, grade: true, grain: true, msaa: 4, ...((getInputProps() as { post?: Partial<Toggles> }).post ?? {}) });
@@ -88,7 +89,7 @@ const Inner: React.FC<{ photo: THREE.Texture | null; override?: Shot }> = ({ pho
   return null;
 };
 
-/** phone screen: the photo with a message UI around it */
+/** phone screen: a message from "Me" with the photo. No clock time anywhere (story rule 1): only "1 min ago". */
 function applyPhoto(world: World, photo: THREE.Texture) {
   const m = world.phoneScreen.material as THREE.MeshBasicMaterial;
   if (m.userData.done) return;
@@ -96,15 +97,16 @@ function applyPhoto(world: World, photo: THREE.Texture) {
   const c = document.createElement("canvas"); c.width = 680; c.height = 1460;
   const x = c.getContext("2d")!;
   x.fillStyle = "#07080d"; x.fillRect(0, 0, 680, 1460);
-  x.fillStyle = "#e8ecf4"; x.font = "600 34px sans-serif"; x.fillText("3:14", 40, 60);
-  x.fillStyle = "#1a1d2a"; x.fillRect(0, 100, 680, 120);
-  x.fillStyle = "#3a3f55"; x.beginPath(); x.arc(80, 160, 34, 0, 7); x.fill();
-  x.fillStyle = "#e8ecf4"; x.font = "700 38px sans-serif"; x.fillText("Unknown", 136, 152);
-  x.fillStyle = "#8a90a8"; x.font = "400 26px sans-serif"; x.fillText("now", 136, 190);
-  const pw = 600, ph = (pw * img.height) / img.width;
-  x.drawImage(img, 40, 300, pw, ph);
-  x.strokeStyle = "#2a2e3e"; x.lineWidth = 4; x.strokeRect(40, 300, pw, ph);
-  x.fillStyle = "#8a90a8"; x.font = "400 26px sans-serif"; x.fillText("Photo · 3:14 AM", 40, 300 + ph + 50);
+  x.fillStyle = "#8a90a8"; x.font = "500 28px sans-serif"; x.fillText("No Service", 36, 58);
+  x.strokeStyle = "#8a90a8"; x.lineWidth = 3; x.strokeRect(586, 38, 54, 24); x.fillStyle = "#8a90a8"; x.fillRect(590, 42, 16, 16);
+  x.fillStyle = "#151824"; x.fillRect(0, 96, 680, 136);
+  // avatar: a crop of the photo itself (his own face)
+  x.save(); x.beginPath(); x.arc(92, 164, 44, 0, 7); x.clip();
+  x.drawImage(img, img.width * 0.3, img.height * 0.28, img.width * 0.42, img.width * 0.42, 48, 120, 88, 88); x.restore();
+  x.fillStyle = "#eef1f8"; x.font = "700 46px sans-serif"; x.fillText("Me", 158, 160);
+  x.fillStyle = "#8a90a8"; x.font = "400 28px sans-serif"; x.fillText("1 min ago", 158, 200);
+  const pw = 620, ph = (pw * img.height) / img.width;
+  x.save(); x.beginPath(); x.roundRect(30, 280, pw, ph, 26); x.clip(); x.drawImage(img, 30, 280, pw, ph); x.restore();
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
   m.map = t; m.color.setScalar(1.25); m.needsUpdate = true; m.userData.done = true;
 }
@@ -120,29 +122,42 @@ const usePhoto = () => {
 
 const useFonts = () => {
   const [h] = useState(() => delayRender("fonts"));
-  useEffect(() => { Promise.all([document.fonts.load('800 60px "Montserrat"'), document.fonts.load('400 60px "Anton"')]).then(() => continueRender(h)); }, [h]);
+  useEffect(() => { Promise.all([document.fonts.load('800 60px "Montserrat"'), document.fonts.load('400 60px "Anton"'), document.fonts.load('500 40px "JetBrains Mono"')]).then(() => continueRender(h)); }, [h]);
 };
 
 // ---------------------------------------------------------------- overlays
-type Cap = { s: number; e: number; words: { w: string; s: number; e: number }[] };
+type Cap = { s: number; e: number; kind?: string; words: { w: string; s: number; e: number }[] };
 const CAPS = captions as Cap[];
+const STROKE: React.CSSProperties = { WebkitTextStroke: "11px #07060c", paintOrder: "stroke fill", textShadow: "0 6px 18px rgba(0,0,0,0.65)" };
 
 const Captions: React.FC<{ t: number; f: number }> = ({ t, f }) => {
+  if (f >= FILM_END) return null;
   const cap = CAPS.find((c) => t >= c.s && t < c.e);
-  if (!cap || f >= 1767) return null;
+  // the city throws his shout back: three echoes, each smaller and fainter
+  const echoes = [10.4, 10.85, 11.25].map((e, i) => ({ e, i })).filter(({ e }) => t >= e && t < e + 0.5);
+  if (echoes.length) {
+    const { e, i } = echoes[echoes.length - 1];
+    const a = interpolate(t - e, [0, 0.08, 0.5], [0, 1, 0], { extrapolateRight: "clamp" }) * [0.8, 0.55, 0.35][i];
+    return <div style={{ position: "absolute", top: 1180, left: 0, right: 0, textAlign: "center", opacity: a, fontFamily: "Montserrat", fontWeight: 800, fontSize: [62, 52, 42][i], color: "#ffffff", textTransform: "lowercase", ...STROKE }}>hello…</div>;
+  }
+  if (!cap) return null;
   const age = (t - cap.s) * FPS;
+  if (cap.kind === "shout") {
+    const sc = interpolate(age, [0, 3, 8], [1.35, 1.06, 1], { extrapolateRight: "clamp" });
+    return <div style={{ position: "absolute", top: 1150, left: 0, right: 0, textAlign: "center", transform: `scale(${sc})`, fontFamily: "Montserrat", fontWeight: 800, fontSize: 118, color: "#ffb35c", ...STROKE }}>HELLO?!</div>;
+  }
   const pop = interpolate(age, [0, 4], [0.86, 1], { extrapolateRight: "clamp" });
+  const top = f >= 1437 && f < 1563 ? 1600 : 1180;   // below the photo in S18
   return (
-    <div style={{ position: "absolute", left: 60, right: 60, top: 1180, display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0 22px", transform: `scale(${pop})`, transformOrigin: "50% 50%" }}>
+    <div style={{ position: "absolute", left: 60, right: 60, top, display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0 22px", transform: `scale(${pop})`, transformOrigin: "50% 50%" }}>
       {cap.words.map((w, i) => {
         const active = t >= w.s - 0.03 && (t < w.e || i === cap.words.length - 1);
         const spoken = t >= w.s - 0.03;
         return (
           <span key={i} style={{
             fontFamily: "Montserrat", fontWeight: 800, fontSize: 76, lineHeight: 1.12, letterSpacing: 0.5, textTransform: "uppercase",
-            color: active ? "#ffb35c" : spoken ? "#ffffff" : "rgba(255,255,255,0.92)",
-            WebkitTextStroke: "11px #07060c", paintOrder: "stroke fill",
-            textShadow: "0 6px 18px rgba(0,0,0,0.65)", transform: active ? "translateY(-3px) scale(1.06)" : "none", display: "inline-block",
+            color: active ? "#ffb35c" : spoken ? "#ffffff" : "rgba(255,255,255,0.92)", ...STROKE,
+            transform: active ? "translateY(-3px) scale(1.06)" : "none", display: "inline-block",
           }}>{w.w}</span>
         );
       })}
@@ -150,52 +165,34 @@ const Captions: React.FC<{ t: number; f: number }> = ({ t, f }) => {
   );
 };
 
-const Title: React.FC<{ f: number }> = ({ f }) => {
-  if (f > 140) return null;
-  const a = interpolate(f, [0, 4, 120, 140], [0, 1, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const flick = f < 14 && (f % 4 === 1) ? 0.35 : 1;
-  const b = interpolate(f, [26, 34], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const st: React.CSSProperties = { fontFamily: "Anton", textTransform: "uppercase", WebkitTextStroke: "8px #07060c", paintOrder: "stroke fill", textShadow: "0 6px 24px rgba(0,0,0,0.7)", lineHeight: 1.04, textAlign: "center" };
+/** elapsed time only (the world's clocks stopped at 06:12): the day and how long he has been awake */
+const LABELS: [number, number, string, string][] = [
+  [6, 96, "DAY 3", "68 HOURS AWAKE"], [146, 204, "DAY 1", "0 HOURS AWAKE"], [404, 446, "DAY 2", "29 HOURS AWAKE"],
+  [593, 640, "DAY 3", "68 HOURS AWAKE"], [1379, 1425, "", "69 HOURS AWAKE"],
+];
+const Label: React.FC<{ f: number }> = ({ f }) => {
+  const L = LABELS.find(([a, b]) => f >= a && f < b);
+  if (!L) return null;
+  const [a, b, day, hrs] = L;
+  const o = interpolate(f, [a, a + 6, b - 8, b], [0, 1, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const st: React.CSSProperties = { fontFamily: "JetBrains Mono", fontWeight: 500, color: "#f2efe9", letterSpacing: 3, textShadow: "0 2px 10px rgba(0,0,0,0.85)" };
   return (
-    <div style={{ position: "absolute", top: 190, left: 50, right: 50, opacity: a * flick }}>
-      <div style={{ ...st, fontSize: 96, color: "#f4f1ec" }}>You're the last<br />human alive…</div>
-      <div style={{ ...st, fontSize: 66, color: "#ff8a4a", marginTop: 18, opacity: b }}>but something is<br />watching you.</div>
+    <div style={{ position: "absolute", top: 150, left: 70, opacity: o }}>
+      {day && <div style={{ ...st, fontSize: 40 }}>{day}</div>}
+      <div style={{ ...st, fontSize: 30, color: "#ffb35c", marginTop: 6 }}>{hrs}</div>
     </div>
   );
 };
 
+/** 60.0 s: hard cut to black. Hold black and silence; only then a quiet prompt. */
 const EndCard: React.FC<{ f: number }> = ({ f }) => {
-  if (f < 1767) return null;
-  const k = f - 1767;
-  const a = interpolate(k, [3, 9], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const jit = k < 12 && k % 3 === 0 ? 6 : 0;
-  // "PART 2?" glitches in at 60.0 s (frame 1800) and holds to the end
-  const p = f - 1800;
-  const pa = p < 0 ? 0 : p < 2 ? 0.6 : p === 3 ? 0.2 : 1;
-  const pj = p >= 0 && p < 10 && p % 3 !== 1 ? (p % 2 ? -10 : 8) : 0;
-  const scale = p < 0 ? 1 : interpolate(p, [0, 6], [1.25, 1], { extrapolateRight: "clamp" });
-  const lift = p < 0 ? 0 : interpolate(p, [0, 8], [0, -220], { extrapolateRight: "clamp" });
+  if (f < FILM_END) return null;
+  const a = interpolate(f, [PROMPT_AT, PROMPT_AT + 18], [0, 0.85], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   return (
-    <AbsoluteFill style={{ background: "#020205", justifyContent: "center", alignItems: "center" }}>
-      <div style={{ opacity: a * (p >= 0 ? 0.55 : 1), transform: `translate(${jit}px, ${lift}px) scale(${p >= 0 ? 0.8 : 1})`, fontFamily: "Anton", fontSize: 92, lineHeight: 1.05, color: "#f2efe9", textAlign: "center", textTransform: "uppercase", letterSpacing: 1 }}>
-        Something<br />is watching<br /><span style={{ color: "#ff5a3a" }}>you.</span>
-      </div>
-      {p >= 0 && (
-        <div style={{ position: "absolute", top: 1060, left: 0, right: 0, textAlign: "center", opacity: pa, transform: `translateX(${pj}px) scale(${scale})` }}>
-          <div style={{ fontFamily: "Anton", fontSize: 210, lineHeight: 1, color: "#ff8a3a", letterSpacing: 4, WebkitTextStroke: "6px #07060c", paintOrder: "stroke fill",
-            textShadow: `${pj ? 10 : 0}px 0 0 rgba(63,240,224,0.75), ${pj ? -10 : 0}px 0 0 rgba(255,60,90,0.75), 0 0 40px rgba(255,120,40,0.45)` }}>PART 2?</div>
-        </div>
-      )}
+    <AbsoluteFill style={{ background: "#000", justifyContent: "center", alignItems: "center" }}>
+      <div style={{ opacity: a, fontFamily: "JetBrains Mono", fontWeight: 500, fontSize: 46, letterSpacing: 10, color: "#cfcad8" }}>PART 2?</div>
     </AbsoluteFill>
   );
-};
-
-/** dips to black where time jumps */
-const dipAt = (f: number) => {
-  const dips: [number, number][] = [[360, 5], [1260, 5]];
-  let a = 0;
-  for (const [c, r] of dips) a = Math.max(a, 1 - Math.min(1, Math.abs(f - c + 0.5) / r));
-  return a;
 };
 
 export const LastHuman: React.FC = () => {
@@ -203,14 +200,12 @@ export const LastHuman: React.FC = () => {
   const photo = usePhoto();
   useFonts();
   const t = f / FPS;
-  const dip = dipAt(f);
   return (
     <AbsoluteFill style={{ background: "#000" }}>
       <ThreeCanvas width={1080} height={1920} shadows gl={{ antialias: false, stencil: false, powerPreference: "high-performance" }} camera={{ fov: 36, near: 0.05, far: 2000 }}>
         <Inner photo={photo} />
       </ThreeCanvas>
-      {dip > 0 && <AbsoluteFill style={{ background: "#000", opacity: dip }} />}
-      <Title f={f} />
+      <Label f={f} />
       <Captions t={t} f={f} />
       <EndCard f={f} />
     </AbsoluteFill>
@@ -226,6 +221,5 @@ export const Photo: React.FC = () => (
       <Inner photo={null} override={PHOTO_SHOT} />
     </ThreeCanvas>
     <AbsoluteFill style={{ background: "radial-gradient(ellipse at 55% 55%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.65) 100%)" }} />
-    <div style={{ position: "absolute", right: 48, bottom: 40, fontFamily: "monospace", fontSize: 44, color: "#ff9a3a", textShadow: "0 0 8px rgba(255,120,40,0.8)" }}>03:14</div>
   </AbsoluteFill>
 );

@@ -150,6 +150,7 @@ export class Skyline {
   }
   setNight(n: number, t: number) {
     for (const m of this.mats) { m.emissive.setScalar(n * 1.6); m.color.setScalar(1 - 0.55 * n); }
-    this.carLights.forEach((m, i) => m.color.setRGB(1, 0.48, 0.12).multiplyScalar(((Math.floor(t * 1.6 + i * 0.37) % 2) === 0 ? 3 : 0.2) * (0.3 + n)));
+    this.carLights.forEach((m) => m.color.setRGB(1, 0.48, 0.12).multiplyScalar(1.6 * (0.3 + n)));   // steady: nothing blinks (story rule 1)
+    void t;
   }
 }
