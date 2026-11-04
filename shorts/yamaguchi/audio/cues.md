@@ -1,59 +1,59 @@
 # Sound cues: Home Was Nagasaki
 
-integrated -15.0 LUFS, true peak -1.2 dBTP, voice -15.2, music -29.0, sfx -28.1, length 89.733 s
+integrated -15.0 LUFS, true peak -1.9 dBTP, voice -15.1, music -29.0, sfx -28.1, length 89.000 s
 
 | time (s) | frame | cue |
 |---|---|---|
 |   0.00 | 0 | carriage rumble |
-|   1.79 | 54 | train pass-by: chuffs swell, whistle, rush, clatter |
-|   2.15 | 64 | whistle blast (approach) |
-|   3.19 | 96 | pass-by rush |
-|   3.34 | 100 | pass-by thunder |
-|   3.78 | 113 | crane-up wind |
-|   3.84 | 115 | whistle under 'Home was Nagasaki' |
-|   5.23 | 157 | cicadas (summer street) |
-|   5.23 | 157 | gantry crane motor + chain |
-|   5.23 | 157 | harbour water |
-|   5.23 | 157 | welding sizzle |
-|   5.40 | 162 | shipyard: riveting, welding, crane |
-|   6.04 | 181 | gull |
-|   7.83 | 235 | gull |
-|   8.96 | 269 | gull |
-|   9.68 | 290 | ship's horn (goodbye) |
-|  10.74 | 322 | gull |
-|  12.52 | 376 | thought bubble pop |
-|  14.93 | 448 | sweat drop |
-|  16.30 | 489 | hanko stamp |
-|  18.31 | 549 | clock ticks |
-|  19.84 | 595 | B-29 drone (four engines) |
-|  20.67 | 620 | parachutes |
-|  22.93 | 688 | flash whine |
-|  24.00 | 720 | ear ringing |
+|   1.80 | 54 | train pass-by: chuffs swell, whistle, rush, clatter |
+|   2.18 | 65 | whistle blast (approach) |
+|   3.29 | 99 | pass-by rush |
+|   3.45 | 103 | pass-by thunder |
+|   3.91 | 117 | crane-up wind |
+|   3.98 | 120 | whistle under 'Home was Nagasaki' |
+|   5.54 | 166 | cicadas (summer street) |
+|   5.54 | 166 | gantry crane motor + chain |
+|   5.54 | 166 | harbour water |
+|   5.54 | 166 | welding sizzle |
+|   5.69 | 171 | shipyard: riveting, welding, crane |
+|   6.20 | 186 | gull |
+|   7.67 | 230 | gull |
+|   8.52 | 256 | gull |
+|   9.08 | 272 | ship's horn (goodbye) |
+|   9.92 | 298 | gull |
+|  11.57 | 347 | thought bubble pop |
+|  13.93 | 418 | sweat drop |
+|  15.46 | 464 | hanko stamp |
+|  17.61 | 528 | clock ticks |
+|  19.16 | 575 | B-29 drone (four engines) |
+|  19.98 | 599 | parachutes |
+|  22.53 | 676 | flash whine |
+|  23.76 | 713 | ear ringing |
 |  24.83 | 745 | distant blast rumble |
 |  24.96 | 749 | dusty wind |
-|  26.44 | 793 | eardrums ringing |
-|  27.51 | 825 | smoke hiss |
-|  28.70 | 861 | crickets |
-|  30.01 | 900 | steam whistle (train leaves) |
-|  32.15 | 965 | crane-up wind |
-|  33.66 | 1010 | office room tone |
-|  38.35 | 1150 | thought bubble pop (city) |
-|  40.27 | 1208 | boss laughs |
-|  42.92 | 1288 | second flash whine |
-|  43.87 | 1316 | ear ringing |
-|  45.18 | 1355 | rumble (Nagasaki) |
-|  47.52 | 1426 | sweat drop |
-|  48.51 | 1455 | crickets |
-|  48.51 | 1455 | river water |
-|  53.71 | 1611 | camera crane whoosh |
-|  55.50 | 1665 | dashed line draws out |
-|  56.79 | 1704 | push-in whoosh |
-|  58.21 | 1746 | campfire crackle |
-|  58.21 | 1746 | crickets |
-|  60.12 | 1804 | scorch sizzle |
-|  60.18 | 1805 | 'ow!' |
-|  63.08 | 1892 | heat rays sweep |
-|  67.51 | 2025 | breeze |
-|  67.51 | 2025 | garden birds |
-|  77.40 | 2322 | hanko stamp (certificate) |
-|  82.38 | 2472 | applause |
+|  26.30 | 789 | eardrums ringing |
+|  27.15 | 815 | smoke hiss |
+|  28.20 | 846 | crickets |
+|  29.42 | 883 | steam whistle (train leaves) |
+|  31.61 | 948 | crane-up wind |
+|  33.29 | 999 | office room tone |
+|  37.81 | 1134 | thought bubble pop (city) |
+|  39.52 | 1186 | boss laughs |
+|  42.20 | 1266 | second flash whine |
+|  43.29 | 1299 | ear ringing |
+|  45.04 | 1351 | rumble (Nagasaki) |
+|  47.50 | 1425 | sweat drop |
+|  48.48 | 1454 | crickets |
+|  48.48 | 1454 | river water |
+|  53.90 | 1617 | camera crane whoosh |
+|  55.41 | 1662 | dashed line draws out |
+|  56.43 | 1693 | push-in whoosh |
+|  57.63 | 1729 | campfire crackle |
+|  57.63 | 1729 | crickets |
+|  59.39 | 1782 | scorch sizzle |
+|  59.44 | 1783 | 'ow!' |
+|  62.50 | 1875 | heat rays sweep |
+|  66.51 | 1995 | breeze |
+|  66.51 | 1995 | garden birds |
+|  76.47 | 2294 | hanko stamp (certificate) |
+|  81.73 | 2452 | applause |
