@@ -616,13 +616,13 @@ def build_sfx():
     # podium: a quiet hall, applause at the end of the line
     a, b = o(seg(31, 2441)["o0"]), o(seg(31, 2500)["o1"])
     bed(a, b, lambda d: G.babble(d, rng(18), 140, 1.0, active=0.3) * 0.25, -40, "audience murmur", 0.3, 0.3) if hasattr(G, "babble") else None
-    app = G.applause(2.2, rng(19), 30)
-    app *= np.clip(tt(2.2) / 0.2, 0, 1)[None, :] * np.clip((2.2 - tt(2.2)) / 1.2, 0, 1)[None, :]
-    ev(b - 0.6, app, -29, name="applause")
+    app = G.applause(1.6, rng(19), 30)   # short and soft: the next line starts right after
+    app *= np.clip(tt(1.6) / 0.15, 0, 1)[None, :] * np.clip((1.6 - tt(1.6)) / 0.9, 0, 1)[None, :]
+    ev(b - 0.7, app, -32, name="applause")
     ev(src(30, 2366, 2382), stamp(r), -13, 0, "stamp on the certificate")
-    app2 = G.applause(1.8, rng(20), 14)
-    app2 *= np.clip(tt(1.8) / 0.15, 0, 1)[None, :] * np.clip((1.8 - tt(1.8)) / 1.0, 0, 1)[None, :]
-    ev(src(29, 2300, 2343), app2, -31, name="applause (certificate)")
+    app2 = G.applause(1.4, rng(20), 12)
+    app2 *= np.clip(tt(1.4) / 0.15, 0, 1)[None, :] * np.clip((1.4 - tt(1.4)) / 0.9, 0, 1)[None, :]
+    ev(src(29, 2300, 2343), app2, -36, name="a few hands clap (certificate)")
     bed(o(seg(32, 2549)["o0"]), DUR, lambda d: G.bird_chirps(d, rng(21), 0.35, "sparrow"), -37, "birds (bench)", 0.6, 1.0)
     # two bombs, three days: two distant booms under the drums
     for tx in FLASHES[1:]:

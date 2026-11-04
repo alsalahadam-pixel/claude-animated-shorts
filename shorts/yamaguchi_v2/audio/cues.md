@@ -59,9 +59,9 @@ integrated -15.3 LUFS, true peak -1.2 dBTP, voice -14.9, music -27.4, sfx -26.9,
 |  56.03 | 1681 | breeze |
 |  56.03 | 1681 | garden birds |
 |  58.80 | 1764 | audience murmur |
-|  60.40 | 1812 | applause |
+|  60.30 | 1809 | applause |
 |  61.53 | 1846 | stamp on the certificate |
-|  64.03 | 1921 | applause (certificate) |
+|  64.03 | 1921 | a few hands clap (certificate) |
 |  65.10 | 1953 | birds (bench) |
 |  67.33 | 2020 | distant boom |
 |  68.33 | 2050 | distant boom |
