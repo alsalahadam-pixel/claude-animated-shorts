@@ -1,0 +1,17 @@
+{"voice": "am_michael", "speed": 0.88, "lines": [
+ ["V01", "Everyone on Earth is gone."],
+ ["V02", "So who's moving the cameras?"],
+ ["V03", "Three days ago, I woke up... alone."],
+ ["V04", "I haven't slept since."],
+ ["V05", "Everything they left behind stopped..."],
+ ["V06", "the second they vanished."],
+ ["V07", "Nothing here moves anymore."],
+ ["V08", "Nothing... except me."],
+ ["V09", "And them."],
+ ["V10", "It wasn't copying me."],
+ ["V11", "It was practising."],
+ ["V12", "A photo of me... asleep."],
+ ["V13", "Taken one minute ago."],
+ ["V14", "So who's sleeping in my bed?"],
+ ["SHOUT", "Hello?!"]
+]}
