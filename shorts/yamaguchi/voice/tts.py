@@ -1,78 +1,49 @@
-"""Narration for "Home Was Nagasaki" v3: Kokoro TTS, narrator am_fenrir with a mood per line (voice blend, pace, pitch, level, room) sentence by sentence, with per-phoneme durations
-(kokoro-dur.onnx = kokoro-v1.0.onnx with the encoder's duration tensor exposed as an output named "duration"),
-mapped to words -> voice.wav (24 kHz mono) + words.json [{w, s, e}] + lines.json [{text, s, e}].
+"""Narration for "Home Was Nagasaki" v4: Kokoro TTS, one narrator (am_fenrir) throughout, unprocessed.
+v3 blended other voices in per line and pitch-shifted them, which made the narrator sound processed and unsteady.
+v4 keeps one voice and lets the tone move the way a person's does: passages are spoken in one breath (several
+sentences per call, so the intonation flows across them), the pace moves gently with the story (about +-10 %), quiet
+passages are spoken a little softer, and the punctuation carries the emphasis. Per-phoneme durations
+(kokoro-dur.onnx) give word timings -> voice.wav + words.json [{w, s, e}] + lines.json [{text, s, e}].
 Usage: python tts.py <speed> <out_dir>"""
 import json, sys
 import numpy as np, soundfile as sf
 from kokoro_onnx import Kokoro
 
-SPEED = float(sys.argv[1]) if len(sys.argv) > 1 else 1.38
+SPEED = float(sys.argv[1]) if len(sys.argv) > 1 else 1.31
 OUT = sys.argv[2] if len(sys.argv) > 2 else "."
 K = Kokoro("/home/user/tts/kokoro-dur.onnx", "/home/user/tts/voices-v1.0.bin")
-# v3: the delivery follows the story. Each line has a MOOD: a blend of Kokoro voice styles around the narrator
-# (am_fenrir), a pace, a pitch shift (semitones, time-preserving), a level and a room send.
-#   excited / playful lean on am_puck (bright, bouncy); suspense / dramatic / somber / warm lean on am_onyx (deep,
-#   slow); deadpan leans on am_michael (the flattest voice we measured), so the jokes land dry.
-MOODS = {
-    "excited":  ({"am_fenrir": 0.55, "am_puck": 0.45}, 1.0, +1.0, +1.5, 0.03),
-    "playful":  ({"am_fenrir": 0.6, "am_puck": 0.4}, 0.97, +0.6, +0.5, 0.03),
-    "story":    ({"am_fenrir": 1.0}, 1.0, 0.0, 0.0, 0.04),
-    "suspense": ({"am_fenrir": 0.55, "am_onyx": 0.45}, 0.9, -0.8, -2.0, 0.09),
-    "dramatic": ({"am_onyx": 0.6, "am_fenrir": 0.4}, 0.8, -1.2, -0.5, 0.16),
-    "intense":  ({"am_fenrir": 0.8, "am_onyx": 0.2}, 1.05, -0.3, +1.5, 0.04),
-    "deadpan":  ({"am_michael": 0.55, "am_fenrir": 0.3, "am_onyx": 0.15}, 0.93, -0.6, -1.0, 0.03),
-    "somber":   ({"am_onyx": 0.5, "am_fenrir": 0.5}, 0.85, -1.3, -3.0, 0.12),
-    "curious":  ({"am_fenrir": 0.7, "am_puck": 0.3}, 0.98, +0.4, 0.0, 0.04),
-    "warm":     ({"am_fenrir": 0.7, "am_onyx": 0.3}, 0.93, -0.4, -1.0, 0.08),
-    "triumph":  ({"am_fenrir": 0.65, "am_puck": 0.35}, 0.92, +0.3, +1.0, 0.1),
-}
-# (text as spoken, gap in seconds AFTER the line, mood)
-LINES = [
-    ("This man survived the atomic bomb on Hiroshima!", 0.08, "excited"),
-    ("Then he hopped on a train to get away from it all...", 0.14, "playful"),
-    ("Straight to Nagasaki.", 0.55, "deadpan"),
-    ("It's August nineteen forty five, and ship designer Tsutomu Yamaguchi is wrapping up a work trip in Hiroshima.", 0.1, "story"),
-    ("He's packed and ready to go home to his wife and baby son, when he realizes he forgot his hanko!", 0.1, "playful"),
-    ("That's his official name stamp, so he heads back to the shipyard to get it.", 0.12, "playful"),
-    ("At a quarter past eight, he looks up at a plane and sees two tiny parachutes drifting down.", 0.3, "suspense"),
-    ("Then... the whole sky turns white.", 0.6, "dramatic"),
-    ("He's three kilometers away, and it still bursts his eardrums and burns his whole left side.", 0.12, "intense"),
-    ("After a night in a shelter, he does the sensible thing and catches a train home.", 0.25, "playful"),
-    ("Home is Nagasaki.", 0.4, "deadpan"),
-    ("Two days later, wrapped in bandages, he goes back to work, because of course he does.", 0.12, "playful"),
-    ("He tells his boss that one single bomb destroyed an entire city.", 0.1, "story"),
-    ("His boss says that's crazy!", 0.06, "excited"),
-    ("No bomb could ever do that!", 0.32, "excited"),
-    ("And right then... the same white light fills the room.", 0.6, "dramatic"),
-    ("He later said he thought the mushroom cloud had followed him from Hiroshima.", 0.25, "deadpan"),
-    ("Those two bombs killed well over a hundred thousand people, and somehow, he survived both.", 0.35, "somber"),
-    ("You see, both times, he was about three kilometers from the center, and distance is everything.", 0.12, "curious"),
-    ("Ever sat by a campfire?", 0.06, "curious"),
-    ("Lean in close, and it scorches your face!", 0.06, "excited"),
-    ("Take a few steps back, and it's just warm.", 0.12, "warm"),
-    ("The heat spreads out in every direction, so every time you double the distance, only a quarter of it reaches you.", 0.12, "curious"),
-    ("Three kilometers was close enough to hurt him, but far enough to let him live.", 0.3, "warm"),
-    ("His wife and son survived too, sheltering in a tunnel.", 0.15, "warm"),
-    ("In two thousand nine, he became the only person officially recognized as surviving both bombs.", 0.12, "triumph"),
-    ("He spent his last years asking the world never to build another one.", 0.32, "somber"),
-    ("Two atomic bombs. Three days apart. And Tsutomu Yamaguchi still lived to be ninety three.", 0.0, "triumph"),
+VOICE = "am_fenrir"
+# passages: (lines spoken together, pace, level dB, pause after in s). The lines keep their text from v3 (the picture
+# re-timing pairs words line by line), only the delivery changes.
+PASSAGES = [
+    (["This man survived the atomic bomb on Hiroshima!", "Then he hopped on a train to get away from it all..."], 1.02, 0.0, 0.18),
+    (["Straight to Nagasaki."], 0.92, -1.0, 0.55),
+    (["It's August nineteen forty five, and ship designer Tsutomu Yamaguchi is wrapping up a work trip in Hiroshima.",
+      "He's packed and ready to go home to his wife and baby son, when he realizes he forgot his hanko!",
+      "That's his official name stamp, so he heads back to the shipyard to get it."], 1.02, 0.0, 0.2),
+    (["At a quarter past eight, he looks up at a plane and sees two tiny parachutes drifting down."], 0.95, -1.5, 0.3),
+    (["Then... the whole sky turns white."], 0.9, -1.0, 0.6),
+    (["He's three kilometers away, and it still bursts his eardrums and burns his whole left side.",
+      "After a night in a shelter, he does the sensible thing and catches a train home."], 1.01, 0.0, 0.3),
+    (["Home is Nagasaki."], 0.92, -1.0, 0.45),
+    (["Two days later, wrapped in bandages, he goes back to work, because of course he does.",
+      "He tells his boss that one single bomb destroyed an entire city.",
+      "His boss says that's crazy.", "No bomb could ever do that."], 1.02, 0.0, 0.35),
+    (["And right then... the same white light fills the room."], 0.92, -0.5, 0.6),
+    (["He later said he thought the mushroom cloud had followed him from Hiroshima."], 0.97, -0.5, 0.3),
+    (["Those two bombs killed well over a hundred thousand people, and somehow, he survived both."], 0.9, -2.0, 0.4),
+    (["You see, both times, he was about three kilometers from the center, and distance is everything.",
+      "Ever sat by a campfire?", "Lean in close, and it scorches your face!", "Take a few steps back, and it's just warm.",
+      "The heat spreads out in every direction, so every time you double the distance, only a quarter of it reaches you."], 1.0, 0.0, 0.3),
+    (["Three kilometers was close enough to hurt him, but far enough to let him live.",
+      "His wife and son survived too, sheltering in a tunnel."], 0.96, -0.5, 0.25),
+    (["In two thousand nine, he became the only person officially recognized as surviving both bombs.",
+      "He spent his last years asking the world never to build another one."], 0.95, -0.5, 0.35),
+    (["Two atomic bombs. Three days apart. And Tsutomu Yamaguchi still lived to be ninety three."], 0.93, 0.0, 0.0),
 ]
 FIX = {"tsˈuːɾəmˌuː": "tsuːtˈoʊmuː", "jˌæmɐɡˈʌtʃi": "jˌɑːmɑːɡˈuːtʃi", "nˌæɡɐsˈæki": "nˌɑːɡɑːsˈɑːki", "hˈæŋkoʊ": "hˈɑːŋkoʊ"}
 SR = 24000
 
-def shape_line(a, sr, semis, gain_db, room):
-    """time-preserving pitch shift, level, and a short room tail (dramatic lines get more room)"""
-    import librosa
-    from scipy.signal import fftconvolve
-    if abs(semis) > 1e-3:
-        a = librosa.effects.pitch_shift(a, sr=sr, n_steps=semis, bins_per_octave=12, res_type="soxr_hq").astype(np.float32)
-    a = a * 10 ** (gain_db / 20)
-    if room > 0:
-        r = np.random.default_rng(7); n = int(0.6 * sr); t = np.arange(n) / sr
-        ir = r.standard_normal(n) * np.exp(-t / 0.13) * (1 - np.exp(-t / 0.004)); ir /= np.sqrt(np.sum(ir ** 2))
-        wet = fftconvolve(a, ir)[: len(a)]
-        a = a + room * 3.0 * wet * (np.abs(a).max() / (np.abs(wet).max() + 1e-9))
-    return a.astype(np.float32)
 PUNCT = set(".,!?;:—…\"'()")
 
 def plen(w):
@@ -116,24 +87,26 @@ def words_of(timings, text):
         j += k
     return out
 
+
 audio, words, lines, t = [], [], [], 0.06
 audio.append(np.zeros(int(0.06 * SR), np.float32))
-for text, gap, mood in LINES:
-    blend, sp, semis, gain_db, room = MOODS[mood]
-    style = sum(w * K.voices[v] for v, w in blend.items()) / sum(blend.values())
+for texts, pace, level, gap in PASSAGES:
+    text = " ".join(texts)
     ph = K.tokenizer.phonemize(text)
     for a, b in FIX.items(): ph = ph.replace(a, b)
-    a, sr, tm = K.create_timed(ph, voice=style, speed=SPEED * sp, is_phonemes=True, sentence_pause=0.06, clause_pause=0.04)
-    a = shape_line(a.astype(np.float32), sr, semis, gain_db, room)
+    a, sr, tm = K.create_timed(ph, voice=VOICE, speed=SPEED * pace, is_phonemes=True, sentence_pause=0.16, clause_pause=0.07)
     assert sr == SR
     ws = words_of(tm, text)
+    i = 0
+    for line in texts:
+        n = len(line.split()); lw = ws[i:i + n]; i += n
+        lines.append({"text": line, "s": round(t + lw[0]["s"], 3), "e": round(t + lw[-1]["e"], 3)})
     for w in ws: words.append({"w": w["w"], "s": round(t + w["s"], 3), "e": round(t + w["e"], 3)})
-    lines.append({"text": text, "s": round(t + ws[0]["s"], 3), "e": round(t + ws[-1]["e"], 3)})
-    audio.append(a.astype(np.float32)); t += len(a) / SR
+    a = a.astype(np.float32) * 10 ** (level / 20)
+    audio.append(a); t += len(a) / SR
     audio.append(np.zeros(int(gap * SR), np.float32)); t += int(gap * SR) / SR
 y = np.concatenate(audio)
 y = y / max(1e-6, np.abs(y).max()) * 0.89
-json.dump([{"mood": m, "s": l["s"], "e": l["e"]} for (_, _, m), l in zip(LINES, lines)], open(f"{OUT}/moods.json", "w"), indent=1)
 sf.write(f"{OUT}/voice.wav", y, SR)
 json.dump(words, open(f"{OUT}/words.json", "w"), indent=0)
 json.dump(lines, open(f"{OUT}/lines.json", "w"), indent=1)

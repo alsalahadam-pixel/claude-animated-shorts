@@ -331,16 +331,24 @@ export const stage = (id: number, t: number, cam: CamInfo, sun: THREE.Vector3): 
       if (id === 19) { bExpr = f < 1262 ? "smile" : "laugh"; bWave = f >= 1262 ? q(Math.sin(t * 12), 20) : undefined; }
       if (id === 20) { bExpr = f < 1320 ? "smile_closed" : "smile"; bWave = q(0.6 * Math.sin(t * 10), 20); yExpr = "neutral"; }
       if (id === 21) { bExpr = flash ? "shock" : "smile"; yExpr = flash ? "shock" : "neutral"; }
-      put(out, cam, t, 1, YAMA_BAND2, "yb2", [1.15, 0, 1.15], { expr: yExpr, facing: 1, look: 1, prop: yProp ?? undefined, blinkless: false } as FrontOpts);
-      put(out, cam, t, 24, BOSS, "boss", [2.4, 0, -0.55], { expr: bExpr, facing: -1, look: -1, wave: bWave });
+      // second flash: he knows that light. He dives to the floor (card rolled about its feet, a little hop, arms up);
+      // the boss drops behind his desk
+      const dive = id === 21 ? smooth((f - 1364) / 9) : 0, duck = id === 21 ? smooth((f - 1367) / 8) : 0;
+      if (dive > 0) {
+        const p = person(cam, { i: 1, o: YAMA_BAND2, okey: "yb2" }, 1.15 - 0.55 * dive, 0.3 * dive + 0.32 * Math.sin(Math.PI * dive), 1.25, FRONT, { mode: "fall", expr: "shock", blink: 0, facing: 1 }, {});
+        p.roll = -1.38 * dive;                                       // falls to screen right, lands across the frame
+        out.places.push(p);
+        blob(out, 1.15 + 0.2 * dive, 0, 1.25, 1 + 0.6 * dive);
+      } else put(out, cam, t, 1, YAMA_BAND2, "yb2", [1.15, 0, 1.15], { expr: yExpr, facing: 1, look: 1, prop: yProp ?? undefined, blinkless: false } as FrontOpts);
+      put(out, cam, t, 24, BOSS, "boss", [2.4, -0.62 * duck, -0.55], { expr: bExpr, facing: -1, look: -1, wave: bWave }, { noBlob: duck > 0.3 });
       if (id === 18) thought(out, cam, [1.85, 2.5, 0.3], 1, pop(t, W(1201), W(1250) + 0.1), 0);
       if (id === 18 || id === 20) { put(out, cam, t, 22, WORKER(1), "w1", [-1.0, 0, -2.6], { expr: "neutral", look: 1 }); put(out, cam, t, 23, WORKER(2), "w2", [5.1, 0, -2.4], { expr: "neutral", look: -1 }); }
       if (id === 21) { put(out, cam, t, 22, WORKER(1), "w1", [-1.0, 0, -2.6], { expr: flash ? "shock" : "neutral" }); }
       break;
     }
     case 22: { // the cloud over Nagasaki; deadpan
-      put(out, cam, t, 1, YAMA_BAND2, "yb2", [0, 0, 0], { expr: f < 1475 ? "shock" : "neutral" });
-      if (f >= 1475) sweat(out, cam, [0, 1.85, 0], t, W(1487));
+      put(out, cam, t, 1, YAMA_BAND2, "yb2", [0, 0, 0], { mode: "sit", expr: f < 1475 ? "dazed" : "neutral" });   // knocked down again
+      if (f >= 1475) sweat(out, cam, [0, 1.06, 0], t, W(1487));
       dust(out, t, 0.5);
       break;
     }

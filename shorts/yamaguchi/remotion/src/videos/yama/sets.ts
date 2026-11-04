@@ -359,7 +359,7 @@ export function buildSets(kit: Kit): Sets {
     }
     for (const x of [-7, 7]) b.add(boxGeo(V(x - (x < 0 ? 0.2 : 0), 0, -5.2), V(x + (x > 0 ? 0.2 : 0), 3.4, 5.2)), wallM);
     b.add(boxGeo(V(-7, 0, 5), V(7, 3.4, 5.2)), wallM);
-    b.add(boxGeo(V(-7, 3.4, -5.2), V(7, 3.6, 5.2)), ceil);
+    b.add(boxGeo(V(-7, 3.4, -5.2), V(7, 3.6, 5.2), 0, true), ceil); // with its underside: seen from inside the room
     for (const [x0, z0, x1, z1] of [[-7, -5.0, 7, -4.94], [-6.96, -5, -6.9, 5], [6.9, -5, 6.96, 5]] as const) b.add(boxGeo(V(x0, 0, z0), V(x1, 0.95, z1)), wain);
     for (const x of [-3.5, 0, 3.5]) { b.add(cyl(0.02, 0.02, 0.6, 6), solid("cord", "#222"), M4(x, 2.8, 0)); b.add(new THREE.ConeGeometry(0.32, 0.26, 16, 1, true), solid("shade", "#2f5f4a"), M4(x, 2.75, 0)); }
     // desks: drafting tables (tilted boards) and the boss's desk

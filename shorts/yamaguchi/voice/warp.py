@@ -43,7 +43,7 @@ x, y = x[keep], y[keep]
 f = np.arange(T2 + 1, dtype=float)
 w = np.interp(f, x, y)
 # smooth the slope (7-frame moving average of the map), pin the ends
-k = 7
+k = 11
 ws = np.convolve(np.pad(w, (k, k), mode="edge"), np.ones(2 * k + 1) / (2 * k + 1), mode="same")[k:-k]
 ws[0] = 0.0; ws[-1] = float(T1)
 ws = np.maximum.accumulate(ws)

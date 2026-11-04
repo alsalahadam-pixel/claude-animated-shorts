@@ -180,7 +180,7 @@ const F13a = (f: number) => dolly([0.6, 1.1, 3.3], [0, 0.85, 0], pushK(f, 794, 0
 const F13b = (f: number) => dolly([1.2, 1.05, 2.2], [0.15, 0.95, 0], pushK(f, 833, 0.0022, 0.006, 25), { fov: 36, roll: 0.04 });
 const F14a = (f: number) => dolly([4.3, 1.35, 3.6], [6.6, 0.95, -2.3], pushK(f, 872, 0.0018), { fov: 44 });
 const F22a = (f: number) => zoom([0.5, 1.25, 6.4], [0, 62, -420], 46, pushK(f, 1418, 0.0016, 0.004, 30));
-const F22b = (f: number) => dolly([0.35, 1.72, 2.5], [0, 1.68, 0], pushK(f, 1475, 0.0025), { fov: 36, roll: -0.03 });
+const F22b = (f: number) => dolly([0.3, 1.0, 1.95], [0, 0.88, 0], pushK(f, 1475, 0.0025), { fov: 36, roll: -0.03 });
 // office framings (room x -7..7, z -5..5, windows on the back wall z = -5; Yamaguchi's desk at x -2.5, the boss at x 2.6)
 export const DESK_INSERT: V3 = [-5.0, 0.78, 2.6];
 const O7a = (f: number) => dolly(add(DESK_INSERT, [0.55, 0.62, 0.62]), add(DESK_INSERT, [0, 0.07, 0]), pushK(f, 467, 0.0025, 0.007, 22), { fov: 36, roll: 0.03 });
@@ -189,7 +189,7 @@ const O17b = (f: number) => dolly([0.6, 2.1, 4.2], [-2.4, 1.15, -0.9], pushK(f, 
 const O18a = (f: number) => dolly([1.15, 1.65, 4.7], [1.8, 1.5, 0.2], pushK(f, 1157, 0.0018), { fov: 42 });
 const O19a = (f: number) => dolly([2.05, 1.62, 1.35], [2.4, 1.62, -0.55], pushK(f, 1250, 0.0025, 0.006, 25), { fov: 36, roll: 0.04 });
 const O20a = (f: number) => dolly([2.5, 1.6, 4.6], [1.75, 1.5, 0.2], pushK(f, 1291, 0.002), { fov: 42, roll: -0.03 });
-const O21a = (f: number) => dolly([1.55, 1.55, 4.9], [1.8, 1.6, -1.5], pushK(f, 1340, 0.0025, 0.0065, 30), { fov: 46 });
+const O21a = (f: number) => dolly([1.35, 1.45, 4.9], [1.75, 1.25, -1.5], pushK(f, 1340, 0.0025, 0.0065, 30), { fov: 48 });
 const O30a = (f: number) => dolly(add(DESK_INSERT, [0.55, 0.62, 0.62]), add(DESK_INSERT, [0, 0.07, 0]), pushK(f, 2364, 0.0025, 0.007, 22), { fov: 36, roll: -0.03 });
 // river (street zone, night): lanterns drift along +x
 const S23a = (f: number) => ({ pos: [-14 + 0.04 * (f - 1526), 1.9, 34.5] as V3, look: [-6 + 0.04 * (f - 1526), 0.2, 48] as V3, fov: 42 });
@@ -297,7 +297,7 @@ export const DOF: Dof[] = [
   { f: 1250, cInf: 13, focus: () => [2.4, 1.62, -0.55] },
   { f: 1291, cInf: 8 },
   { f: 1423, cInf: 0 },
-  { f: 1475, cInf: 14, focus: () => [0, 1.68, 0] },
+  { f: 1475, cInf: 14, focus: () => [0, 0.88, 0] },
   { f: 1526, cInf: 6, focus: (f) => [-6 + 0.04 * (f - 1526), 0.25, 44] },
   { f: 1607, cInf: 10, focus: () => [0, 1.6, 36.2] },
   { f: 1668, cInf: 0 },

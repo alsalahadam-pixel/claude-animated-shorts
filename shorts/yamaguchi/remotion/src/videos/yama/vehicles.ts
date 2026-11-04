@@ -130,7 +130,7 @@ export const buildTrain = (): Train => {
       // interior of the first carriage: wood walls, cream ceiling, long green bench seats, luggage racks, lamps
       const wood = solid("inWood", "#c99a68"), seat = solid("seatGreen", "#3f6b5a"), ceil = solid("inCeil", "#eadbb8"), floor = solid("inFloor", "#7a5a3e");
       inside.add(boxGeo(V(-1.3, 1.1, z0 + 0.1), V(1.3, 1.15, z1 - 0.1)), floor);
-      inside.add(boxGeo(V(-1.3, 3.3, z0 + 0.1), V(1.3, 3.36, z1 - 0.1)), ceil);
+      inside.add(boxGeo(V(-1.3, 3.3, z0 + 0.1), V(1.3, 3.36, z1 - 0.1), 0, true), ceil); // with its underside
       for (const s of [-1, 1]) {
         inside.add(boxGeo(V(s * 1.33 - 0.03, 1.15, z0 + 0.1), V(s * 1.33 + 0.03, 1.75, z1 - 0.1)), wood);   // wall below the windows
         inside.add(boxGeo(V(s * 1.33 - 0.03, 2.65, z0 + 0.1), V(s * 1.33 + 0.03, 3.3, z1 - 0.1)), wood);    // wall above

@@ -314,6 +314,15 @@ def rumble(dur, r):
     return y
 
 
+def body_thud(r):
+    """a body hitting a wooden floor: low thump, board knock, cloth"""
+    t = tt(0.5)
+    y = np.exp(-t / 0.05) * np.sin(phase(70 * (1 + 0.4 * np.exp(-t / 0.01))))
+    y += modal(0.5, [(190, 0.5, 0.05), (420, 0.3, 0.03)], r)
+    y += bp(r.standard_normal(len(t)), 600, 4000, 1) * np.exp(-t / 0.04) * 0.3
+    return fades(y, 0, 0.05)
+
+
 def stamp(r):
     t = tt(0.4)
     th = np.exp(-t / 0.03) * np.sin(phase(110 * (1 + 0.5 * np.exp(-t / 0.008))))
@@ -486,6 +495,7 @@ def build_sfx():
     ev(fr(1201), pop(r), -24, 0.2, "thought bubble pop (city)")
     ev(fr(1262), laugh(r), -21, 0.25, "boss laughs")
     ev(fr(1352), whine(fr(1378) - fr(1352), r), -20, 0, "second flash whine")
+    ev(fr(1371), body_thud(r), -14, 0.2, "he hits the floor")
     ev(fr(1378), ring(3.5, r), -30, 0, "ear ringing")
     ev(fr(1421), rumble(5.0, r), -12, 0, "rumble (Nagasaki)")
     ev(fr(1487), plip(r), -26, 0.2, "sweat drop")
@@ -554,20 +564,19 @@ def limiter(x, ceil_db=-1.2):
 
 
 def punch(v):
-    """narration chain: rumble cut, low-mid clean-up, presence lift, 3:1 compression, gentle saturation, a little room"""
+    """narration chain, kept light so the voice stays natural: rumble cut, a touch of low-mid clean-up and presence,
+    slow gentle 2:1 levelling (no saturation), a whisper of room"""
     from scipy import ndimage
-    x = hp(v, 75, 2)
-    x = peq(x, 260, -2.5, 1.0)
-    x = peq(x, 3400, 3.5, 0.9)
-    x = shelf_hi(x, 9000, 1.5)
-    env = np.sqrt(ndimage.uniform_filter1d(x ** 2, ns(0.012)) + 1e-12)
-    lvl = 20 * np.log10(env); thr = np.percentile(lvl[lvl > -60], 70)
-    gr = np.where(lvl > thr, (thr - lvl) * (1 - 1 / 3.0), 0.0)
-    gr = ndimage.uniform_filter1d(gr, ns(0.008))
+    x = hp(v, 70, 2)
+    x = peq(x, 280, -1.5, 1.0)
+    x = peq(x, 3200, 1.8, 0.8)
+    env = np.sqrt(ndimage.uniform_filter1d(x ** 2, ns(0.03)) + 1e-12)
+    lvl = 20 * np.log10(env); thr = np.percentile(lvl[lvl > -60], 75)
+    gr = np.where(lvl > thr, (thr - lvl) * (1 - 1 / 2.0), 0.0)
+    gr = ndimage.uniform_filter1d(gr, ns(0.05))
     x = x * 10 ** (gr / 20)
-    x = np.tanh(1.4 * x / (np.abs(x).max() + 1e-9)) / np.tanh(1.4)
-    wet = convolve_st(x, make_ir(0.35, 31, hf=1.6))[0]
-    return x + 0.06 * wet / (np.abs(wet).max() + 1e-9) * np.abs(x).max()
+    wet = convolve_st(x, make_ir(0.3, 31, hf=1.8))[0]
+    return x + 0.03 * wet / (np.abs(wet).max() + 1e-9) * np.abs(x).max()
 
 
 def shelf_hi(x, f0, db):

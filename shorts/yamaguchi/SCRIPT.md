@@ -18,7 +18,7 @@ Format: ~90 s vertical cartoon short, one steady narrator, our own characters an
 - Physics: radiant heat from a point source spreads over a sphere, so it falls with the square of the distance
   (double the distance -> a quarter of the heat).
 
-## Script (v3, as narrated: Kokoro am_fenrir at 1.31x with per-line pacing, 88.1 s, 339 words)
+## Script (v4, as narrated: Kokoro am_fenrir at 1.31x, one steady voice, passages spoken in one breath, 93.8 s)
 This man survived the atomic bomb on Hiroshima!
 Then he hopped on a train to get away from it all...
 Straight to Nagasaki.
@@ -32,8 +32,8 @@ After a night in a shelter, he does the sensible thing and catches a train home.
 Home is Nagasaki.
 Two days later, wrapped in bandages, he goes back to work, because of course he does.
 He tells his boss that one single bomb destroyed an entire city.
-His boss says that's crazy!
-No bomb could ever do that!
+His boss says that's crazy.
+No bomb could ever do that.
 And right then... the same white light fills the room.
 He later said he thought the mushroom cloud had followed him from Hiroshima.
 Those two bombs killed well over a hundred thousand people, and somehow, he survived both.
