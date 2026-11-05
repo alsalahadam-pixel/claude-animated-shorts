@@ -13,7 +13,7 @@ The film is an edit (`FINAL` in `src/story.ts`). Each row shows a source shot fr
 | Pass | What | Where |
 |---|---|---|
 | Plates | 3D picture only, no text (`FinalPlate`) | `scripts/render_final.mjs` → `out/final/plates/` |
-| Reused | V3 chunks with no text baked in: S13, S13B, S14, S16, S21 | `out/chunks/` |
+| Reused | V3 chunks with no text baked in: S13, S13B, S14, S16 | `out/chunks/` |
 | Overlay | every word on screen, on transparency (`FinalOverlay`) | `scripts/render_overlay.mjs` → `out/final/overlay.mov` |
 | Voice | `voice/build_voice_final.py` | `voice/voice_final.wav`, `src/data/captions_final.json` |
 | Sound | `audio/soundtrack_final.py` (every cue locked to source frames through the edit table) | `audio/mix_final.wav`, `audio/cues_final.md` |
@@ -47,10 +47,10 @@ The film is an edit (`FINAL` in `src/story.ts`). Each row shows a source shot fr
 | 78.77 | S18 | A message from "Me": the photo, pushing in. | "A photo of you. Asleep." "Sent from your own number… one minute ago." |
 | 84.77 | S19 | His face; his eyes go to the bed. | "But you haven't slept in three days." "So who's sleeping in your bed?" |
 | 89.87 | S20 | The bed: him (the double), terrified, turning to the corner. | |
-| 92.87 | E1 | From the bed: the corner. Empty. One floorboard creaks. | (silence) |
+| 92.87 | E1 | Over his shoulder, into the corner (the exact framing of S21). Empty. One floorboard creaks. | (silence) |
 | 95.27 | E2 | You on the floor: your eyes go to the corner, your head follows; you stop breathing. | "You're the last human alive." |
 | 98.27 | E3 | From the corner, high, looking down at you. We hear it breathe. | "So who's been watching you sleep?" |
-| 100.67 | S21 | The corner: its eyes open, it grins. Hard cut. | |
+| 100.67 | S21 | The same frame as E1, but it is standing there, black against the dim wall. Its eyes open; it grins. Hard cut. | |
 | 103.37 | BLACK | Silence; somewhere, one camera turns. | |
 | 104.77 | TITLE | THE LAST HUMAN ALIVE | |
 
@@ -65,3 +65,13 @@ The film is an edit (`FINAL` in `src/story.ts`). Each row shows a source shot fr
 - **Captions:**
   - They sit low on face close-ups and on the phone.
   - The last two lines are quieter and closer (dry voice, smaller white captions with no highlight).
+
+## Delivery
+
+- **Master:** `out/last_human_FINAL.mp4`, H.264 CRF 17 (331 MB).
+- **Upload copy:** `out/last_human_FINAL_upload.mp4`, CRF 21 (117 MB).
+- **Both:** 3233 frames, 1080×1920, 30 fps; mix at -14.1 LUFS, true peak -1.1 dBFS.
+- **QA (`scripts/qa.py`):**
+  - Black frames only at the title cards and the planned cut to black.
+  - Holds only where the picture is meant to be still: the entity's stare, the empty corner, the titles.
+  - Jumps only on the cuts and where the phone lights up.
