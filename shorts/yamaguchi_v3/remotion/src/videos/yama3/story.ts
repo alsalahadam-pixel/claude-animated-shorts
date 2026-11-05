@@ -303,8 +303,9 @@ export const CAM2: Record<string, { s: (f: number) => Shot; cInf?: number; focus
 const nrm = (v: V3): V3 => { const l = Math.hypot(...v) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
 /** where the two parachutes are (their midpoint) at source frame f, else the plane */
 const chutesAt = (f: number): V3 => {
-  const u = Math.max(0, T(f) - T(636) - 0.125);
-  return f < 636 ? [planeAt(f), 300, -200] : [planeAt(f) - 42 - 6 * u, 296 - 3.5 * u, -197];
+  const u = Math.max(0, T(f) - T(636) - 0.125), k = smooth((f - 630) / 18);   // eases from the plane to the chutes
+  const p: V3 = [planeAt(f), 300, -200], c: V3 = [planeAt(f) - 42 - 6 * u, 296 - 3.5 * u, -197];
+  return [p[0] + (c[0] - p[0]) * k, p[1] + (c[1] - p[1]) * k, p[2] + (c[2] - p[2]) * k];
 };
 /** low angle in front of him: his upturned face at the bottom of the frame, the bomber high in the sky above */
 const lookUp = (f: number): Shot => {
