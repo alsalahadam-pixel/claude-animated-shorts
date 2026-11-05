@@ -1,0 +1,281 @@
+[
+ {
+  "text": "This man has already survived one atomic bomb.",
+  "takes": 7,
+  "row_offset": 0,
+  "speed": 1.583,
+  "pitch_move_st": 9.8,
+  "drift_st": 1.4,
+  "words_per_s": 4.91
+ },
+ {
+  "text": "Now, he's about to survive another.",
+  "takes": 7,
+  "row_offset": 60,
+  "speed": 1.309,
+  "pitch_move_st": 12.5,
+  "drift_st": 0.3,
+  "words_per_s": 3.12
+ },
+ {
+  "text": "How do you survive that... twice?",
+  "takes": 7,
+  "row_offset": 60,
+  "speed": 1.377,
+  "pitch_move_st": 13.8,
+  "drift_st": 0.9,
+  "words_per_s": 3.11
+ },
+ {
+  "text": "Hiroshima, August sixth, nineteen forty five. He's a ship designer from Nagasaki, going home today to his wife and baby son.",
+  "takes": 3,
+  "row_offset": -60,
+  "speed": 1.522,
+  "pitch_move_st": 12.0,
+  "drift_st": 1.0,
+  "words_per_s": 4.53
+ },
+ {
+  "text": "But he's forgotten his name stamp, so he turns back.",
+  "takes": 3,
+  "row_offset": 60,
+  "speed": 1.494,
+  "pitch_move_st": 13.0,
+  "drift_st": 0.3,
+  "words_per_s": 4.62
+ },
+ {
+  "text": "Eight fifteen.",
+  "takes": 7,
+  "row_offset": 0,
+  "speed": 1.45,
+  "pitch_move_st": 7.4,
+  "drift_st": 0.8,
+  "words_per_s": 3.14
+ },
+ {
+  "text": "A plane.",
+  "takes": 7,
+  "row_offset": 120,
+  "speed": 1.377,
+  "pitch_move_st": 5.9,
+  "drift_st": 1.0,
+  "words_per_s": 1.79
+ },
+ {
+  "text": "Two small parachutes, drifting down.",
+  "takes": 7,
+  "row_offset": 0,
+  "speed": 1.446,
+  "pitch_move_st": 15.9,
+  "drift_st": 0.5,
+  "words_per_s": 3.92
+ },
+ {
+  "text": "Then... the sky turns white.",
+  "takes": 7,
+  "row_offset": 60,
+  "speed": 1.24,
+  "pitch_move_st": 13.0,
+  "drift_st": 0.3,
+  "words_per_s": 2.66
+ },
+ {
+  "text": "Three kilometers away, it still bursts his eardrums and burns his left side.",
+  "takes": 3,
+  "row_offset": 60,
+  "speed": 1.494,
+  "pitch_move_st": 12.6,
+  "drift_st": 0.5,
+  "words_per_s": 4.15
+ },
+ {
+  "text": "The next day, he takes the train home.",
+  "takes": 3,
+  "row_offset": 0,
+  "speed": 1.45,
+  "pitch_move_st": 15.7,
+  "drift_st": 1.7,
+  "words_per_s": 6.03
+ },
+ {
+  "text": "Home... is Nagasaki.",
+  "takes": 7,
+  "row_offset": -60,
+  "speed": 1.334,
+  "pitch_move_st": 4.3,
+  "drift_st": 1.1,
+  "words_per_s": 1.96
+ },
+ {
+  "text": "August ninth. Still bandaged, he's back at work, telling his boss how one bomb destroyed an entire city.",
+  "takes": 3,
+  "row_offset": 0,
+  "speed": 1.522,
+  "pitch_move_st": 13.3,
+  "drift_st": 1.8,
+  "words_per_s": 4.47
+ },
+ {
+  "text": "His boss doesn't believe him.",
+  "takes": 7,
+  "row_offset": 0,
+  "speed": 1.492,
+  "pitch_move_st": 14.0,
+  "drift_st": 1.2,
+  "words_per_s": 5.12
+ },
+ {
+  "text": "And right then... the same white light fills the room.",
+  "takes": 7,
+  "row_offset": 0,
+  "speed": 1.349,
+  "pitch_move_st": 13.3,
+  "drift_st": 0.0,
+  "words_per_s": 4.93
+ },
+ {
+  "text": "The blast throws him to the floor.",
+  "takes": 7,
+  "row_offset": 180,
+  "speed": 1.421,
+  "pitch_move_st": 12.8,
+  "drift_st": 1.1,
+  "words_per_s": 3.37
+ },
+ {
+  "text": "He thought the mushroom cloud had followed him from Hiroshima.",
+  "takes": 5,
+  "row_offset": 0,
+  "speed": 1.364,
+  "pitch_move_st": 11.2,
+  "drift_st": 1.1,
+  "words_per_s": 4.74
+ },
+ {
+  "text": "And his wife and baby son were somewhere out there.",
+  "takes": 5,
+  "row_offset": 60,
+  "speed": 1.334,
+  "pitch_move_st": 10.8,
+  "drift_st": 0.7,
+  "words_per_s": 4.06
+ },
+ {
+  "text": "They were alive.",
+  "takes": 7,
+  "row_offset": 60,
+  "speed": 1.267,
+  "pitch_move_st": 9.5,
+  "drift_st": 1.1,
+  "words_per_s": 2.54
+ },
+ {
+  "text": "She'd gone out to find ointment for his burns, and sheltered with the baby in a tunnel.",
+  "takes": 5,
+  "row_offset": 0,
+  "speed": 1.421,
+  "pitch_move_st": 11.9,
+  "drift_st": 2.0,
+  "words_per_s": 5.52
+ },
+ {
+  "text": "Across both cities, over a hundred thousand others did not.",
+  "takes": 5,
+  "row_offset": 60,
+  "speed": 1.349,
+  "pitch_move_st": 14.6,
+  "drift_st": 0.85,
+  "words_per_s": 3.69
+ },
+ {
+  "text": "Both times, he was three kilometers away.",
+  "takes": 3,
+  "row_offset": 0,
+  "speed": 1.508,
+  "pitch_move_st": 12.9,
+  "drift_st": 0.15,
+  "words_per_s": 4.7
+ },
+ {
+  "text": "Close enough to be hurt.",
+  "takes": 7,
+  "row_offset": -60,
+  "speed": 1.377,
+  "pitch_move_st": 12.0,
+  "drift_st": 0.3,
+  "words_per_s": 6.63
+ },
+ {
+  "text": "Far enough to live.",
+  "takes": 7,
+  "row_offset": 0,
+  "speed": 1.416,
+  "pitch_move_st": 11.0,
+  "drift_st": 1.3,
+  "words_per_s": 5.31
+ },
+ {
+  "text": "For decades, he barely spoke of it. Then cancer took his son, the baby from the tunnel.",
+  "takes": 5,
+  "row_offset": 0,
+  "speed": 1.377,
+  "pitch_move_st": 11.2,
+  "drift_st": 0.0,
+  "words_per_s": 4.98
+ },
+ {
+  "text": "So he began to speak out, even at the United Nations.",
+  "takes": 3,
+  "row_offset": 60,
+  "speed": 1.494,
+  "pitch_move_st": 15.0,
+  "drift_st": 0.1,
+  "words_per_s": 4.45
+ },
+ {
+  "text": "In two thousand nine, he became the only person officially recognized as surviving both.",
+  "takes": 3,
+  "row_offset": 0,
+  "speed": 1.45,
+  "pitch_move_st": 14.7,
+  "drift_st": 0.7,
+  "words_per_s": 4.09
+ },
+ {
+  "text": "His name was Tsutomu Yamaguchi.",
+  "takes": 7,
+  "row_offset": 60,
+  "speed": 1.305,
+  "pitch_move_st": 13.5,
+  "drift_st": 0.1,
+  "words_per_s": 2.23
+ },
+ {
+  "text": "He died a year later, at ninety three.",
+  "takes": 5,
+  "row_offset": 60,
+  "speed": 1.421,
+  "pitch_move_st": 12.5,
+  "drift_st": 0.45,
+  "words_per_s": 4.24
+ },
+ {
+  "text": "Two atomic bombs. Three days apart.",
+  "takes": 7,
+  "row_offset": 60,
+  "speed": 1.281,
+  "pitch_move_st": 11.8,
+  "drift_st": 0.8,
+  "words_per_s": 2.56
+ },
+ {
+  "text": "He survived both... and spent his last years fighting so the world would never see a third.",
+  "takes": 5,
+  "row_offset": 120,
+  "speed": 1.377,
+  "pitch_move_st": 13.1,
+  "drift_st": 0.0,
+  "words_per_s": 4.18
+ }
+]
