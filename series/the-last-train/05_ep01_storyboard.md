@@ -106,19 +106,19 @@ Then **GEN**: the shot prompt. Prepend the STYLE block and attach the character 
 
 ### S6 — "Ma'am?" · 0:13.4–0:15.4
 1. **2.0 s**
-2. In the door threshold. The Commuter's head is soft in the left foreground. 75 mm on Kai.
+2. Over Kai's LEFT shoulder from the platform, almost in line behind his head. 35 mm. *(Restaged after the animatic: the Commuter faces away from the door, so her head can't be in the foreground of a shot that looks at Kai.)*
 3. Very slow push.
-4. Kai close-up, frame right. The Commuter's head is a soft shape on the left.
-5. Kai leans in slightly. **The Commuter's head twitches 10°** toward him (a 3-frame move, then a hold).
-6. Concern turning to unease.
-7. Door edge, rubber seals.
+4. Kai's head and shoulder soft at frame right. The Commuter's back in the doorway, mid-frame.
+5. Kai leans in slightly. **The Commuter's head twitches 10°** toward his voice (a 3-frame move, then a hold).
+6. Unease, read in his body: he stops leaning in.
+7. Door edge, the carriage interior, the other passengers' backs.
 8. Cyan across his glasses.
 9. KAI: "Ma'am…? You okay?"
 10. The hum · a tiny wet click on the twitch.
 11. —
 12. **J-cut:** the PA chime starts 6 frames before the cut.
 
-**GEN:** *Close-up of the young man in round taped glasses leaning toward the train doorway, concerned, a blurred woman's head in the foreground jerks slightly toward him, cold cyan light, shallow focus.*
+**GEN:** *Over-the-shoulder from behind a young man with curly hair in an orange vest standing at an open train door; inside, a woman in a camel coat stands with her back to him among motionless passengers, her head twitches slightly toward him, cold cyan light, shallow focus.*
 
 ---
 
@@ -214,9 +214,9 @@ Then **GEN**: the shot prompt. Prepend the STYLE block and attach the character 
 
 ### S12 — "THOOM" · 0:28.2–0:30.2 · ACTION
 1. **2.0 s**
-2. Low profile along the train side at door height, 35 mm. The door on the left, Kai on the right edge.
+2. High angle behind Kai, about 2.5 m up, 35 mm, looking down past his head at the door. *(Restaged after the animatic: a side-by-side profile of the door and Kai doesn't fit a vertical frame, so the shot is stacked vertically instead.)*
 3. Locked, plus an **impact kick** on the THOOM: flip-sign shake decaying over 7 frames, 6 px peak at 1080.
-4. The Commuter's arm is trapped between the closing door edges, fingers clawing **inches from Kai's face**.
+4. Kai's head and shoulders at the bottom of frame. Mid-frame, the Commuter's arm is trapped between the closing door edges, fingers clawing **toward his face**. Windows full of bodies at the top.
 5. She lunges (shoulder first, lopsided). The whole crowd hits the windows.
 6. Kai recoils.
 7. **The glass spiderwebs.** Platform lights die row by row into the distance.
@@ -226,7 +226,7 @@ Then **GEN**: the shot prompt. Prepend the STYLE block and attach the character 
 11. A low string hit on the impact.
 12. Cut on the impact to the track.
 
-**GEN:** *Low side angle along a stopped metro train: an infected woman's arm is trapped in the closing doors, clawing inches from a recoiling young man's face, then dozens of bodies slam against the carriage windows and the glass cracks into spiderwebs, fluorescent lights die and red emergency lights snap on.*
+**GEN:** *High angle behind a young man in an orange vest at a train door: an infected woman's arm is trapped in the closing doors, clawing toward his face, then dozens of bodies slam against the carriage windows and the glass cracks into spiderwebs, fluorescent lights die and red emergency lights snap on.*
 
 ---
 
@@ -482,27 +482,27 @@ Then **GEN**: the shot prompt. Prepend the STYLE block and attach the character 
 
 ---
 
-### S27 — "God's eye" · 1:13.6–1:16.0
+### S27 — "High angle" · 1:13.6–1:16.0
 1. **2.4 s**
-2. Straight down from the ceiling (90°), 18 mm.
-3. A slow 3° rotation with a **speed ramp to 50%**.
-4. **Left third:** the pack creeping forward, the Night Runner low in front, coiled. **Centre:** Kai at the door. **Right third:** the shutter at knee height.
+2. High above and behind Kai (about 4.3 m up, ceiling removed), 24 mm, looking down the corridor toward the escalator. *(Restaged after the animatic: straight down, a 60 m × 4 m corridor becomes a thin stripe in a 9:16 frame and nobody can be read.)*
+3. A slow drift back with a 3° roll and a **speed ramp to 50%**.
+4. **Bottom of frame:** Kai at the chained door. **Top:** the pack creeping forward, the Night Runner low in front, coiled. The shutter is behind camera, and its amber strobe washes over the frame.
 5. Everything in slow motion. *One more sound and they run.*
 6. —
-7. The whole corridor visible. The geography of the decision in one image.
+7. The corridor running away from Kai toward the pack: the geography of the decision.
 8. Strobes stretched by the slow motion. Red.
 9. —
 10. Everything slowed and pitched down · heartbeat.
 11. Low drone.
 12. Cut.
 
-**GEN:** *Top-down overhead shot of a long red-lit corridor: on the left a pack of infected creeping forward with one crouched in front ready to spring, in the centre a small figure in an orange vest at a chained door, on the right a security shutter nearly closed, slow motion, amber strobes, cinematic.*
+**GEN:** *High angle looking down a long red-lit corridor from above and behind a small figure in an orange vest standing at a chained door; far down the corridor a pack of infected creeps forward, one crouched in front ready to spring; amber strobe light washing over everything, slow motion, cinematic.*
 
 ---
 
 ### S28 — "So is she" · 1:16.0–1:19.0
 1. **3.0 s**
-2. Extreme close-up of Kai's eyes, 135 mm. The taped LEFT hinge is in frame.
+2. Extreme close-up of Kai's eyes, 135 mm. The taped LEFT hinge is in frame. *(The door is only 0.4 m in front of him, so production must remove it for this shot. The animatic used 50 mm from 0.36 m instead.)*
 3. A very slow push.
 4. —
 5. **Eyes flick: door → shutter → phone.**
@@ -580,3 +580,19 @@ Then **GEN**: the shot prompt. Prepend the STYLE block and attach the character 
 - **Slow motion** appears once (S27). It's the moment of decision, so it's earned.
 - **Light continuity:** cyan S1–S11 → red snaps on at S12 → red plus amber strobes from S18 onward.
 - **Prop continuity:** the mop is in his RIGHT hand S2–S18, tucked under his RIGHT arm S19–S29 (pays off in Ep 2A). The earbud comes out in S3 and stays out. The phone lives in his LEFT hoodie pocket. The radio is on his LEFT chest. The key reel is on his RIGHT hip.
+
+## Changes found by the animatic
+
+The previz render (`previz/`) checked every shot against real geometry. These changes are already applied above:
+
+| Shot | Problem in the boards | Change |
+|---|---|---|
+| S6 | The Commuter faces away from the door, so her head can't be in the foreground of a shot looking at Kai. | Over Kai's left shoulder onto her back. |
+| S12 | A side-by-side profile of the door and Kai doesn't fit a 9:16 frame. | High angle behind Kai, stacked vertically. |
+| S14 | A 1.6 m departure board can't fit a vertical frame from a close camera. | Board narrowed to 1.3 m and shot from 3 m. |
+| S20 | Kai stands between the camera and the door. | He is left out of the insert. |
+| S24 | The shutter didn't read in red light. | A green EXIT sign above it adds a light source and a clear cue. |
+| S25 | Facing the door, Kai's face is hidden from any camera that also sees the pack. | Kai turns toward the shutter to smother the phone, so his face is in frame with the pack behind him. |
+| S27 | Shot straight down, the corridor is an unreadable stripe in 9:16. | High angle from behind Kai, looking down the corridor at the pack. |
+| S28 | The door is 0.4 m in front of Kai. | Production removes the door for the 135 mm close-up. |
+

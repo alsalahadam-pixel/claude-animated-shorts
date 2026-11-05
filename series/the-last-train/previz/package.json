@@ -1,0 +1,13 @@
+{
+  "name": "the-last-train-previz",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Episode 1 previz animatic for THE LAST TRAIN (three.js in headless Chromium)",
+  "type": "module",
+  "scripts": {
+    "stills": "node render.mjs --stills 1.5,25.8,58.0,72.8,85.5"
+  },
+  "dependencies": {
+    "three": "0.169.0"
+  }
+}
