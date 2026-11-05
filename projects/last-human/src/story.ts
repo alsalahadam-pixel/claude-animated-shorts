@@ -56,6 +56,8 @@ const SUN_BACK: Light = { key: "#ffb27a", keyK: 0.35, amb: "#5c58a0", ambK: 0.55
 const SUN_BACK_OTS: Light = { ...SUN_BACK, rim: { color: "#e89a6a", k: 0.45, dir: 40, w: 0.7 } };
 const SUN_FRONT: Light = { key: "#ffc596", keyK: 0.95, amb: "#5c58a0", ambK: 0.55, dir: 70, rim: { color: "#8a7aff", k: 0.35, dir: 160, w: 0.9 } };
 const OVERCAST: Light = { key: "#d6dcea", keyK: 0.62, amb: "#7680a6", ambK: 0.72, dir: 100, rim: { color: "#b8c8e8", k: 0.18, dir: 30, w: 0.6 } };
+// the close-up hand in S07: the same grey daylight, but a warmer key so skin reads as skin
+const CAFE_HAND: Light = { ...OVERCAST, key: "#f6e4d8", keyK: Math.max(OVERCAST.keyK, 0.7) };
 const DUSK: Light = { key: "#ffb080", keyK: 0.4, amb: "#6a5a9a", ambK: 0.58, dir: 80, rim: { color: "#ff8a4a", k: 0.95, dir: 70, w: 1.3 } };
 const NEON: Light = { key: "#c9a6ff", keyK: 0.75, amb: "#3c4280", ambK: 0.5, dir: 160, rim: { color: "#3ff0e0", k: 0.85, dir: 15, w: 1.2 } };
 const NEON_L: Light = { key: "#d0b0ff", keyK: 0.8, amb: "#3c4280", ambK: 0.48, dir: 150, rim: { color: "#ff6ab8", k: 0.7, dir: 20, w: 1.1 } };
@@ -304,7 +306,7 @@ export const SHOTS: Shot[] = [
       const off = lerp(-0.42, -0.07, ramp(f, 465, 486)) + lerp(0, -0.38, ramp(f, 516, 540));
       const h = w.hand; h.setFrame({ x0: -62, y0: -12, w: 80, h: 24 });
       const curl = 0.12 + 0.28 * ramp(f, 482, 500) - 0.2 * ramp(f, 514, 530);   // fingers close gently inside the steam, open as they leave
-      h.draw((ctx, F) => drawHand(ctx, OVERCAST, F, 0.35, curl));
+      h.draw((ctx, F) => drawHand(ctx, CAFE_HAND, F, 0.35, curl));
       h.stand(steam.clone().addScaledVector(right, off).add(V([0, -0.035, 0])), cam.position); h.visible = true; h.blob.visible = false;
     },
   },
