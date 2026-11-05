@@ -38,6 +38,7 @@ export class World {
   watcher = new Card(768, 1536, { castShadow: false });
   pigeon = new Card(512, 512, { castShadow: false });
   hand = new Card(1280, 384, { castShadow: false });
+  glow = new Card(768, 1536, { castShadow: false });   // additive: the entity's eyes and grin glow (bloom)
   fog = new THREE.FogExp2("#000", 0.01);
   photoTex: THREE.Texture | null = null;
   envs = new Map<string, THREE.Texture>();
@@ -53,7 +54,9 @@ export class World {
     this.aptRoot.add(this.skyline.root);
     this.cityRoot.add(this.city.root);
     S.add(this.aptRoot, this.cityRoot);
-    for (const c of [this.hero, this.refl, this.cu, this.watcher, this.pigeon, this.hand]) c.add(S);
+    for (const c of [this.hero, this.refl, this.cu, this.watcher, this.pigeon, this.hand, this.glow]) c.add(S);
+    this.glow.mat.blending = THREE.AdditiveBlending; this.glow.mat.depthWrite = false; this.glow.mat.alphaTest = 0; this.glow.mat.color.setScalar(2.6);
+    this.glow.mesh.renderOrder = 40; this.glow.blob.visible = false;
     this.refl.mat.opacity = 0.62;
     this.refl.blob.visible = false;
     // the phone of scenes 6-7 (screen shows the photo)
@@ -79,7 +82,7 @@ export class World {
       this.fog.density = look === "sunrise" || look === "morning" ? 0.0042 : 0.0045;
     } else this.city.setLook(look as "overcast" | "dusk" | "night", t);
     this.hero.visible = false; this.refl.visible = false; this.cu.visible = false; this.watcher.visible = false;
-    this.pigeon.visible = false; this.hand.visible = false;
+    this.pigeon.visible = false; this.hand.visible = false; this.glow.visible = false;
     for (const c of [this.hero, this.refl, this.cu]) c.pivot.rotation.set(0, 0, 0);
     this.phone.visible = false;
     for (const l of this.city.pointLights) l.intensity = 0;
@@ -109,6 +112,17 @@ export class World {
     const t = pm.fromScene(es, 0.02).texture; pm.dispose();
     this.envs.set(key, t);
     return t;
+  }
+
+  /** lay the glow card exactly over another card (same frame, same transform), drawn with fn */
+  glowOver(host: Card, fn: (ctx: CanvasRenderingContext2D) => void) {
+    const g = this.glow;
+    if (g.canvas.width !== host.canvas.width || g.canvas.height !== host.canvas.height) { g.canvas.width = host.canvas.width; g.canvas.height = host.canvas.height; g.tex.dispose(); }
+    g.setFrame(host.frame);
+    g.draw((ctx) => { ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height); fn(ctx); });
+    g.pivot.position.copy(host.pivot.position); g.pivot.quaternion.copy(host.pivot.quaternion);
+    g.mesh.position.z = host.mesh.position.z + 0.002;
+    g.visible = true; g.blob.visible = false;
   }
 
   /** psi for a character at p facing world direction dir, seen from cam */

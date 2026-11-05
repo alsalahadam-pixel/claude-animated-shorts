@@ -173,6 +173,16 @@ export class City {
     R.add(mesh(new THREE.BoxGeometry(0.4, 0.3, z1 - z0), std("#2a2c36"), [CITY.shopGlassX + 0.15, 0.3, (z0 + z1) / 2], false));
     const ss = neon("ATELIER", "#b06bff", 4.2, 0.9, 1.6); ss.position.set(CITY.shopGlassX + 0.1, 3.95, (z0 + z1) / 2); ss.rotation.y = Math.PI / 2; R.add(ss); this.trackNeon(ss);
 
+    // bollards along the west curb by the shop window: foreground parallax for the tracking shot
+    for (let z = -60; z > -100; z -= 2.6) {
+      R.add(mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.9, 12), std("#20222c", { roughness: 0.4, metalness: 0.5 }), [-8.45, 0.6, z]));
+      R.add(mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.05, 12), std("#c9a24a", { roughness: 0.4, metalness: 0.6 }), [-8.45, 0.95, z], false));
+    }
+    // parking meter on the east kerb near the shop camera (foreground of the camera-test shot)
+    const meter = new THREE.Group(); meter.position.set(8.75, 0.15, -8.2); R.add(meter);
+    meter.add(mesh(new THREE.CylinderGeometry(0.04, 0.05, 1.2, 10), std("#2a2c34", { metalness: 0.6, roughness: 0.4 }), [0, 0.6, 0]));
+    meter.add(mesh(rbox(0.22, 0.34, 0.16, 0.04), std("#3a3d48", { metalness: 0.5, roughness: 0.35 }), [0, 1.35, 0]));
+    meter.add(mesh(new THREE.PlaneGeometry(0.12, 0.08), glow("#ff3a2a", 1.6), [0, 1.4, 0.081], false));
     // traffic lights at the intersection (red forever)
     // lamps face the oncoming traffic: the near light (z = -30.6) faces +z toward the camera side
     for (const [x, z, ry] of [[-9.3, -30.6, 0], [9.3, -49.4, Math.PI]] as [number, number, number][]) {

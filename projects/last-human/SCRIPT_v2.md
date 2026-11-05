@@ -15,13 +15,16 @@ The viewer must be able to work these out, and no frame may break them.
    Street lamps, neon signs and lit windows stay exactly as they were: lit, never flickering.
    Dust in the light beams hangs still. There is no wind, no ticking, no hum of traffic.
 2. **Only the sky still turns.** The sun rose on Day 1 and nights still fall. This is how he counts the days.
-3. **Only two things move: him, and "them".** The cameras, the reflection, the message on his phone and the double are
-   all "them". Every moving human-made thing in the film is one of these.
+3. **Only two things move: him, and "them".** The cameras, the reflection, the message on his phone and the entity are
+   all "them": one thing, wearing different shapes. Every moving human-made thing in the film is one of these.
 4. **He has not slept since 06:12 on Day 1.** This is said once, early (0:12), and never repeated. The photo pays it off.
-5. **Deliberately unanswered (Part 2 hook):** who took the photo, if the double was asleep in it?
+5. **Deliberately unanswered (Part 2 hook):** who took the photo of "him" asleep, and how long has it been practising?
 
 v1 details removed because they broke these rules: TV static, a ticking clock, neon flicker, wind gusts, blinking
-hazard lights, moving dust, street lamps switched off in the daytime shots, and the tall shadow creature.
+hazard lights, moving dust, street lamps switched off in the daytime shots.
+
+v3: the tall shadow entity from v1's final seconds is back, unchanged in design, and now it has a reason to exist
+(see section 6). Only the entity ever smiles; he never does.
 
 ---
 
@@ -56,7 +59,8 @@ Under the camera. He steps left: it follows. He steps right: it follows. Then ev
 **EXT. SHOP WINDOW — CONTINUOUS**
 His reflection walks with him. He stops and faces it. He raises a hand; it raises a hand. He tilts his head; it
 tilts, a beat late. He lowers his hand; later still. He steps back and stops. It takes one more step. Silence.
-It turns its head on its own, and smiles.
+It turns its head on its own. Its face goes black. His shape drains out of it, and something else is standing in
+the glass where he was: too tall, too thin, a long neck. Two white eyes open. Then it grins.
 
 > NARRATOR (V.O.): It wasn't copying me. It was practising.
 
@@ -66,8 +70,8 @@ From: "Me". A photo of him, asleep in his bed. Sent 03:13.
 
 > NARRATOR (V.O.): A photo of me… asleep. Taken one minute ago. So who's sleeping in my bed?
 
-Across the dark room, the duvet rises and falls. Someone is breathing under it. It sits up, slowly. It has his
-face. It looks straight at us and smiles.
+Across the dark room, the duvet rises and falls. Something is breathing under it. It rises, slowly, far too tall
+to be him: the thing from the glass. It looks straight at us. Its eyes open. It grins.
 
 CUT TO BLACK. **PART 2?**
 
@@ -76,7 +80,8 @@ CUT TO BLACK. **PART 2?**
 ## 3. Shot-by-shot production plan
 
 Camera rule: locked-off shots with an imperceptible creep (0.1–0.2 % per frame, so nothing reads as a freeze).
-Only three shots move: S12 (track), S18 (slow push on the phone), S20 (slow push toward the bed). All cuts are hard
+Only three shots move: S12 (track), S18 (slow push on the phone), S20 (slow push toward the bed). Two sudden
+3-frame push-ins are kept for scares only: S15 and S21, each on the frame the entity's eyes open. All cuts are hard
 cuts: no dissolves, no dips except the final black.
 Caption rule: word-highlighted captions for narration (as v1); day/time labels in a small monospace style, top-left.
 Reaction rule: every visual beat lands 0–3 frames before its word.
@@ -128,6 +133,8 @@ Reaction rule: every visual beat lands 0–3 frames before its word.
 - Label: "DAY 2" 13.40–14.80.
 - V.O.: V05 "Everything they left behind stopped…" 13.55–16.11 (runs over the cut).
 - Sound: near silence: one footstep pattern, no wind, no traffic.
+- **Entity (plant):** far down the avenue, among the stopped cars, a tall thin dark figure stands in the fog. It
+  does not move. Nothing points at it; most viewers will only find it on a second watch.
 
 **S07 · 15.00–18.10 · f450–543 · The café cup: frozen steam**
 - Camera: locked close-up on the cup and the half-eaten meal; shallow focus.
@@ -187,10 +194,13 @@ Reaction rule: every visual beat lands 0–3 frames before its word.
   reflection takes one more step.** 37.90–38.30 its head turns toward us on its own; his body stays frozen.
 - Sound: the glass tone cuts out on the step. **One wet footstep is the only sound.** Then dead silence to 38.40.
 
-**S15 · 38.40–43.70 · f1152–1311 · The smile**
-- Camera: locked close-up on the reflection through the glass, faint glass streaks.
-- Action: his face exactly, but with dead eyes (no highlights) and pinpoint pupils. 38.80–40.00 the mouth slowly
-  stretches into a too-wide smile with teeth. Holds, unblinking, to the cut.
+**S15 · 38.40–43.70 · f1152–1311 · It was never him**
+- Camera: locked close-up on the reflection through the glass, faint glass streaks. On 40.57 (the eyes) a sudden
+  3-frame push-in, then dead still.
+- Action: 38.40–39.53 his face exactly, blank, unblinking. 39.53–40.00 it goes black, a purple edge of light
+  around the silhouette. 40.00–40.47 his shape drains out of it: the hair goes, the head narrows and stretches, the
+  neck lengthens. What is left is the entity. 40.57 two white eyes snap open (2 frames). 41.20–43.10 its head tips
+  to one side. 41.93–43.07 the grin spreads. Holds to the cut. He never smiles: only it does.
 - V.O. (close, quiet): V10 "It wasn't copying me." 39.90–41.59 · V11 "It was practising." 41.85–43.39
 - Sound: a sub drop as the smile starts and a slow reversed swell under the lines. Hard-cut by the slam.
 
@@ -221,24 +231,24 @@ Reaction rule: every visual beat lands 0–3 frames before its word.
 - Sound: everything drops out except a thin held note that fades away by 54.50.
 
 **S20 · 54.50–58.30 · f1635–1749 · The bed**
-- Camera: his point of view across the dark room; very slow push toward the bed. Window glow purple and teal; the
-  bedside clock still reads 06:12.
-- Action: 54.50–55.70 the duvet rises and falls: two slow breaths. 55.70–58.30 the shape sits up, slowly and
-  smoothly, with no jolt (the mirror image of his own sit-up in S03); the duvet slides off its shoulders.
+- Camera: his eye line, low from the floor by the door, across the dark room; very slow push toward the bed. Window
+  glow purple and teal; the bedside clock still reads 06:12.
+- Action: 54.50–55.70 the duvet rises and falls: two slow breaths. 55.70–58.03 a shape unfolds out of the bed,
+  slow, even and unnatural (no jolt, no weight): far too tall, too thin, arms too long. The duvet sinks as it leaves.
+  58.03–58.17 its head tips sharply to one side.
 - Sound: silence except the slow breathing from the bed, which is not his.
 
-**S21 · 58.30–60.00 · f1749–1800 · The double**
-- Camera: locked close-up, straight on.
-- Action: his identical face: same hair, same hoodie, but dead eyes, pinpoint pupils, slightly paler skin; no blink,
-  no breathing movement. 58.30–58.60 it turns its head to look straight into the lens. 58.70–59.50 the smile
-  spreads, too wide. Holds 0.5 s. **Hard cut to black at 60.00.**
+**S21 · 58.30–60.00 · f1749–1800 · It looks at us**
+- Camera: locked close-up, straight on; a sudden 3-frame push-in on 58.53 as the eyes open.
+- Action: the entity's head, dark against the window, purple rim. 58.53 the eyes snap open, white. 58.80–59.67 the
+  grin spreads while the head keeps tipping. **Hard cut to black at 60.00.**
 - Sound: a high cluster rises over the last second, then **all sound cuts at 60.00**.
 
 **60.00–60.40 · f1800–1812 · Black.** Absolute silence.
 
-**S22 · 60.40–62.00 · f1812–1860 · PART 2?**
-- Small "THE LAST HUMAN ALIVE" above a large glitching "PART 2?", same style as v1.
-- Sound: one glitch hit and a low tail.
+**60.00–61.20 · f1800–1836 · Black and silence.**
+
+**61.20–62.50 · f1836–1875 · PART 2?** A small, quiet "PART 2?" fades in on black. No sound.
 
 ---
 
@@ -246,11 +256,13 @@ Reaction rule: every visual beat lands 0–3 frames before its word.
 - **Him:** the v1 design unchanged (dark messy hair, amber eyes, rust hoodie, navy jeans). Three days without sleep
   shows in heavier under-eye lines and slightly lowered lids. Hand-drawn key poses with smooth in-betweens; blinks
   only where listed (fear means fewer blinks).
-- **The reflection and the double:** identical drawing, but no eye highlights, pinpoint pupils, slightly cooler and
-  paler skin, no breathing, no blinks, and movement that is perfectly smooth (no overshoot, no secondary motion).
-  The wrongness is in the timing, not in a monster design.
+- **The reflection:** his exact drawing, his face (never a smile), mirrored. At first it is physically convincing:
+  same weight, same breathing, same step. Then it is late: 4, 10, 14 frames. Then it moves on its own.
+- **The entity:** the original v1 design, unchanged: a dark humanoid silhouette, too tall and too thin, long neck,
+  arms to the knees with long fingers, a purple rim of light, white eyes with no pupils, a long grin full of teeth.
+  It moves with no weight and no overshoot, and its scares are sudden (eyes open in 2 frames).
 - **New poses:** palm on glass and shout, facing the glass with hand raised, head tilt, stepping back, sliding down
-  the door to the floor, sitting on the floor with the phone, the double rising from the bed.
+  the door to the floor, sitting on the floor with the phone, the entity rising from the bed.
 
 ## 5. New production work (before any render)
 1. Cold-open camera choreography (aims before he arrives) and the camera-test steps.
@@ -258,9 +270,43 @@ Reaction rule: every visual beat lands 0–3 frames before its word.
 3. Frozen steam sculpture, hand pass-through, frozen pigeon, 06:12 public clock and bedside clock.
 4. Continuity pass: lamps lit in every scene, no flicker or blinking, brake lights on the queued cars, dust frozen.
 5. Mirror sequence with growing lag, the extra step and the independent head turn.
-6. Floor-sitting phone scene; phone UI from "Me" at 03:13; the bed with breathing duvet and the slow sit-up; the
-   double close-up; hard cut.
+6. Floor-sitting phone scene; phone UI from "Me" at 03:13; the bed with breathing duvet and the entity's rise; the
+   entity close-up; hard cut.
 7. Day labels; captions moved to a separate overlay pass; new mix with the silences listed above.
 
 Then, before the full render: a storyboard sheet of real stills from every shot for your sign-off.
 Timing: about 2 hours of build and stills, then about 3 hours of rendering.
+
+---
+
+## 6. v3 revisions: anatomy, camera, animation, the entity
+
+Review sheets: `review_v3/` (reference, anatomy in context, camera before/after, entity).
+
+**Anatomy.** One nose, drawn the same in every shot: a soft bridge line, a rounded tip and a nostril tick, centred in
+front view and set between the eyes in 3/4 view. Arms rebuilt as shoulder, upper arm, elbow, forearm and wrist with a
+sleeve that bends at the elbow and a ribbed cuff. Hands have a palm and four fingers of different lengths plus a thumb
+on the correct side, in five shapes: relaxed, fist, reach, palm and gripping a phone. Sneakers are built in 3D and
+read from any angle. Reaches are staged in profile or 3/4, never pointed straight at the lens.
+
+**Camera.** Wide shots for isolation (S06 avenue, S14), low angles for threat (S09 under the camera, S16 the door,
+S20 from the floor), close-ups for emotion (S15, S19, S21), foreground depth (S09 the cameras looming overhead, S12 a
+bollard in the foreground), and a profile two-shot for the mirror test (S13). Every move has a reason; no drifting.
+
+**Animation.** Walk with contact, down, passing and up positions, heel-toe roll, hip sway and arm follow-through.
+Standing poses breathe and shift weight. The eyes lead every head turn and overshoot slightly. He drops to the floor
+with acceleration and a settle. Long holds are dead still, and the scares are sudden (2–3 frames).
+
+**The entity: where and why.**
+- **S06 (0:14), the plant.** It stands far down the empty avenue on Day 2, among the stopped cars. It has been there
+  from the start, watching, like the cameras.
+- **S15 (0:38–0:43), the reveal.** The reflection that copied him, then lagged, then moved on its own, was never his.
+  His face goes black, his shape drains away, and the entity is standing in the glass. The line lands on it: "It
+  wasn't copying me. It was practising." Practising being him.
+- **S18 (0:48), the evidence.** The photo from "Me" of him asleep. He hasn't slept in three days. So the thing in
+  the photo is the entity, wearing his shape, in his bed.
+- **S20–S21 (0:55–1:00), the payoff.** Something breathes under his duvet and rises, too tall to be him. It looks
+  at us, its eyes open, it grins. Hard cut to black.
+- **The rule:** the entity is "them". The cameras that turn, the reflection that moves on its own, the message from
+  "Me" are all the same thing. He is the last human; it is learning to be one. He never smiles in the film; only it
+  does.

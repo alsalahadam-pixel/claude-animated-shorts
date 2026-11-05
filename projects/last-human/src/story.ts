@@ -4,7 +4,7 @@
 // Story rules (SCRIPT_v2.md §1): the world froze at 06:12 on Day 1; only the sky, he, and "them" move.
 import * as THREE from "three";
 import { World, Look } from "./world/World";
-import { drawCharacter, drawHand, drawHeadOnly, drawPigeon, Face, FACE0, Light, Pose, stand, walk } from "./char/draw";
+import { drawCharacter, drawHand, drawHeadOnly, drawPigeon, drawWatcher, Face, FACE0, haloBehind, inkOver, Light, Pose, stand, walk, watcherBody } from "./char/draw";
 import { CITY } from "./world/city";
 
 export const FPS = 30;
@@ -59,10 +59,11 @@ const NEON_L: Light = { key: "#d0b0ff", keyK: 0.8, amb: "#3c4280", ambK: 0.48, d
 const GLASS: Light = { key: "#b8a8ff", keyK: 0.62, amb: "#34407a", ambK: 0.46, dir: 30, rim: { color: "#5fd8ff", k: 0.45, dir: 160, w: 0.9 } };
 const DARK: Light = { key: "#8a7ad8", keyK: 0.35, amb: "#2c3266", ambK: 0.45, dir: 30, rim: { color: "#6a5cff", k: 0.75, dir: 25, w: 1.1 } };
 const NIGHT_ROOM: Light = { key: "#9a8ae8", keyK: 0.5, amb: "#2e3470", ambK: 0.5, dir: 20, rim: { color: "#4fd8d0", k: 0.6, dir: 15, w: 1.0 } };
-const PHONE: Light = { key: "#bfe0ff", keyK: 0.78, amb: "#262c5c", ambK: 0.42, dir: -80, rim: { color: "#7a5cff", k: 0.6, dir: 20, w: 1.0 } };
+const PHONE: Light = { key: "#bfe0ff", keyK: 0.78, amb: "#262c5c", ambK: 0.42, dir: -80, rim: { color: "#7a5cff", k: 0.4, dir: 20, w: 0.8 } };
 
 const BODY = { x0: -62, y0: -8, w: 124, h: 198 };
 const HEAD_CU = { x0: -34, y0: 118, w: 68, h: 72 };
+const GLASS_CU = { x0: -42, y0: 92, w: 84, h: 100 };   // S15: taller card so the reflection fades out below frame, not on a hard edge
 
 // ---------------------------------------------------------------- faces
 const TIRED: Partial<Face> = { tired: 1, open: 0.92 };                      // Day 3: 68 hours without sleep
@@ -84,7 +85,7 @@ function floorSit(t: number, face: Partial<Face>, o: { phone?: number; nod?: num
   const br = Math.sin(t * 2 * Math.PI * 0.32);
   return {
     psi: o.psi ?? 0, headPsi: o.headPsi, hip: [0, 18, 0], lean: 6, headTilt: 0, headNod: o.nod ?? 0, legsFront: true,
-    legL: [130, 12, 110], legR: [126, 16, 106], armL: [52, -18, 70], armR: [52, -18, 70],
+    legL: [130, 12, 110], legR: [126, 16, 106], armL: [59, -14, 46], armR: [59, -14, 46],
     handL: o.hands ?? "phone", handR: o.hands ?? "phone", phoneGlow: o.phone,
     face: { ...FACE0, ...TIRED, ...face }, breathe: br,
   };
@@ -96,6 +97,24 @@ function doublePose(face: Face, headPsi = 0): Pose {
     armL: [6, 10, 18], armR: [6, 10, 18], legL: [0, 4, 0], legR: [0, 4, 0], handL: "open", handR: "open", face, breathe: 0,
   };
 }
+/** eye darts: hold a gaze, then snap to the next one in 2 frames (eyes never drift smoothly) */
+function saccade(f: number, K: [number, [number, number]][]): [number, number] {
+  let prev = K[0][1];
+  for (let i = 1; i < K.length; i++) {
+    const [fk, v] = K[i];
+    if (f < fk) break;
+    const t = clamp((f - fk) / 2);
+    if (t < 1) return [lerp(prev[0], v[0], t), lerp(prev[1], v[1], t)];
+    prev = v;
+  }
+  return prev;
+}
+/** a sudden 3-frame push toward the subject (a scare beat), then hold */
+const snap = (base: (f: number) => Cam, f0: number, k: number) => (f: number): Cam => {
+  const c = base(f), t = ss((f - f0) / 3) * (f >= f0 ? 1 : 0);
+  return { ...c, pos: lerp3(c.pos, c.look, k * t) };
+};
+const STRIDE = 1.4;   // metres per walk cycle (two steps): feet stay planted
 const blinkAt = (f: number, at: number[]) => { for (const b of at) { const d = f - b; if (d >= 0 && d < 4) return [0.45, 0.05, 0.1, 0.6][d]; } return 1; };
 
 // ---------------------------------------------------------------- shared places
@@ -111,6 +130,7 @@ const END9 = SPOT.clone().addScaledVector(S09_RIGHT, 0.55);
 const GLASS_X = CITY.shopGlassX;            // the shop window (x = -12.9)
 const Z5 = -78.2;                           // where he stops at the glass
 const HERO_X5 = -11.75;
+const HERO_X13 = -12.25;                    // S13-S15: he has stepped up to the glass
 const mirrorX = (x: number) => 2 * GLASS_X - x;
 const DOOR_SIT = V([-2.05, 0, 2.6]);        // on the floor, back against the door
 const BED_HIP = V([1.55, 0.58, -1.62]);
@@ -211,10 +231,14 @@ export const SHOTS: Shot[] = [
     act: (f, w, cam) => {
       const d = 3.0 + ((f - 402) / FPS) * 1.25;
       const p = V([-0.6, 0, -1 - d]);
-      w.place(w.hero, walk(World.psi(p, V([0.02, 0, -1]), cam), d / 1.5, { ...TIRED }), OVERCAST, BODY, p, cam, { lineK: 1.4 });
+      w.place(w.hero, walk(World.psi(p, V([0.02, 0, -1]), cam), d / STRIDE, { ...TIRED }), OVERCAST, BODY, p, cam, { lineK: 1.4 });
       const b = w.pigeon; b.setFrame({ x0: -34, y0: -14, w: 64, h: 52 });
       b.draw((ctx, F) => drawPigeon(ctx, OVERCAST, F));
       b.stand(V([0.25, 5.05, 6.4]), cam.position); b.visible = true; b.blob.visible = false;
+      // plant: far down the avenue, in the fog, something tall stands perfectly still (the only other figure in the film)
+      const e = w.watcher; e.setFrame({ x0: -45, y0: -4, w: 90, h: 255 });
+      e.draw((ctx, F) => drawWatcher(ctx, F, { eyes: 0, smile: 0, rim: 0.1, tilt: -3, lean: 0 }));
+      e.stand(V([-2.4, 0, -47]), cam.position); e.visible = true; e.blob.visible = false;
     },
   },
   // S07 — the café: steam hangs over the cup like glass; his fingers pass through it and nothing moves
@@ -239,7 +263,7 @@ export const SHOTS: Shot[] = [
     act: (f, w, cam) => {
       const d = ((f - 546) / FPS) * 1.1;
       const p = V([-4.4, 0, -20.5 - d]);
-      w.place(w.hero, walk(World.psi(p, V([0, 0, -1]), cam), d / 1.5, { ...TIRED }), DUSK, BODY, p, cam);
+      w.place(w.hero, walk(World.psi(p, V([0, 0, -1]), cam), d / STRIDE, { ...TIRED }), DUSK, BODY, p, cam);
     },
   },
   // S09 — Day 3: he tests it. Step left: it follows. Step right: it follows.
@@ -310,15 +334,15 @@ export const SHOTS: Shot[] = [
       const z = z12(f), d = (f - 849) / FPS * 1.1;
       w.practical(0, [-11.0, 3.8, z - 1.5], "#b07bff", 30, 9); w.practical(1, [-8.6, 6.0, z + 4], "#3fd8d0", 22, 12);
       const p = V([HERO_X5, 0.15, z]), pr = V([mirrorX(HERO_X5), 0.15, z]);
-      w.place(w.hero, walk(World.psi(p, V([0, 0, -1]), cam), d / 1.5, { ...TIRED, look: [0.2, 0], browIn: 0.8 }), NEON, BODY, p, cam, { floorY: 0.15 });
-      w.place(w.refl, walk(World.psi(pr, V([0, 0, -1]), cam), d / 1.5, { ...TIRED, look: [0.2, 0], browIn: 0.8 }), GLASS, BODY, pr, cam, { blob: false });
+      w.place(w.hero, walk(World.psi(p, V([0, 0, -1]), cam), d / STRIDE, { ...TIRED, look: [0.2, 0], browIn: 0.8 }), NEON, BODY, p, cam, { floorY: 0.15 });
+      w.place(w.refl, walk(World.psi(pr, V([0, 0, -1]), cam), d / STRIDE, { ...TIRED, look: [0.2, 0], browIn: 0.8 }), GLASS, BODY, pr, cam, { blob: false });
       w.refl.mat.opacity = 0.7;
     },
   },
   // S13 — the mirror test: in sync, then 4 frames late, then 10, then 14
   {
     id: "S13", a: 918, b: 1062, look: "night", grade: "night",
-    cam: locked(918, 1062, [-12.35, 1.5, -71.8], [-12.95, 1.35, -78.2], 42, 0.06),
+    cam: locked(918, 1062, [-11.95, 1.5, -71.6], [-12.9, 1.35, -78.2], 40, 0.06),
     dof: () => ({ cInf: 3, focus: [-12.9, 1.45, Z5] }),
     act: (f, w, cam) => act13(f, w, cam),
   },
@@ -329,25 +353,45 @@ export const SHOTS: Shot[] = [
     dof: () => ({ cInf: 3, focus: [-12.9, 1.4, Z5] }),
     act: (f, w, cam) => act14(f, w, cam),
   },
-  // S15 — close on the reflection: his own face, smiling on its own
+  // S15 — close on the reflection: his face, blank; it goes black; his shape drains out of it and the entity is left; eyes, then the grin
   {
     id: "S15", a: 1152, b: 1311, look: "night", grade: "night",
-    cam: locked(1152, 1311, [-12.72, 1.64, -76.3], [-14.05, 1.63, -78.2], 28, 0.05),
-    dof: () => ({ cInf: 9, focus: [-14.05, 1.64, Z5] }),
+    cam: snap(locked(1152, 1311, [-12.45, 1.64, -76.4], [-13.55, 1.63, -78.2], 28, 0.05), 1217, 0.06),
+    dof: () => ({ cInf: 9, focus: [-13.55, 1.64, Z5] }),
     act: (f, w, cam) => {
       w.practical(0, [-12.2, 2.6, -77.6], "#b07bff", 14, 5);
-      const pr = V([mirrorX(HERO_X5) + 0.0, 0.15, Z5]);
-      const pose = stand(World.psi(pr, V([1, 0, 0.05]), cam), 0, SAME(ramp(f, 1164, 1200)));
-      pose.breathe = 0; pose.headTilt = -2 * ramp(f, 1164, 1200);
-      w.cu.setFrame(HEAD_CU);
-      w.cu.draw((ctx, F) => { drawCharacter(ctx, pose, GLASS, F, { lineK: 0.75 }); glassTint(ctx); });
-      w.cu.stand(pr, cam.position); w.cu.visible = true; w.cu.blob.visible = false; w.cu.mat.opacity = 0.86;
+      const pr = V([mirrorX(HERO_X13), 0.15, Z5]);
+      const pose = stand(World.psi(pr, V([1, 0, 0.05]), cam), 0, { ...TIRED, open: 1.0, pupil: 0.9, brow: -0.05, browIn: 0.05, mouth: "neutral", look: [0, 0] });
+      pose.breathe = 0; pose.headTilt = 0;
+      const ink = ramp(f, 1186, 1200), morph = ramp(f, 1199, 1214), eyes = ramp(f, 1217, 1219), grin = ramp(f, 1258, 1292);
+      const look = { eyes, smile: grin, rim: 0.45, tilt: -7 * ramp(f, 1236, 1290), lean: 0 };
+      let head: DOMMatrix | null = null;
+      w.cu.setFrame(GLASS_CU);
+      w.cu.draw((ctx, F) => {
+        drawCharacter(ctx, pose, GLASS, F, { lineK: 0.75, onHead: (m) => { head = m; } });
+        glassTint(ctx); inkOver(ctx, ink * 0.97);
+        const hm = head as DOMMatrix | null;
+        if (hm && morph > 0) {
+          // his shape narrows, stretches and fades while the entity's (eye line on his eye line) firms up out of it
+          const him = copyCanvas(ctx.canvas), it = blankCanvas(ctx.canvas), c = hm.transformPoint(new DOMPoint(0, -3));
+          const ix = it.getContext("2d")!; ix.setTransform(hm); entityOverHead(ix, morph); watcherBody(ix, look); glassTint(ix);
+          ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+          ctx.translate(c.x, c.y); ctx.scale(1 - 0.3 * morph, 1 + 0.16 * morph); ctx.translate(-c.x, -c.y);
+          ctx.globalAlpha = 1 - morph; ctx.drawImage(him, 0, 0);
+          ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = morph; ctx.drawImage(it, 0, 0); ctx.restore();
+        }
+        if (ink > 0) haloBehind(ctx, `rgba(110, 92, 255, ${(0.85 * ink).toFixed(3)})`, 18);
+        fadeBottom(ctx, 0.3);
+      });
+      w.cu.stand(pr, cam.position); w.cu.visible = true; w.cu.blob.visible = false; w.cu.mat.opacity = 0.9;
+      const hm = head as DOMMatrix | null;
+      if (hm && eyes > 0) w.glowOver(w.cu, (ctx) => { ctx.setTransform(hm); entityOverHead(ctx, 1); watcherBody(ctx, { ...look, glowOnly: true }); });
     },
   },
   // S16 — home: the door slams, the chain goes on, he slides down to the floor
   {
     id: "S16", a: 1311, b: 1377, look: "aptNight", grade: "night",
-    cam: locked(1311, 1377, [-0.65, 1.42, 0.6], [-2.1, 1.0, 2.9], 44, 0.03),
+    cam: locked(1311, 1377, [-1.05, 0.42, 1.0], [-2.1, 1.15, 2.9], 46, 0.03),
     dof: () => ({ cInf: 5, focus: [-2.1, 1.0, 2.6] }),
     act: (f, w, cam) => {
       const p = V([-2.05, 0, 2.55]);
@@ -356,13 +400,20 @@ export const SHOTS: Shot[] = [
       const face = V([0, 0, 1]).lerp(V([0.4, 0, -1]), turn).normalize();
       if (f < 1350) {
         const pose = stand(World.psi(p, face, cam), f / FPS, { ...TIRED, open: 1.2, browIn: 1.2 });
-        const reach = ramp(f, 1326, 1334) * (1 - ramp(f, 1340, 1347));
-        pose.armR = [lerp(5, 112, reach), lerp(6, 14, reach), lerp(8, 34, reach)];
-        pose.armL = [lerp(5, 60, reach * 0.6), 10, lerp(8, 40, reach)];
-        pose.lean = lerp(2, 8, reach);
+        const reach = ramp(f, 1324, 1331), drag = ramp(f, 1332, 1338), rel = ramp(f, 1341, 1348);
+        const out: [number, number, number] = [lerp(5, 86, reach), lerp(6, 38, reach), lerp(8, 8, reach)];
+        const across: [number, number, number] = [84, -8, 20];
+        const held = out.map((v, i) => lerp(v, across[i], drag)) as [number, number, number];
+        pose.armR = held.map((v, i) => lerp(v, [5, 6, 8][i], rel)) as [number, number, number];
+        // the other hand braces flat on the door
+        const brace = ramp(f, 1320, 1327) * (1 - rel);
+        pose.armL = [lerp(5, 72, brace), lerp(7, 4, brace), lerp(10, 26, brace)]; pose.handL = brace > 0.5 ? "palm" : "open";
+        pose.lean = lerp(2, 7, Math.max(reach, brace) * (1 - rel)); pose.twist = 8 * reach * (1 - drag) - 6 * drag * (1 - rel);
         w.place(w.hero, pose, NIGHT_ROOM, BODY, p, cam);
       } else {
-        const s = ramp(f, 1350, 1373);
+        // he drops (accelerating), lands, and settles: weight, not a smooth tween
+        const fall = clamp((f - 1350) / 13);
+        const s = clamp(fall * fall * 1.06 - 0.06 * Math.sin(clamp((f - 1363) / 10) * Math.PI));
         const st = stand(World.psi(p, face, cam), f / FPS, { ...TIRED, open: 1.2, browIn: 1.2 });
         const fl = floorSit(f / FPS, { open: 1.2, browIn: 1.2 }, { psi: st.psi, hands: "fist" });
         const pose: Pose = { ...fl, hip: [0, lerp(93, 18, s), 0], legL: [lerp(0, 130, s), 12, lerp(2, 110, s)], legR: [lerp(0, 126, s), 16, lerp(2, 106, s)], lean: lerp(2, 6, s), legsFront: s > 0.5 };
@@ -380,7 +431,7 @@ export const SHOTS: Shot[] = [
       const buzz = (f >= 1392 && f < 1397) || (f >= 1404 && f < 1409);
       const flinch = ramp(f, 1392, 1395) * (1 - ramp(f, 1400, 1410));
       const face: Partial<Face> = { open: lit ? 1.15 : blinkAt(f, [1384]) * 0.88, pupil: lit ? 0.7 : 0.9, browIn: 1.1, brow: lit ? 0.5 : 0, look: [0, -0.8], mouth: "tight" };
-      const pose = floorSit(f / FPS, face, { phone: lit ? 1 : 0, nod: 14 - 8 * flinch, psi: World.psi(DOOR_SIT, V([0.15, 0, -1]), cam) });
+      const pose = floorSit(f / FPS, face, { phone: lit ? 1 : 0, nod: 14 - 8 * flinch, psi: World.psi(DOOR_SIT, V([0.6, 0, -1]), cam) });
       if (buzz) pose.hip = [((f % 2) - 0.5) * 0.6, 18, 0];
       w.place(w.hero, pose, lit ? PHONE : DARK, BODY, DOOR_SIT, cam);
       w.apt.phoneLight.position.set(-2.0, 0.6, 2.25); w.apt.phoneLight.intensity = lit ? 0.9 : 0; w.apt.phoneLight.distance = 1.6; w.apt.phoneLight.color.set("#bfe0ff");
@@ -404,9 +455,12 @@ export const SHOTS: Shot[] = [
     cam: locked(1563, 1635, [-1.86, 0.9, 1.95], [-2.05, 0.86, 2.6], 32, 0.04),
     dof: () => ({ cInf: 12, focus: [-2.05, 0.88, 2.6] }),
     act: (f, w, cam) => {
-      const lift = ramp(f, 1575, 1584), turn = ramp(f, 1590, 1622);
-      const face: Partial<Face> = { open: 1.18, pupil: 0.6, brow: 0.6, browIn: 1.2, mouth: "part", mouthOpen: 0.25, look: [lerp(0, -0.9, turn), lerp(-0.8, -0.1, lift)] };
-      const pose = floorSit(f / FPS, face, { phone: 1, nod: lerp(14, 0, lift), headPsi: lerp(0, -38, turn), psi: World.psi(DOOR_SIT, V([0.15, 0, -1]), cam) });
+      const lift = ramp(f, 1575, 1582);
+      const turn = ss((f - 1594) / 26) + 0.06 * Math.sin(clamp((f - 1614) / 10) * Math.PI);   // the head follows the eyes, overshoots, settles
+      const look = saccade(f, [[1563, [0, -0.8]], [1574, [0, -0.15]], [1589, [-0.95, 0.0]]]);
+      const face: Partial<Face> = { open: f < 1589 ? 1.12 : 1.3, pupil: f < 1589 ? 0.7 : 0.5, brow: f < 1589 ? 0.5 : 1.0, browIn: 1.25, mouth: "part", mouthOpen: f < 1589 ? 0.2 : 0.35, look };
+      const pose = floorSit(f / FPS, face, { phone: 1, nod: lerp(14, -2, lift), headPsi: lerp(0, -40, turn), psi: World.psi(DOOR_SIT, V([0.15, 0, -1]), cam) });
+      pose.breathe = Math.sin((f / FPS) * Math.PI * 2 * 0.9);   // breathing faster now
       w.cu.setFrame({ x0: -36, y0: 52, w: 72, h: 76 });
       w.cu.draw((ctx, F) => drawCharacter(ctx, pose, PHONE, F, { lineK: 0.75 }));
       w.cu.stand(DOOR_SIT, cam.position); w.cu.visible = true; w.cu.blob.visible = false;
@@ -419,27 +473,29 @@ export const SHOTS: Shot[] = [
     cam: (f) => keys([{ f: 1635, pos: [-2.0, 0.86, 2.3], look: [1.55, 0.78, -1.75], fov: 36 }, { f: 1749, pos: [-1.55, 0.87, 1.82], look: [1.55, 0.82, -1.7], fov: 34 }], f),
     dof: () => ({ cInf: 4, focus: [1.55, 0.9, -1.7] }),
     act: (f, w, cam) => {
-      const u = ss((f - 1671) / 78);                       // 1.2 s of breathing, then 2.6 s rising
+      const u = clamp((f - 1671) / 70) ** 1.15;             // 1.2 s of breathing, then a slow, even, unnatural rise
       w.apt.setBody(1 - 0.7 * u, ((f - 1635) / FPS) * Math.PI * 2 * 0.55);
-      const c = w.hero; c.setFrame({ x0: -45, y0: -10, w: 90, h: 100 });
-      c.draw((ctx, F) => drawCharacter(ctx, doublePose(SAME(0)), { ...NIGHT_ROOM, keyK: 0.62, ambK: 0.58 }, F));
+      // the entity's upper body (drawn waist-up); the card pivots at its waist, so it unfolds out of the bed
+      const c = w.watcher; c.setFrame({ x0: -45, y0: -10, w: 90, h: 150 });
+      c.draw((ctx) => drawWatcher(ctx, { x0: -45, y0: 100, w: 90, h: 150 }, { eyes: 0, smile: 0, rim: 0.45, tilt: f > 1741 ? -6 * ramp(f, 1741, 1745) : 0, lean: 0 }));
       const yaw = Math.atan2(cam.position.x - BED_HIP.x, cam.position.z - BED_HIP.z);
-      c.pivot.position.copy(BED_HIP); c.pivot.rotation.set(0, yaw, 0); c.pivot.rotateX(-(1 - u) * 0.95);
+      c.pivot.position.copy(BED_HIP); c.pivot.rotation.set(0, yaw, 0); c.pivot.rotateX(-(1 - u) * 1.35);
       c.visible = true; c.blob.visible = false;
     },
   },
   // S21 — the double: his face, looking straight at us, smiling. Hard cut to black at 60.0 s.
   {
     id: "S21", a: 1749, b: 1800, look: "aptNight", grade: "night",
-    cam: locked(1749, 1800, [0.97, 1.27, -0.95], [1.55, 1.26, -1.62], 30, 0.04),
-    dof: () => ({ cInf: 10, focus: [1.55, 1.27, -1.62] }),
+    cam: snap(locked(1749, 1800, [0.92, 1.6, -0.9], [1.55, 1.72, -1.62], 30, 0.04), 1756, 0.07),
+    dof: () => ({ cInf: 10, focus: [1.55, 1.72, -1.62] }),
     act: (f, w, cam) => {
       w.apt.setBody(0.3, 0);
-      const pose = doublePose(SAME(ramp(f, 1761, 1785)), lerp(-25, 0, ramp(f, 1749, 1758)));
-      w.cu.setFrame({ x0: -34, y0: 35, w: 68, h: 72 });
-      w.cu.draw((ctx, F) => drawCharacter(ctx, pose, NIGHT_ROOM, F, { lineK: 0.75 }));
-      w.cu.pivot.position.copy(BED_HIP); w.cu.pivot.rotation.set(0, Math.atan2(cam.position.x - BED_HIP.x, cam.position.z - BED_HIP.z), 0);
-      w.cu.visible = true; w.cu.blob.visible = false;
+      const eyes = ramp(f, 1756, 1758), grin = ramp(f, 1764, 1790), tilt = -6 - 4 * ramp(f, 1770, 1796);
+      const c = w.watcher; c.setFrame({ x0: -26, y0: 82, w: 52, h: 62 });
+      c.draw((ctx) => drawWatcher(ctx, { x0: -26, y0: 192, w: 52, h: 62 }, { eyes, smile: grin, rim: 0.5, tilt, lean: 0 }));
+      c.pivot.position.copy(BED_HIP); c.pivot.rotation.set(0, Math.atan2(cam.position.x - BED_HIP.x, cam.position.z - BED_HIP.z), 0);
+      c.visible = true; c.blob.visible = false;
+      if (eyes > 0) w.glowOver(c, (ctx) => drawWatcher(ctx, { x0: -26, y0: 192, w: 52, h: 62 }, { eyes, smile: grin, rim: 0, tilt, lean: 0, glowOnly: true }));
     },
   },
   // END — black and silence (the PART 2? prompt is an overlay from PROMPT_AT)
@@ -461,19 +517,19 @@ function act13(f: number, w: World, cam: THREE.PerspectiveCamera) {
   const tilt = (g: number) => 7 * ramp(g, 990, 1004);
   const lean = (g: number) => ramp(g, 1044, 1060);
   const turnH = ramp(f, 918, 930);
-  const p = V([HERO_X5, 0.15, Z5]);
+  const p = V([lerp(HERO_X5, HERO_X13, ramp(f, 920, 940)), 0.15, Z5]);
   const hface = V([0, 0, -1]).lerp(V([-1, 0, 0]), turnH).normalize();
   const hero = stand(World.psi(p, hface, cam), f / FPS, { ...TIRED, open: 1.15, browIn: 1.1, look: [0, 0] });
   const r = raise(f, 0);
-  hero.armR = [lerp(3, 72, r), lerp(6, 4, r), lerp(8, 34, r)];
+  hero.armR = [lerp(3, 58, r), lerp(6, 6, r), lerp(8, 58, r)]; hero.handR = r > 0.5 ? "palm" : "open";
   hero.headTilt = tilt(f); hero.lean = 2 + 8 * lean(f);
   w.place(w.hero, hero, NEON, BODY, p, cam, { floorY: 0.15 });
   // reflection: mirror position, mirror arm, same timing at first, then later and later
-  const pr = V([mirrorX(HERO_X5) - 0.25 * lean(f - 14), 0.15, Z5]);
+  const pr = V([mirrorX(p.x) - 0.25 * lean(f - 14), 0.15, Z5]);
   const rface = V([0, 0, -1]).lerp(V([1, 0, 0]), turnH).normalize();
-  const refl = stand(World.psi(pr, rface, cam), f / FPS, SAME(0));
+  const refl = stand(World.psi(pr, rface, cam), (f - 4) / FPS, { ...TIRED, open: 1.15, browIn: 1.1, look: [0, 0] });
   const rr = raise(f, 10);
-  refl.armL = [lerp(3, 72, rr), lerp(6, 4, rr), lerp(8, 34, rr)];
+  refl.armL = [lerp(3, 58, rr), lerp(6, 6, rr), lerp(8, 58, rr)]; refl.handL = rr > 0.5 ? "palm" : "open";
   refl.headTilt = -tilt(f - 4); refl.lean = 2 + 8 * lean(f - 14);
   w.place(w.refl, refl, GLASS, BODY, pr, cam, { blob: false });
   w.refl.mat.opacity = 0.74;
@@ -483,7 +539,7 @@ function act13(f: number, w: World, cam: THREE.PerspectiveCamera) {
 function act14(f: number, w: World, cam: THREE.PerspectiveCamera) {
   w.practical(0, [-11.4, 3.6, -79.4], "#b07bff", 30, 9); w.practical(1, [-10.0, 3.0, -75.5], "#3fd8d0", 16, 10);
   const back = ramp(f, 1074, 1089);
-  const xh = HERO_X5 + 0.32 * back;
+  const xh = HERO_X13 + 0.32 * back;
   const p = V([xh, 0.15, Z5]);
   const stepping = f >= 1074 && f < 1089;
   const hero = stepping ? walk(World.psi(p, V([-1, 0, 0]), cam), -back * 0.5, { ...TIRED, open: 1.25, pupil: 0.6, browIn: 1.2 }, { amp: 0.6 })
@@ -495,8 +551,9 @@ function act14(f: number, w: World, cam: THREE.PerspectiveCamera) {
   const pr = V([xr, 0.15, Z5]);
   const rStep = (f >= 1074 && f < 1089) || (f >= 1101 && f < 1119);
   const headTurn = ramp(f, 1137, 1149);
-  const refl = rStep ? walk(World.psi(pr, V([1, 0, 0]), cam), f < 1095 ? -back * 0.5 : extra * 0.5, SAME(0), { amp: 0.6 })
-    : stand(World.psi(pr, V([1, 0, 0]), cam), 0, SAME(0));
+  const rFace: Partial<Face> = f < 1101 ? { ...TIRED, open: 1.25, pupil: 0.6, browIn: 1.2 } : { ...TIRED, open: 1.0, brow: -0.05, browIn: 0.05, mouth: "neutral" };
+  const refl = rStep ? walk(World.psi(pr, V([1, 0, 0]), cam), f < 1095 ? -back * 0.5 : extra * 0.5, rFace, { amp: 0.6 })
+    : stand(World.psi(pr, V([1, 0, 0]), cam), 0, rFace);
   const camYaw = World.psi(pr, cam.position.clone().sub(pr).setY(0).normalize(), cam);
   if (!rStep) refl.headPsi = lerp(refl.psi, camYaw, headTurn);
   refl.breathe = 0;
@@ -518,6 +575,20 @@ function stripes(ctx: CanvasRenderingContext2D, k: number) {
   }
   ctx.restore();
 }
+/** from his head space (eye line at y -0.6, y up) into the entity's own units; k < 1 is mid-morph (wider, shorter) */
+function entityOverHead(ctx: CanvasRenderingContext2D, k: number) {
+  const K = 0.8;
+  ctx.translate(0, -0.6); ctx.scale(K * (1 + 0.28 * (1 - k)), K * (1 - 0.14 * (1 - k))); ctx.translate(0, -224);
+}
+/** the reflection dissolves into the dark glass toward the card's bottom edge */
+function fadeBottom(ctx: CanvasRenderingContext2D, k: number) {
+  const W = ctx.canvas.width, H = ctx.canvas.height, g = ctx.createLinearGradient(0, H, 0, H * (1 - k));
+  g.addColorStop(0, "rgba(0,0,0,1)"); g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = "destination-out"; ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.restore();
+}
+function blankCanvas(src: HTMLCanvasElement) { const c = document.createElement("canvas"); c.width = src.width; c.height = src.height; return c; }
+function copyCanvas(src: HTMLCanvasElement) { const c = blankCanvas(src); c.getContext("2d")!.drawImage(src, 0, 0); return c; }
+
 function glassTint(ctx: CanvasRenderingContext2D) {
   const W = ctx.canvas.width, H = ctx.canvas.height;
   ctx.save(); ctx.globalCompositeOperation = "source-atop";

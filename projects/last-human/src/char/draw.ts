@@ -9,6 +9,7 @@
 export type Vec = [number, number];
 export type V3 = [number, number, number];
 export type HeadView = "front" | "q3" | "side" | "q3back" | "back";
+export type HandKind = "open" | "reach" | "palm" | "fist" | "pocket" | "phone" | "hidden";
 export type Mouth = "neutral" | "tight" | "open" | "gasp" | "creep" | "part" | "smile";
 
 export type Face = {
@@ -35,8 +36,10 @@ export type Pose = {
   armR: [number, number, number];
   legL: [number, number, number];   // hip forward swing, abduction, knee bend (deg)
   legR: [number, number, number];
-  handL?: "open" | "fist" | "pocket" | "phone" | "hidden";
-  handR?: "open" | "fist" | "pocket" | "phone" | "hidden";
+  handL?: HandKind;
+  handR?: HandKind;
+  footL?: number;        // foot pitch (deg, + = toe up, - = heel lifted)
+  footR?: number;
   face: Face;
   breathe?: number;      // -1..1
   phoneGlow?: number;    // 0..1 phone screen brightness when holding a phone
@@ -202,7 +205,8 @@ function buildRig(P: Pose): Rig {
     const sw2 = sw - kn;
     const dir2: V3 = [Math.sin(ab) * 0.6, -Math.cos(sw2), Math.sin(sw2)];
     const ankle: V3 = [knee[0] + dir2[0] * SHIN, knee[1] + dir2[1] * SHIN, knee[2] + dir2[2] * SHIN];
-    const foot: V3 = [ankle[0] + side * 1.5, ankle[1] - ANKLE * 0.55, ankle[2] + 9];
+    const pitch = ((side > 0 ? P.footL : P.footR) ?? 0) * D;
+    const foot: V3 = [0, Math.sin(pitch), Math.cos(pitch)];   // toe direction (unit), body space
     return { knee, ankle, foot };
   };
   const arm = (sh: V3, a: [number, number, number], side: number) => {
@@ -233,66 +237,130 @@ function buildRig(P: Pose): Rig {
 // ---------------------------------------------------------------- body parts
 function drawLeg(pt: Painter, R: Rig, P: Pose, side: "L" | "R", dim: number) {
   const hip = side === "L" ? R.hipL : R.hipR, kn = side === "L" ? R.knL : R.knR, an = side === "L" ? R.anL : R.anR;
-  const ft = side === "L" ? R.footL : R.footR;
+  const fw = side === "L" ? R.footL : R.footR;
   const h = R.proj(hip), k = R.proj(kn), a = R.proj(an);
-  // shoe first (under the jeans hem)
-  const s = Math.abs(Math.sin(P.psi * D)), dirx = Math.sign(Math.sin(P.psi * D)) || 1;
-  const f = R.proj(ft);
-  const along = norm(sub(f, a));
-  const shoeLen = 12 + 16 * s, shoeH = 9.5;
-  const heel = add(a, mul(along, -4 * s - 1));
-  const toe = add(heel, mul(norm([along[0] * s + (1 - s) * 0.0001 * dirx, Math.min(along[1], -0.15)]), 0));
-  const fx = s > 0.35 ? along[0] : 0;
-  const base: Vec = [a[0] + fx * 3, a[1] - shoeH * 0.75];
-  const tip: Vec = [base[0] + fx * shoeLen * 0.62, base[1]];
-  const back: Vec = [base[0] - fx * shoeLen * 0.38 - (1 - s) * 6.2, base[1]];
-  const front: Vec = [base[0] + fx * shoeLen * 0.62 + (1 - s) * 6.2, base[1]];
-  void heel; void toe; void tip;
-  const shoe = smooth([
-    [back[0], back[1] - 1.2], [front[0], front[1] - 1.2], [front[0] + fx * 1.2, front[1] + 2.2],
-    [lerp(back[0], front[0], 0.6), base[1] + shoeH * 0.78], [a[0], a[1] + 1.5], [back[0] - fx * 0.5, base[1] + shoeH * 0.6],
-  ], true, 0.45);
+  // sneaker: a few points in foot space, projected, wrapped in a hull (reads from any yaw)
+  const up: V3 = [0, fw[2], -fw[1]];
+  const sx = side === "L" ? 1 : -1;
+  const at = (f: number, u: number, l: number): V3 => [an[0] + fw[0] * f + up[0] * u + sx * l, an[1] + fw[1] * f + up[1] * u, an[2] + fw[2] * f + up[2] * u];
+  const P3: V3[] = [at(-4.5, -8.6, 4.6), at(-4.5, -8.6, -4.6), at(19.5, -8.6, 4.8), at(19.5, -8.6, -4.6), at(21.5, -6.2, 0.5),
+    at(18, -3.2, 4.2), at(18, -3.2, -4.0), at(-4.8, 0.5, 3.8), at(-4.8, 0.5, -3.8), at(3, 1.6, 4.2), at(3, 1.6, -4.2), at(-1, 2.2, 0)];
+  const P2 = P3.map((q) => R.proj(q));
+  const hull = convexHull(P2);
+  const shoe = smooth(hull, true, 0.32);
   pt.part(shoe, PAL.shoe, { dim, shade: 0.6 });
-  const sole = new Path2D();
-  sole.moveTo(back[0], back[1] + 0.6); sole.lineTo(front[0], front[1] + 0.6);
-  pt.line(sole, 0.6);
-  // jeans
-  const wide = 15 - 2 * s;
-  const jeans = limbPath([h, k, a], [wide, 11.5, 10.5]);
+  // sole band: the lowest 2.3 cm of the shoe in screen space, lighter
+  const soleY = Math.min(...P2.map((q) => q[1]));
+  pt.c.save(); pt.c.clip(shoe); pt.c.fillStyle = litPair(PAL.sole, pt.L, dim)[1]; pt.c.fillRect(-400, soleY - 1, 800, 3.3); pt.c.restore();
+  const sl = new Path2D(); sl.moveTo(Math.min(...hull.map((q) => q[0])) + 0.8, soleY + 2.3); sl.lineTo(Math.max(...hull.map((q) => q[0])) - 0.8, soleY + 2.3);
+  pt.c.save(); pt.c.clip(shoe); pt.line(sl, 0.4); pt.c.restore();
+  // toe cap line (side views)
+  const tc = R.proj(at(15, -3.6, 0)), tb = R.proj(at(15, -8.0, 0));
+  if (Math.abs(tc[0] - tb[0]) + Math.abs(tc[1] - tb[1]) > 1) { const l = new Path2D(); l.moveTo(tc[0], tc[1]); l.quadraticCurveTo(tc[0] + (tc[0] - a[0]) * 0.08, (tc[1] + tb[1]) / 2, tb[0], tb[1] + 1.8); pt.c.save(); pt.c.clip(shoe); pt.line(l, 0.35); pt.c.restore(); }
+  // jeans: thigh, knee, shin, slightly flared hem over the shoe
+  const s = Math.abs(Math.sin(P.psi * D));
+  const wide = 15.5 - 2.5 * s;
+  const mid1 = lerpV(h, k, 0.5), mid2 = lerpV(k, a, 0.55);
+  const jeans = limbPath([h, mid1, k, mid2, a], [wide, 13.2, 11.2, 10.6, 11.4]);
   pt.part(jeans, PAL.jeans, { dim, shade: 1 });
-  // knee crease when bent
+  // knee crease when bent, on the inside of the bend
   const bend = Math.abs((side === "L" ? P.legL : P.legR)[2]);
-  if (bend > 15) {
-    const n = perp(norm(sub(a, h)));
-    const cr = new Path2D(); const c0 = add(k, mul(n, 2.5));
-    cr.moveTo(c0[0], c0[1]); cr.quadraticCurveTo(k[0] + 1, k[1] - 1, ...add(k, mul(n, -2.5)) as [number, number]);
-    pt.line(cr, 0.45);
+  if (bend > 12) {
+    const d1 = norm(sub(k, h)), d2 = norm(sub(a, k));
+    const cr = d1[0] * d2[1] - d1[1] * d2[0];
+    const n = perp(norm(add(d1, d2))), sg = cr > 0 ? 1 : -1;
+    const c0 = add(k, mul(n, sg * 3.6)), c1 = add(k, mul(n, sg * 1.2));
+    const cl = new Path2D(); cl.moveTo(c0[0], c0[1]); cl.quadraticCurveTo(...(add(k, mul(n, sg * 2.6)) as [number, number]), c1[0] - d2[0] * 1.2, c1[1] - d2[1] * 1.2);
+    pt.line(cl, 0.4);
   }
+}
+
+/** Andrew's monotone chain convex hull */
+function convexHull(pts: Vec[]): Vec[] {
+  const p = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cr = (o: Vec, a: Vec, b: Vec) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo: Vec[] = [], hi: Vec[] = [];
+  for (const q of p) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+  for (const q of p.slice().reverse()) { while (hi.length >= 2 && cr(hi[hi.length - 2], hi[hi.length - 1], q) <= 0) hi.pop(); hi.push(q); }
+  return lo.slice(0, -1).concat(hi.slice(0, -1));
 }
 
 function drawArm(pt: Painter, R: Rig, P: Pose, side: "L" | "R", dim: number) {
   const sh = side === "L" ? R.shL : R.shR, el = side === "L" ? R.elL : R.elR, wr = side === "L" ? R.wrL : R.wrR;
   const hand = (side === "L" ? P.handL : P.handR) ?? "open";
   const s = R.proj(sh), e = R.proj(el), w = R.proj(wr);
-  const dir = norm(sub(w, e));
-  // hand (under the cuff)
-  if (hand !== "pocket" && hand !== "hidden") {
-    const hc = add(w, mul(dir, 4.2));
-    const n = perp(dir);
-    const fist = hand === "fist" || hand === "phone";
-    const pts: Vec[] = fist
-      ? [add(w, mul(n, 3)), add(hc, add(mul(n, 3.4), mul(dir, 1.5))), add(hc, mul(dir, 4)), add(hc, add(mul(n, -3.2), mul(dir, 1.2))), add(w, mul(n, -3))]
-      : [add(w, mul(n, 3)), add(hc, add(mul(n, 3.2), mul(dir, 2.5))), add(hc, mul(dir, 5.6)), add(hc, add(mul(n, -2.8), mul(dir, 3.2))), add(hc, mul(n, -3.6)), add(w, mul(n, -3))];
-    pt.part(smooth(pts, true, 0.5), PAL.skin, { dim, shade: 0.5 });
-  }
-  const sleeve = limbPath([add(s, mul(norm(sub(e, s)), 2.5)), e, w], [12.5, 10.5, 9.5]);
+  const dir = norm(sub(w, e)), up = norm(sub(e, s));
+  // which screen side the thumb is on: thumbs point forward and toward the body
+  const t3: V3 = side === "L" ? [-0.45, 0, 0.9] : [0.45, 0, 0.9];
+  const ps = Math.sin(P.psi * D), pc = Math.cos(P.psi * D);
+  const tx = t3[0] * pc + t3[2] * ps;
+  const thumb = (tx * perp(dir)[0] >= 0 ? 1 : -1) as 1 | -1;
+  if (hand !== "pocket" && hand !== "hidden") drawHandShape(pt, w, dir, thumb, hand, dim);
+  // sleeve: shoulder cap, upper arm, elbow, baggy forearm
+  const m1 = lerpV(s, e, 0.45), m2 = lerpV(e, w, 0.5);
+  const sleeve = limbPath([add(s, mul(up, 1.5)), m1, e, m2, add(w, mul(dir, -0.5))], [13.8, 12.4, 10.8, 11.2, 10.2]);
   pt.part(sleeve, PAL.hood, { dim });
-  // cuff band
-  const n = perp(dir), c0 = add(w, mul(dir, -3.2));
-  const cuff = new Path2D(); const a0 = add(c0, mul(n, 5)), a1 = add(c0, mul(n, -5));
-  cuff.moveTo(a0[0], a0[1]); cuff.lineTo(a1[0], a1[1]);
-  pt.line(cuff, 0.5);
-  if (hand === "pocket") { /* forearm disappears into the pocket: nothing more */ }
+  // elbow: a crease on the inside of the bend
+  const cr = up[0] * dir[1] - up[1] * dir[0];
+  if (Math.abs(cr) > 0.35) {
+    const n = perp(norm(add(up, dir))), sg = cr > 0 ? 1 : -1;
+    const c0 = add(e, mul(n, sg * 3.4)), c1 = add(e, mul(n, sg * 0.8));
+    const cl = new Path2D(); cl.moveTo(c0[0], c0[1]); cl.quadraticCurveTo(e[0] + dir[0] * 1.5 + n[0] * sg * 2, e[1] + dir[1] * 1.5 + n[1] * sg * 2, c1[0] + dir[0] * 2, c1[1] + dir[1] * 2);
+    pt.line(cl, 0.42);
+  }
+  // ribbed cuff
+  const nn = perp(dir);
+  const seam = new Path2D(); const s0 = add(w, add(mul(dir, -3.2), mul(nn, 4.9))), s1 = add(w, add(mul(dir, -3.2), mul(nn, -4.9)));
+  seam.moveTo(s0[0], s0[1]); seam.quadraticCurveTo(...(add(w, mul(dir, -2.6)) as [number, number]), s1[0], s1[1]); pt.line(seam, 0.4);
+  for (const k of [-2.6, -0.9, 0.9, 2.6]) { const l = new Path2D(); const c = add(w, add(mul(dir, -1.5), mul(nn, k))); l.moveTo(...(add(c, mul(dir, -1.2)) as [number, number])); l.lineTo(...(add(c, mul(dir, 0.9)) as [number, number])); pt.line(l, 0.18); }
+}
+
+/** A hand at wrist w, pointing along dir, thumb on side `th` of perp(dir). Proportions in cm (palm 8, fingers 5.6-7.6). */
+function drawHandShape(pt: Painter, w: Vec, dir: Vec, th: 1 | -1, kind: HandKind, dim: number) {
+  const n = mul(perp(dir), th);
+  const P = (u: number, v: number): Vec => add(w, add(mul(dir, u), mul(n, v)));
+  const sk = { dim, shade: 0.45, lw: 0.8, rim: 0.3 };
+  if (kind === "phone") return;   // drawn with the phone (palms on its sides, fingers round its back)
+  if (kind === "fist") {
+    // closed hand: palm block, knuckle row, thumb wrapped across
+    const palm = smooth([P(-0.5, 2.9), P(4, 3.7), P(8.3, 3.2), P(9.4, 0.9), P(9.1, -2.4), P(7.4, -3.4), P(3, -3.1), P(-0.5, -2.7)], true, 0.5);
+    pt.part(palm, PAL.skin, sk);
+    for (const v of [1.6, -0.1, -1.8]) { const l = new Path2D(); const q0 = P(8.7, v), q1 = P(6.6, v - 0.3); l.moveTo(q0[0], q0[1]); l.lineTo(q1[0], q1[1]); pt.line(l, 0.3); }
+    pt.part(limbPath([P(2.2, 3.0), P(5.6, 3.6), P(8.0, 1.8)], [2.6, 2.3, 2.0]), PAL.skin, sk);
+    return;
+  }
+  if (kind === "open") {
+    const palm = smooth([P(-0.6, 2.8), P(3.4, 3.9), P(7.9, 3.6), P(8.6, 0.3), P(8.0, -3.0), P(4, -3.4), P(-0.6, -2.7)], true, 0.5);
+    pt.part(palm, PAL.skin, sk);
+    const d1 = rot(dir, -0.28 * th);
+    const grp = smooth([P(7.4, 3.5), add(P(11.2, 3.3), mul(d1, 0.6)), add(P(13.4, 1.6), mul(d1, 1.3)), add(P(13.6, -0.9), mul(d1, 1.0)), add(P(12.0, -3.0), mul(d1, 0.3)), P(7.6, -3.1)], true, 0.5);
+    pt.part(grp, PAL.skin, sk);
+    for (const v of [1.8, 0.0, -1.7]) { const l = new Path2D(); const q0 = P(8.4, v), q1 = add(P(11.4, v * 0.9), mul(d1, 0.8)); l.moveTo(q0[0], q0[1]); l.lineTo(q1[0], q1[1]); pt.line(l, 0.26); }
+    pt.part(limbPath([P(2.4, 2.9), P(5.2, 4.1), P(7.4, 4.4)], [2.5, 2.1, 1.8]), PAL.skin, sk);
+    return;
+  }
+  const spread = kind === "reach" ? 1 : kind === "palm" ? 0.35 : 0.12;
+  const curl = kind === "palm" ? 0.0 : 0.08;
+  const len = 1;
+  // palm (with the thumb's fleshy base)
+  const palm = smooth([P(-0.6, 2.8), P(3.4, 3.9), P(7.9, 3.5), P(8.4, 0.4), P(8.0, -3.0), P(4, -3.4), P(-0.6, -2.7)], true, 0.5);
+  pt.part(palm, PAL.skin, sk);
+  // fingers: index (thumb side) to pinky; two segments, the last one curls toward the palm
+  const F: [number, number, number][] = [[2.55, 6.9, 1.8], [0.85, 7.5, 1.85], [-0.85, 7.0, 1.75], [-2.45, 5.6, 1.55]];
+  F.forEach(([v, L, wd], i) => {
+    const ang = (1.5 - i) * 0.09 * spread;
+    const d0: Vec = rot(dir, ang * th);
+    const base = P(7.6, v);
+    const m: Vec = add(base, mul(d0, L * 0.55 * len));
+    const d1: Vec = rot(d0, -curl * th);
+    const tip: Vec = add(m, mul(d1, L * 0.45 * len));
+    pt.part(limbPath([base, m, tip], [wd, wd * 0.95, wd * 0.82]), PAL.skin, sk);
+  });
+  // thumb
+  const ta = kind === "reach" ? 0.75 : kind === "palm" ? 0.42 : 0.3;
+  const t0 = P(2.4, 2.9), td = rot(dir, ta * th);
+  const t1 = add(t0, mul(td, 3.2)), t2 = add(t1, mul(rot(td, -0.25 * th), 2.6));
+  pt.part(limbPath([t0, t1, t2], [2.5, 2.1, 1.8]), PAL.skin, sk);
 }
 
 /** torso silhouette from elliptical cross-sections: [height above hip, half-width, half-depth, z offset] */
@@ -490,6 +558,24 @@ function drawBrow(pt: Painter, cx: number, cy: number, w: number, side: number, 
   pt.line(p, 0.35);
 }
 
+/** the nose: a soft bridge line, a rounded tip and a hint of nostrils; small, centred, identical in every shot */
+function drawNose(pt: Painter, view: "front" | "q3") {
+  const c = pt.c;
+  if (view === "front") {
+    c.save(); c.globalAlpha = 0.2; c.fillStyle = litPair(PAL.skin, pt.L)[0];
+    c.beginPath(); c.ellipse(0.35, -6.0, 1.1, 0.3, 0, 0, Math.PI * 2); c.fill(); c.restore();
+    const br = new Path2D(); br.moveTo(0.45, -2.9); br.quadraticCurveTo(0.95, -4.1, 0.95, -5.05); pt.line(br, 0.36);
+    const tip = new Path2D(); tip.moveTo(1.05, -5.05); tip.bezierCurveTo(1.25, -5.75, 0.3, -5.95, -0.15, -5.75); tip.moveTo(-0.55, -5.5); tip.quadraticCurveTo(-0.95, -5.6, -1.05, -5.25);
+    pt.line(tip, 0.42);
+    return;
+  }
+  c.save(); c.globalAlpha = 0.2; c.fillStyle = litPair(PAL.skin, pt.L)[0];
+  c.beginPath(); c.ellipse(3.0, -6.0, 1.0, 0.28, -0.1, 0, Math.PI * 2); c.fill(); c.restore();
+  const br = new Path2D(); br.moveTo(1.9, -2.6); br.quadraticCurveTo(3.3, -3.7, 4.05, -4.9); pt.line(br, 0.36);
+  const tip = new Path2D(); tip.moveTo(4.1, -4.95); tip.bezierCurveTo(4.45, -5.55, 3.65, -5.9, 3.1, -5.65); tip.moveTo(2.55, -5.45); tip.quadraticCurveTo(2.2, -5.55, 2.1, -5.25);
+  pt.line(tip, 0.42);
+}
+
 function drawMouth(pt: Painter, cx: number, cy: number, w: number, F: Face, side = 0) {
   const c = pt.c;
   const m = F.mouth, o = F.mouthOpen;
@@ -569,14 +655,17 @@ function drawHead(pt: Painter, view: HeadView, F: Face, flipFace: boolean) {
   const face = view === "front"
     ? smooth([[0, 9.5], [6.8, 7.6], [8.4, 2], [8.1, -2.8], [6.4, -8], [3.0, -12.3], [0, -13.3], [-3.0, -12.3], [-6.4, -8], [-8.1, -2.8], [-8.4, 2], [-6.8, 7.6]], true, 0.5)
     : view === "q3"
-    ? smooth([[0, 9.5], [6.5, 7.8], [8.2, 2.6], [8.0, -0.5], [8.6, -3.6], [7.4, -5.2], [7.0, -8.4], [4.6, -12.2], [1.4, -13.2], [-3.0, -11.8], [-6.4, -7.6], [-7.8, -2], [-7.8, 4], [-5.5, 8.4]], true, 0.5)
+    ? smooth([[0, 9.5], [6.5, 7.8], [8.2, 2.6], [8.3, -1.4], [7.95, -4.8], [7.0, -8.4], [4.6, -12.2], [1.4, -13.2], [-3.0, -11.8], [-6.4, -7.6], [-7.8, -2], [-7.8, 4], [-5.5, 8.4]], true, 0.5)
     : smooth([[-1, 9.6], [5.2, 8], [7.3, 4], [7.7, 1.4], [7.3, 0.1], [9.5, -4.0], [7.8, -5.3], [8.0, -7.2], [7.5, -8.2], [7.7, -9.3], [7.1, -11.4], [4.2, -13.4], [0.6, -12.6], [-2.6, -9.5], [-5.5, -4], [-7, 3]], true, 0.45);
   // ears
   if (view === "front") {
     for (const k of [-1, 1]) pt.part(smooth([[k * 7.9, -4.5], [k * 9.6, -3.2], [k * 9.9, 0.8], [k * 8.2, 1.6]], true, 0.5), PAL.skin, { shade: 0.4 });
   }
   pt.part(face, PAL.skin, { shade: 0.6 });
-  if (view === "q3") pt.part(smooth([[-6.2, -4.3], [-8.4, -3.4], [-8.7, 0.6], [-6.4, 1.4], [-5.2, -1.4]], true, 0.5), PAL.skin, { shade: 0.4 });
+  if (view === "q3") {
+    pt.part(smooth([[-6.6, -3.8], [-8.2, -3.1], [-8.4, 0.2], [-6.9, 0.8], [-6.1, -1.4]], true, 0.5), PAL.skin, { shade: 0.3, rim: 0.3 });
+    const ein = new Path2D(); ein.moveTo(-7.0, -2.6); ein.quadraticCurveTo(-7.8, -1.4, -7.1, -0.2); pt.line(ein, 0.3);
+  }
   if (view === "side") {
     const ear = smooth([[-2.8, -3.6], [-1.0, -3.2], [-0.5, -0.4], [-1.2, 1.0], [-3.0, 0.8], [-3.5, -1.4]], true, 0.5);
     pt.part(ear, PAL.skin, { shade: 0.4 });
@@ -586,15 +675,13 @@ function drawHead(pt: Painter, view: HeadView, F: Face, flipFace: boolean) {
   if (view === "front") {
     drawBrow(pt, -3.9, -1.0, 4.6, -1, F); drawBrow(pt, 3.9, -1.0, 4.6, 1, F);
     drawEye(pt, -3.9, -1.0, 4.6, 3.0, -1, F); drawEye(pt, 3.9, -1.0, 4.6, 3.0, 1, F);
-    const nose = new Path2D(); nose.moveTo(0.5, -2.6); nose.quadraticCurveTo(1.3, -4.8, 0.2, -5.6); pt.line(nose, 0.45);
-    const nst = new Path2D(); nst.moveTo(-1.3, -5.5); nst.quadraticCurveTo(-0.6, -6.0, 0.0, -5.7); pt.line(nst, 0.35);
+    drawNose(pt, "front");
     drawMouth(pt, 0, -8.6, 3.8, F);
   } else if (view === "q3") {
-    drawBrow(pt, -1.6, -1.0, 4.4, -1, F); drawBrow(pt, 4.7, -1.0, 3.0, 1, F, 0.85);
-    drawEye(pt, -1.6, -1.0, 4.4, 3.0, -1, F); drawEye(pt, 4.8, -1.0, 2.9, 2.9, 1, F, 0.78);
-    const nose = new Path2D(); nose.moveTo(5.9, -2.4); nose.quadraticCurveTo(7.1, -4.0, 7.4, -5.0); nose.quadraticCurveTo(6.9, -5.5, 6.1, -5.4); pt.line(nose, 0.45);
-    const nst = new Path2D(); nst.moveTo(4.6, -5.3); nst.quadraticCurveTo(5.1, -5.7, 5.6, -5.5); pt.line(nst, 0.32);
-    drawMouth(pt, 3.4, -8.6, 3.2, F, 1);
+    drawBrow(pt, -1.7, -1.0, 4.4, -1, F); drawBrow(pt, 4.45, -1.0, 2.9, 1, F, 0.85);
+    drawEye(pt, -1.7, -1.0, 4.4, 3.0, -1, F); drawEye(pt, 4.55, -1.0, 2.8, 2.9, 1, F, 0.78);
+    drawNose(pt, "q3");
+    drawMouth(pt, 2.9, -8.6, 3.2, F, 1);
   } else {
     drawBrow(pt, 5.6, -1.0, 2.4, 1, F, 0.9);
     // profile eye: a wedge open toward the front
@@ -649,7 +736,7 @@ function hairLocks(pt: Painter, view: HeadView, sh: string, li: string) {
 // ---------------------------------------------------------------- public draw
 export type Frame = { x0: number; y0: number; w: number; h: number };   // character-space rect mapped to the canvas
 
-export function drawCharacter(ctx: Ctx, P: Pose, L: Light, F: Frame, opts: { lineK?: number; clear?: boolean; phoneLight?: boolean } = {}) {
+export function drawCharacter(ctx: Ctx, P: Pose, L: Light, F: Frame, opts: { lineK?: number; clear?: boolean; phoneLight?: boolean; onHead?: (m: DOMMatrix) => void } = {}) {
   const W = ctx.canvas.width, Hc = ctx.canvas.height;
   if (opts.clear !== false) ctx.clearRect(0, 0, W, Hc);
   ctx.save();
@@ -666,15 +753,20 @@ export function drawCharacter(ctx: Ctx, P: Pose, L: Light, F: Frame, opts: { lin
   const s = Math.sin(Pm.psi * D), c = Math.cos(Pm.psi * D);
   const dL = s + 0.001 * c, dR = -s + 0.001 * c; // depth of the character's left / right side
   const back = (Pm.psi % 360 + 360) % 360 > 100 && (Pm.psi % 360 + 360) % 360 < 260;
+  // depth of each limb from its own joints (cm toward the camera, relative to the pelvis): a reaching arm comes in front of
+  // the chest, the far arm goes behind, seated thighs come forward of the hoodie; standing legs stay under the hem
+  const hipD = R.depth([Pm.hip[0], Pm.hip[1], Pm.hip[2]]);
+  const limbD = (a: V3, b: V3) => (R.depth(a) + R.depth(b)) / 2 - hipD;
+  const legD = (k: V3, an: V3) => { const d = limbD(k, an); return d > 14 || Pm.legsFront ? d : d / 20 - 1; };
+  const armD = (e: V3, wr: V3, hand?: string) => limbD(e, wr) + 0.6 + (hand === "pocket" || hand === "phone" ? 6 : 0);
   const items: { d: number; fn: () => void }[] = [
-    { d: dL - 0.6 + (Pm.legsFront ? 2.5 : 0), fn: () => drawLeg(pt, R, Pm, "L", dL < dR ? 0.86 : 1) },
-    { d: dR - 0.6 + (Pm.legsFront ? 2.5 : 0), fn: () => drawLeg(pt, R, Pm, "R", dR < dL ? 0.86 : 1) },
+    { d: legD(R.knL, R.anL), fn: () => drawLeg(pt, R, Pm, "L", dL < dR ? 0.86 : 1) },
+    { d: legD(R.knR, R.anR), fn: () => drawLeg(pt, R, Pm, "R", dR < dL ? 0.86 : 1) },
     { d: 0, fn: () => { drawHood(pt, R, Pm, true); drawTorso(pt, R, Pm); } },
-    { d: dL * 1.2 + (back ? -0.2 : 0.2) + (Pm.handL === "pocket" || Pm.handL === "phone" ? 2 : 0), fn: () => drawArm(pt, R, Pm, "L", dL < dR ? 0.86 : 1) },
-    { d: dR * 1.2 + (back ? -0.2 : 0.2) + (Pm.handR === "pocket" || Pm.handR === "phone" ? 2 : 0), fn: () => drawArm(pt, R, Pm, "R", dR < dL ? 0.86 : 1) },
+    { d: armD(R.elL, R.wrL, Pm.handL), fn: () => drawArm(pt, R, Pm, "L", dL < dR ? 0.86 : 1) },
+    { d: armD(R.elR, R.wrR, Pm.handR), fn: () => drawArm(pt, R, Pm, "R", dR < dL ? 0.86 : 1) },
   ];
-  // arms behind the body when seen from behind/side far side
-  for (const it of items) if (it.d < 0 && it.fn) it.d -= 0.5;
+  void back;
   items.sort((a, b) => a.d - b.d);
   const headPsi = Pm.headPsi ?? Pm.psi;
   const neckP = R.proj(R.neck), hb = R.proj(R.headBase);
@@ -694,6 +786,7 @@ export function drawCharacter(ctx: Ctx, P: Pose, L: Light, F: Frame, opts: { lin
     const save = pt.L;
     if (hflip) pt.L = { ...pt.L, dir: 180 - pt.L.dir, rim: pt.L.rim ? { ...pt.L.rim, dir: 180 - pt.L.rim.dir } : undefined };
     drawHead(pt, hv, Pm.face, hflip);
+    if (opts.onHead) opts.onHead(ctx.getTransform());
     pt.L = save;
     ctx.restore();
   };
@@ -706,16 +799,37 @@ export function drawCharacter(ctx: Ctx, P: Pose, L: Light, F: Frame, opts: { lin
   if (order === "headLast") drawNeckHead();
   else drawHood(pt, R, Pm, false);
   // phone in hands
+  // the screen faces him, so from his front we see the phone's back: fingers of both hands curled round it, light leaking past its edges
   if (Pm.handL === "phone" || Pm.handR === "phone") {
-    const w = Pm.handL === "phone" ? R.proj(R.wrL) : R.proj(R.wrR);
-    const w2 = Pm.handR === "phone" ? R.proj(R.wrR) : w;
-    const m = lerpV(w, w2, 0.5);
-    const ph = new Path2D(); ph.roundRect(m[0] - 4 + s * 2, m[1] + 1, 8 * Math.max(0.35, Math.abs(c)) , 14, 1.2);
-    pt.fill(ph, "#0d0d14"); pt.line(ph, 0.6);
-    if ((Pm.phoneGlow ?? 0) > 0) {
-      const sc = new Path2D(); sc.roundRect(m[0] - 3.3 + s * 2, m[1] + 1.8, 6.6 * Math.max(0.35, Math.abs(c)), 12.4, 0.8);
-      pt.fill(sc, mixHex("#0d0d14", "#cfefff", Pm.phoneGlow ?? 0));
+    const wl = Pm.handL === "phone" ? R.proj(R.wrL) : R.proj(R.wrR);
+    const wr = Pm.handR === "phone" ? R.proj(R.wrR) : wl;
+    const m = lerpV(wl, wr, 0.5);
+    const fx = Math.max(0.35, Math.abs(c)), hw = 3.7 * fx, y0 = m[1] + 1.5, h = 14.6, glow = Pm.phoneGlow ?? 0, back = c > 0;
+    if (glow > 0) {
+      // screen light leaking past the edges: a blurred glow, not a hard box
+      const gp = new Path2D(); gp.roundRect(m[0] - hw - 0.8, y0 - 0.8, 2 * (hw + 0.8), h + 1.6, 2);
+      const px = Math.hypot(ctx.getTransform().a, ctx.getTransform().b);
+      ctx.save(); ctx.filter = `blur(${(2.2 * px).toFixed(1)}px)`; ctx.globalAlpha = 0.45 * glow; ctx.fillStyle = "#cfefff"; ctx.fill(gp); ctx.restore();
     }
+    // palms: from each wrist up the phone's side
+    const sides = [wl, wr].map((wq, i) => ({ wq, k: (wq[0] === m[0] ? (i === 0 ? 1 : -1) : Math.sign(wq[0] - m[0])) as 1 | -1 }));
+    for (const { wq, k } of sides) pt.part(limbPath([wq, [m[0] + k * (hw + 0.2), y0 + 3.0], [m[0] + k * (hw - 0.3), y0 + 6.2]], [5.6, 5.2, 4.2]), PAL.skin, { dim: 1, shade: 0.35, lw: 0.6, rim: 0.2 });
+    const ph = new Path2D(); ph.roundRect(m[0] - hw, y0, 2 * hw, h, 1.2);
+    pt.fill(ph, back ? "#17161f" : "#0d0d14"); pt.line(ph, 0.6);
+    if (back) {
+      const lens = new Path2D(); lens.roundRect(m[0] - hw + 0.9 * fx, y0 + h - 4.3, 2.7 * fx, 3.3, 0.8); pt.fill(lens, "#26242f"); pt.line(lens, 0.3);
+      // four curled fingers per hand on the back, index highest and longest, little finger shortest
+      const FL = [2.5, 2.9, 2.6, 1.9], FW = [1.55, 1.6, 1.5, 1.3];
+      for (const k of [-1, 1]) for (let j = 0; j < 4; j++) {
+        const yy = y0 + 2.0 + j * 1.62 + (k > 0 ? 0.35 : 0), x0 = m[0] + k * (hw + 0.7), x1 = m[0] + k * (hw - FL[j] * fx);
+        pt.part(limbPath([[x0, yy], [lerpV([x0, yy], [x1, yy], 0.55)[0], yy + 0.1], [x1, yy - 0.05]], [FW[j], FW[j] * 0.95, FW[j] * 0.82]), PAL.skin, { dim: 1, shade: 0.35, lw: 0.55, rim: 0.2 });
+        const kn = new Path2D(); const kx = m[0] + k * (hw - 0.2 * fx); kn.moveTo(kx, yy - FW[j] * 0.32); kn.lineTo(kx + k * 0.15, yy + FW[j] * 0.3); pt.line(kn, 0.22);
+      }
+    } else if (glow > 0) {
+      const sc = new Path2D(); sc.roundRect(m[0] - hw + 0.7 * fx, y0 + 0.8, 2 * hw - 1.4 * fx, h - 1.6, 0.8);
+      pt.fill(sc, mixHex("#0d0d14", "#cfefff", glow));
+    }
+    if (!back) for (const { k } of sides) pt.part(limbPath([[m[0] + k * (hw + 0.6), y0 + 2.6], [m[0] + k * (hw - 1.4 * fx), y0 + 5.0], [m[0] + k * (hw - 2.6 * fx), y0 + 6.4]], [2.3, 2.0, 1.7]), PAL.skin, { dim: 1, shade: 0.35, lw: 0.55, rim: 0.2 });
   }
   ctx.restore();
 }
@@ -741,21 +855,30 @@ export function drawHeadOnly(ctx: Ctx, view: HeadView, face: Face, L: Light, F: 
   ctx.restore();
 }
 
+export type WatcherLook = { eyes: number; smile: number; rim: number; tilt: number; lean: number; glowOnly?: boolean };
+
 /** The thing in the corner: a tall, thin silhouette with pale eyes and a long smile. */
-export function drawWatcher(ctx: Ctx, F: Frame, o: { eyes: number; smile: number; rim: number; tilt: number; lean: number }) {
+export function drawWatcher(ctx: Ctx, F: Frame, o: WatcherLook) {
   const W = ctx.canvas.width, Hc = ctx.canvas.height;
   ctx.clearRect(0, 0, W, Hc);
   ctx.save();
   const sx = W / F.w, sy = Hc / F.h;
   ctx.setTransform(sx, 0, 0, -sy, -F.x0 * sx, Hc + F.y0 * sy);
-  ctx.translate(0, 0);
+  watcherBody(ctx, o);
+  ctx.restore();
+}
+
+/** The entity in its own units (y up, feet at 0, eye line at 224), drawn with the current transform. */
+export function watcherBody(ctx: Ctx, o: WatcherLook) {
+  ctx.save();
   ctx.rotate(o.lean * D);
   const body = smooth([
     [-9, 0], [-10, 60], [-13, 120], [-21, 168], [-14, 182], [-6, 186], [-5, 196], [-11, 214], [-9, 236], [0, 243], [9, 236], [11, 214], [5, 196], [6, 186], [14, 182], [21, 168], [13, 120], [10, 60], [9, 0],
   ], true, 0.5);
-  ctx.fillStyle = "#06050b"; ctx.fill(body);
+  if (!o.glowOnly) ctx.fillStyle = "#06050b";
+  if (!o.glowOnly) ctx.fill(body);
   // arms hanging to the knees
-  for (const k of [-1, 1]) {
+  for (const k of o.glowOnly ? [] : [-1, 1]) {
     const arm = limbPath([[k * 20, 172], [k * 25, 120], [k * 23, 70], [k * 22, 52]], [8, 6.5, 5.5, 4]);
     ctx.fillStyle = "#06050b"; ctx.fill(arm);
     for (let f = 0; f < 4; f++) {
@@ -763,7 +886,7 @@ export function drawWatcher(ctx: Ctx, F: Frame, o: { eyes: number; smile: number
       ctx.fill(fi);
     }
   }
-  if (o.rim > 0) {
+  if (o.rim > 0 && !o.glowOnly) {
     ctx.save(); ctx.clip(body); ctx.translate(-2.2, 0);
     const band = new Path2D(); band.rect(-300, -300, 600, 600); band.addPath(body);
     ctx.globalAlpha = o.rim; ctx.fillStyle = "#4b3f8a"; ctx.fill(band, "evenodd"); ctx.restore();
@@ -776,7 +899,7 @@ export function drawWatcher(ctx: Ctx, F: Frame, o: { eyes: number; smile: number
       const e = new Path2D();
       const cx = k * 4.4, cy = 224 + (k > 0 ? 0.5 : 0);
       e.ellipse(cx, cy, 2.6, 1.5 * o.eyes, k * 0.18, 0, Math.PI * 2);
-      ctx.fillStyle = "#eef3ff"; ctx.fill(e);
+      ctx.fillStyle = o.glowOnly ? "#9fb8ff" : "#eef3ff"; ctx.fill(e);
     }
   }
   if (o.smile > 0.02) {
@@ -784,10 +907,12 @@ export function drawWatcher(ctx: Ctx, F: Frame, o: { eyes: number; smile: number
     const p = new Path2D();
     p.moveTo(-8 * s - 1, 214 + 2 * s); p.quadraticCurveTo(0, 207 - 3 * s, 8 * s + 1, 214 + 2 * s);
     p.quadraticCurveTo(0, 210 - 1.5 * s, -8 * s - 1, 214 + 2 * s);
-    ctx.fillStyle = "#e9edf5"; ctx.fill(p);
-    ctx.save(); ctx.clip(p); ctx.lineWidth = 0.25; ctx.strokeStyle = "#1a1626";
-    for (let k = -10; k <= 10; k++) { ctx.beginPath(); ctx.moveTo(k * 0.9, 205); ctx.lineTo(k * 0.9, 216); ctx.stroke(); }
-    ctx.restore();
+    ctx.fillStyle = o.glowOnly ? "#5a6a9a" : "#e9edf5"; ctx.fill(p);
+    if (!o.glowOnly) {
+      ctx.save(); ctx.clip(p); ctx.lineWidth = 0.25; ctx.strokeStyle = "#1a1626";
+      for (let k = -10; k <= 10; k++) { ctx.beginPath(); ctx.moveTo(k * 0.9, 205); ctx.lineTo(k * 0.9, 216); ctx.stroke(); }
+      ctx.restore();
+    }
   }
   ctx.restore();
   ctx.restore();
@@ -797,27 +922,50 @@ export function drawWatcher(ctx: Ctx, F: Frame, o: { eyes: number; smile: number
 export const FACE0: Face = { open: 1, look: [0, 0], pupil: 1, brow: 0, browIn: 0.3, mouth: "neutral", mouthOpen: 0, shine: true };
 
 export function stand(psi: number, t = 0, face: Partial<Face> = {}): Pose {
-  const br = Math.sin(t * 2 * Math.PI * 0.25);
+  // breathing (0.25 Hz) and a slow weight shift from foot to foot (0.11 Hz): never a dead-still mannequin
+  const br = Math.sin(t * 2 * Math.PI * 0.25), ws = Math.sin(t * 2 * Math.PI * 0.11);
   return {
-    psi, hip: [0, 93 + br * 0.15, 0], lean: 2, headTilt: 0, headNod: 0,
-    armL: [3, 6, 8], armR: [3, 6, 8], legL: [0, 3, 2], legR: [0, 3, 2], handL: "open", handR: "open",
-    face: { ...FACE0, ...face }, breathe: br,
+    psi, hip: [ws * 1.1, 92.6 + br * 0.15 - Math.abs(ws) * 0.3, 0], lean: 2.5, headTilt: -ws * 0.8, headNod: 0, twist: ws * 1.5,
+    armL: [4 + br * 0.6, 7, 12], armR: [3 - br * 0.6, 7, 14], legL: [0, 3 - ws * 1.2, 2 + Math.max(0, -ws) * 6], legR: [0, 3 + ws * 1.2, 2 + Math.max(0, ws) * 6],
+    handL: "open", handR: "open", face: { ...FACE0, ...face }, breathe: br,
   };
 }
 
-/** walk cycle, phase in cycles (1 cycle = 2 steps) */
+/** cosine-eased interpolation through [phase, value] keys (phase 0..1) */
+function keyCurve(p: number, K: [number, number][]) {
+  for (let i = 0; i < K.length - 1; i++) {
+    if (p <= K[i + 1][0]) { const t = (p - K[i][0]) / (K[i + 1][0] - K[i][0]); return K[i][1] + (K[i + 1][1] - K[i][1]) * (0.5 - 0.5 * Math.cos(Math.PI * t)); }
+  }
+  return K[K.length - 1][1];
+}
+
+/** walk cycle, phase in cycles (1 cycle = 2 steps). Phase 0 = right heel strike.
+ *  Contact -> down (knee absorbs, body lowest) -> passing (swing knee up, body highest) -> push-off (heel lifts) -> contact.
+ *  Shoulders counter-rotate the hips; arms swing opposite the legs with follow-through on the forearm. */
 export function walk(psi: number, phase: number, face: Partial<Face> = {}, o: { pockets?: boolean; amp?: number } = {}): Pose {
-  const a = 2 * Math.PI * phase, A = o.amp ?? 1;
-  const thighL = 24 * Math.sin(a) * A, thighR = -24 * Math.sin(a) * A;
-  const kneeOf = (ph: number) => 8 + 34 * Math.max(0, Math.sin(ph - 0.9)) * A;
-  const bob = -2.6 * Math.abs(Math.cos(a)) * A;
-  const arm = (ph: number) => (o.pockets ? [8, 8, 62] : [-20 * Math.sin(ph) * A, 7, 14 + 10 * Math.max(0, Math.sin(ph))]) as [number, number, number];
+  const A = o.amp ?? 1;
+  const leg = (ph: number) => {
+    const p = ((ph % 1) + 1) % 1;
+    const thigh = keyCurve(p, [[0, 22], [0.25, 3], [0.5, -19], [0.6, -16], [0.75, 3], [0.9, 19], [1, 22]]) * A;
+    const knee = keyCurve(p, [[0, 4], [0.1, 15], [0.25, 5], [0.4, 8], [0.5, 22], [0.62, 46], [0.72, 56], [0.84, 30], [0.95, 6], [1, 4]]) * A;
+    const foot = keyCurve(p, [[0, 14], [0.08, 0], [0.38, 0], [0.5, -18], [0.6, -36], [0.7, -6], [0.9, 6], [1, 14]]) * A;
+    return { thigh, knee: Math.max(2, knee), foot };
+  };
+  const R = leg(phase), L = leg(phase + 0.5);
+  const a = 2 * Math.PI * phase;
+  const bob = 1.8 * Math.cos(4 * Math.PI * (phase - 0.3)) * A;
+  const sway = 1.3 * Math.sin(a) * A;
+  const arm = (ph: number) => {
+    const sw = -19 * Math.cos(2 * Math.PI * (ph - 0.06)) * A;
+    const el = 12 + 16 * Math.max(0, Math.cos(2 * Math.PI * (ph - 0.16))) * A;
+    return (o.pockets ? [8, 8, 62] : [sw, 7, el]) as [number, number, number];
+  };
   return {
-    psi, hip: [0, 93 + bob + 1.3, 0], lean: 5, headTilt: 1.2 * Math.sin(a), headNod: 2,
-    armL: arm(a), armR: arm(a + Math.PI),
-    legL: [thighL, 2, kneeOf(a + Math.PI)], legR: [thighR, 2, kneeOf(a)],
+    psi, hip: [sway, 92.2 + bob, 0], lean: 5, headTilt: -0.6 * sway, headNod: 2 - 0.6 * bob, twist: 6 * Math.cos(a) * A,
+    armL: arm(phase), armR: arm(phase + 0.5),
+    legL: [L.thigh, 2, L.knee], legR: [R.thigh, 2, R.knee], footL: L.foot, footR: R.foot,
     handL: o.pockets ? "pocket" : "open", handR: o.pockets ? "pocket" : "open",
-    face: { ...FACE0, ...face }, breathe: Math.sin(a),
+    face: { ...FACE0, ...face }, breathe: Math.sin(a * 2),
   };
 }
 
@@ -857,5 +1005,49 @@ export function drawPigeon(ctx: Ctx, L: Light, F: Frame) {
   pt.fill(smooth([[18.5, 7], [22.5, 6.2], [18.8, 5.6]], true, 0.3), "#2a2224");
   pt.fill(new Path2D("M 16.8 7.4 a 0.8 0.8 0 1 0 0.01 0"), "#ffb030");
   pt.part(smooth([[-2, 4], [4, 16], [14, 26], [10, 12], [6, 4]], true, 0.4), "#a3a9b6", { shade: 0.7 });    // near wing up
+  ctx.restore();
+}
+
+/** The entity's features (from drawWatcher) drawn in a head space: centre (0,0), y up, head ~17 cm wide.
+ *  eyes 0..1 (opening), smile 0..1 (grin spreading). glowOnly draws just the light parts (for the additive glow layer). */
+export function drawEntityFeatures(ctx: Ctx, eyes: number, smile: number, glowOnly = false) {
+  if (eyes > 0.02) {
+    for (const k of [-1, 1]) {
+      const e = new Path2D();
+      e.ellipse(k * 4.2, -0.6 + (k > 0 ? 0.4 : 0), 2.5, 1.45 * eyes, k * 0.18, 0, Math.PI * 2);
+      ctx.fillStyle = glowOnly ? "#9fb8ff" : "#eef3ff"; ctx.fill(e);
+    }
+  }
+  if (smile > 0.02) {
+    const s = smile;
+    const p = new Path2D();
+    p.moveTo(-8 * s - 1, -9.4 + 2 * s); p.quadraticCurveTo(0, -16.4 - 3 * s, 8 * s + 1, -9.4 + 2 * s);
+    p.quadraticCurveTo(0, -13.4 - 1.5 * s, -8 * s - 1, -9.4 + 2 * s);
+    ctx.fillStyle = glowOnly ? "#5a6a9a" : "#e9edf5"; ctx.fill(p);
+    if (!glowOnly) {
+      ctx.save(); ctx.clip(p); ctx.lineWidth = 0.25; ctx.strokeStyle = "#1a1626";
+      for (let k = -10; k <= 10; k++) { ctx.beginPath(); ctx.moveTo(k * 0.9, -18); ctx.lineTo(k * 0.9, -7); ctx.stroke(); }
+      ctx.restore();
+    }
+  }
+}
+
+/** A soft coloured halo behind everything drawn so far (keeps a black silhouette readable against a dark background). */
+export function haloBehind(ctx: Ctx, color: string, px: number) {
+  const W = ctx.canvas.width, H = ctx.canvas.height;
+  const tmp = document.createElement("canvas"); tmp.width = W; tmp.height = H; tmp.getContext("2d")!.drawImage(ctx.canvas, 0, 0);
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = "destination-over"; ctx.filter = `drop-shadow(0 0 ${px}px ${color})`;
+  ctx.drawImage(tmp, 0, 0); ctx.drawImage(tmp, 0, 0);
+  ctx.restore();
+}
+
+/** Darken everything already drawn on the canvas toward the entity's ink-black, keeping a thin purple rim. */
+export function inkOver(ctx: Ctx, k: number) {
+  if (k <= 0) return;
+  const W = ctx.canvas.width, H = ctx.canvas.height;
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = "source-atop"; ctx.globalAlpha = Math.min(1, k);
+  ctx.fillStyle = "#06050b"; ctx.fillRect(0, 0, W, H);
   ctx.restore();
 }

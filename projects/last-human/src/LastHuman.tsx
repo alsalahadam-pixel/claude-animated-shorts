@@ -147,7 +147,7 @@ const Captions: React.FC<{ t: number; f: number }> = ({ t, f }) => {
     return <div style={{ position: "absolute", top: 1150, left: 0, right: 0, textAlign: "center", transform: `scale(${sc})`, fontFamily: "Montserrat", fontWeight: 800, fontSize: 118, color: "#ffb35c", ...STROKE }}>HELLO?!</div>;
   }
   const pop = interpolate(age, [0, 4], [0.86, 1], { extrapolateRight: "clamp" });
-  const top = f >= 1437 && f < 1563 ? 1600 : 1180;   // below the photo in S18
+  const top = f >= 1437 && f < 1635 ? 1600 : 1180;   // below the photo in S18; under his face in the S19 close-up
   return (
     <div style={{ position: "absolute", left: 60, right: 60, top, display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0 22px", transform: `scale(${pop})`, transformOrigin: "50% 50%" }}>
       {cap.words.map((w, i) => {
