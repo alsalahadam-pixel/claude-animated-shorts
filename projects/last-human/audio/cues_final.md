@@ -46,4 +46,4 @@
 | 103.87 | black: one CCTV servo whirr and its stop, quiet, off to the side |
 | 104.77 | end title: a very low tone fades up with it and away |
 
-mix: -14.4 LUFS integrated, true peak -1.2 dBTP, 107.767 s
+mix: -14.1 LUFS integrated, true peak -1.2 dBTP, 107.767 s

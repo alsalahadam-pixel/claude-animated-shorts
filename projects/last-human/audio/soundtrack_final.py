@@ -327,7 +327,7 @@ def build():
     while t < eS20:
         add(Fs["sfx"], S.heartbeat(0.2), t, until=eS20); t += 0.5
     cue(st("E1"), "E1 the empty corner: the heartbeat stops on the cut. Room tone, sub pressure. Nothing.")
-    add(Fs["music"], S.drone(30.9, st("S21") - st("E1") + 0.2, 0.42, 1.2, 0.1), st("E1"), until=st("S21"))
+    add(Fs["music"], S.drone(30.9, st("S21") - st("E1") + 0.2, 0.28, 1.6, 0.1), st("E1"), until=st("S21"))
     cue(st("E1") + 1.15, "one floorboard, somewhere near the corner, takes weight. Very quiet.")
     add(Fs["sfx"], creak(1.1, 0.05), st("E1") + 1.15, 1.0, -0.45)
     cue(st("E2"), "E2 you, by the door: your breath, trembling, then you stop breathing; a slow heartbeat")
@@ -403,6 +403,8 @@ def main():
     mix = S.limiter(mix * g, -1.2)
     mix *= dbg(-14.0 - integrated(mix))
     mix = S.limiter(mix, -1.2) * gate[None, :]
+    for _ in range(2):   # the limiter and the gate each shave a little; settle on -14
+        mix = S.limiter(mix * dbg(-14.0 - integrated(mix)), -1.2) * gate[None, :]
     write_wav(os.path.join(HERE, "mix_final.wav"), mix)
     with open(os.path.join(HERE, "cues_final.md"), "w") as fh:
         fh.write("# Sound cues (final cut)\n\n| time (s) | cue |\n|---|---|\n")
