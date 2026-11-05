@@ -88,8 +88,8 @@ pairs_sheet("2_anatomy_in_context", "Arms, hands and face in the film: before / 
 pairs_sheet("3_camera_before_after", "Camera: before / after", "Shot sizes and angles chosen per beat, foreground depth, no random moves.", [
     ("S12 · the walk to the glass", "Foreground bollard and a lower lens: depth, and the street feels long and empty.", "out/sb4/f_890.jpg", "out/v3/f_880.jpg"),
     ("S13 · the mirror test", "Profile two-shot: his hand and its hand meet exactly on the glass line.", "out/sb4/f_960.jpg", "out/v3/f_960.jpg"),
-    ("S20 · the bed", "Was a flat wide of a double of him. Now his eye line from the floor by the door; a slow zoom follows a stranger, a woman, as she sits up and looks at him.", "out/sb4/f_1730.jpg", "out/v5/f_1746.jpg"),
-    ("S21 · the last shot", "Was his smiling face. Now the entity, separately, beside the bed: eyes open, a slow zoom, its grin. Hard cut to black.", "out/sb4/f_1795.jpg", "out/v5/f_1799.jpg"),
+    ("S20 · the bed", "Was a flat wide of a smiling double. Now his eye line from the floor; a slow zoom closes on him in the bed, terrified, turning to the corner.", "out/sb4/f_1730.jpg", "out/v6/f_1746.jpg"),
+    ("S21 · the last shot", "Was his smiling face. Now, as in the first cut: the devil in the corner, eyes open, a slow zoom, its grin. Hard cut.", "out/sb4/f_1795.jpg", "out/v6/f_1799.jpg"),
 ])
 
 # 4 — entity design + where it appears
@@ -97,7 +97,7 @@ ent = Image.open("out/ref/EntityRef_0.jpg").convert("RGB").crop((0, 80, 2160, 16
 W = 2160
 s = Image.new("RGB", (W, 150 + ent.height + 40 + 70 + 760 + 120), BG)
 d = ImageDraw.Draw(s)
-header(d, W, "The entity (the devil): the original design, unchanged", "Dark, too tall, too thin, white eyes, a long grin. Not the woman in the bed, and not him. Only it ever smiles.")
+header(d, W, "The entity (the devil): the original design, unchanged", "Dark, too tall, too thin, white eyes, a long grin. Never the one in the bed. Only it ever smiles.")
 s.paste(ent, (0, 150))
 y = 150 + ent.height + 40
 d.text((40, y), "Where it appears in the film", font=font(34, "Bold"), fill=ORANGE)
@@ -108,8 +108,8 @@ row = [
     ("S15 · 0:40", "goes black", "out/v4/f_1206.jpg"),
     ("S15 · 0:40", "becomes it", "out/v4/f_1214.jpg"),
     ("S15 · 0:43", "the grin", "out/v4/f_1300.jpg"),
-    ("S21 · 0:58", "beside the bed", "out/v5/f_1750.jpg"),
-    ("S21 · 1:00", "looks at us, grins", "out/v5/f_1799.jpg"),
+    ("S21 · 0:58", "in the corner", "out/v6/f_1750.jpg"),
+    ("S21 · 1:00", "looks at us, grins", "out/v6/f_1799.jpg"),
 ]
 h = 500
 fw = round(h * 540 / 960)
@@ -134,39 +134,3 @@ for i, (t, n, p) in enumerate(row):
 s = s.crop((0, 0, W, y + h + 90))
 s.save(f"{OUT}/4_entity.jpg", quality=90)
 print("4", s.size)
-
-
-# 5 — the woman in the bed: reference
-Image.open("out/ref/SleeperRef_0.jpg").convert("RGB").save(f"{OUT}/5_woman_in_the_bed_reference.jpg", quality=92)
-
-# 6 — storyboard S18 / S20 / S21
-panels = [
-    ("S18", 1545, "51.5", "The photo from \"Me\": someone asleep in his bed, turned to the wall. No face. He assumes it's him."),
-    ("S20", 1650, "55.0", "His eye line from the floor. The duvet breathes; the lump shifts. Someone is under there."),
-    ("S20", 1680, "56.0", "A head lifts off the pillow. Eyes open, heavy with sleep. Slow zoom begins."),
-    ("S20", 1696, "56.5", "Up on her elbows, hands pushing on the mattress. A beat."),
-    ("S20", 1714, "57.1", "She pushes up; hair falls forward; the duvet slides to her waist. Breathing."),
-    ("S20", 1736, "57.9", "Sitting. Her eyes find him first, then her head turns, with a slow, human blink."),
-    ("S20", 1746, "58.2", "A stranger, a woman, in his bed, staring at him. Not him, not the entity."),
-    ("S21", 1750, "58.3", "CUT WIDE. Beside the bed, by the window, where the photo was taken from: the entity. She doesn't see it."),
-    ("S21", 1759, "58.6", "Its eyes snap open (2 frames), a 3-frame push-in. Focus racks from her to it."),
-    ("S21", 1776, "59.2", "A slow zoom isolates it. She leaves frame. The grin starts to spread."),
-    ("S21", 1799, "60.0", "Full grin, eyes on us. HARD CUT TO BLACK, all sound cut. Then silence and PART 2?"),
-]
-h = 600
-fw = round(h * 540 / 960)
-gap, pad, per_row = 18, 40, 6
-rows = (len(panels) + per_row - 1) // per_row
-W = pad * 2 + per_row * fw + (per_row - 1) * gap
-rh = 40 + h + 200
-s = Image.new("RGB", (W, 150 + rows * rh), BG)
-d = ImageDraw.Draw(s)
-header(d, W, "Storyboard: S18 · S20 · S21 (revised)", "Three different beings: him (on the floor), a woman in his bed (human), the entity beside the bed (not her).")
-for i, (shot, fr, t, note) in enumerate(panels):
-    x = pad + (i % per_row) * (fw + gap)
-    y = 150 + (i // per_row) * rh
-    d.text((x, y), f"{shot} · {t} s", font=font(26, "Bold"), fill=ORANGE)
-    s.paste(fit(f"out/v5/f_{fr}.jpg", h), (x, y + 38))
-    wrap(d, (x, y + 38 + h + 10), note, font(20), fw, INK, lh=26)
-s.save(f"{OUT}/6_storyboard_S18_S20_S21.jpg", quality=90)
-print("6", s.size)
