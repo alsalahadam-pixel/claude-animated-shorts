@@ -22,7 +22,8 @@ const GRADES: Record<Shot["grade"], GradeParams> = {
   warm: { ky: [0, 0.085, 0.25, 0.55, 0.8, 0.93, 1], sat: [1.0, 1.08, 1.05], tintS: [0.024, 0.006], tintM: [0.004, 0.002], tintH: [-0.014, 0.01], vig: [0.32, 0.32] },
   cool: { ky: [0, 0.085, 0.24, 0.52, 0.78, 0.92, 1], sat: [0.82, 0.88, 0.9], tintS: [0.018, -0.014], tintM: [0.008, -0.012], tintH: [0.0, -0.004], vig: [0.32, 0.32] },
   dusk: { ky: [0, 0.08, 0.24, 0.54, 0.8, 0.93, 1], sat: [1.0, 1.1, 1.08], tintS: [0.024, 0.012], tintM: [0.0, 0.004], tintH: [-0.016, 0.012], vig: [0.34, 0.32] },
-  night: { ky: [0, 0.09, 0.245, 0.53, 0.79, 0.93, 1], sat: [1.05, 1.12, 1.08], tintS: [0.03, 0.006], tintM: [0.012, 0.0], tintH: [0.0, 0.0], vig: [0.42, 0.28] },
+  // night: deeper shadows and a heavier vignette (darker, more unsettling), mids kept so faces still read on a phone
+  night: { ky: [0, 0.072, 0.215, 0.5, 0.775, 0.925, 1], sat: [0.96, 1.08, 1.06], tintS: [0.032, 0.012], tintM: [0.012, 0.002], tintH: [0.0, 0.0], vig: [0.52, 0.24] },
 };
 
 class ExposureEffect extends Effect {
@@ -32,7 +33,7 @@ class ExposureEffect extends Effect {
   }
   set exposure(v: number) { this.uniforms.get("exposure")!.value = v; }
 }
-const EXPOSURE: Record<string, number> = { S01: 1.4, S02: 1.1, S03: 1.1, S04: 1.0, S05: 1.1, S06: 1.0, S07: 1.1, S08: 1.0, S09: 1.4, S10: 1.35, S11: 1.25, S12: 1.4, S13: 1.45, S14: 1.45, S15: 1.4, S16: 1.45, S17: 1.3, S18: 1.25, S19: 1.3, S20: 1.55, S21: 1.35, END: 1 };
+const EXPOSURE: Record<string, number> = { S01: 1.32, S02: 1.1, S03: 1.1, S04: 1.0, S05: 1.1, S06: 1.0, S07: 1.1, S08: 1.0, S09: 1.32, S10: 1.27, S11: 1.2, S12: 1.32, S13: 1.38, S13B: 1.38, S14: 1.36, S15: 1.35, S16: 1.36, S17: 1.24, S18: 1.25, S19: 1.24, S20: 1.48, S21: 1.32, END: 1 };
 
 type Toggles = { lens: boolean; bloom: boolean; grade: boolean; grain: boolean; msaa: number };
 const toggles = (): Toggles => ({ lens: true, bloom: true, grade: true, grain: true, msaa: 4, ...((getInputProps() as { post?: Partial<Toggles> }).post ?? {}) });

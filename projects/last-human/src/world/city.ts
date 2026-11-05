@@ -229,21 +229,43 @@ export class City {
     this.steam = frozenSteam(cup); R.add(this.steam);
     void lanes;
 
-    // CCTV: poles on the sidewalks + wall units on the facades
-    const camSpots: [number, number, number, boolean][] = [
-      [12.85, 2.9, -11.5, false], [-9.2, 2.0, -20, true], [12.85, 5.2, -14, false], [-12.85, 4.8, -9, false], [12.85, 6.2, -26, false],
-      [-12.85, 5.6, -27, false], [9.2, 2.0, -52, true], [12.85, 4.9, 2, false], [-12.85, 6.4, 6, false], [-9.2, 2.0, -60, true],
-      // hanging under the traffic-light arms and from lamp posts: these sit inside the frame of the low wide shot
-      [-7.6, 5.5, -30.6, false], [-4.6, 5.5, -30.6, false], [7.6, 5.5, -49.4, false], [4.4, 5.5, -49.4, false],
-      [9.0, 5.6, -16, false], [-9.0, 5.6, -40, false], [-9.0, 5.8, -16, false],
-      // the facade by the Day 3 spot: a column of cameras that all turn at once (S10)
-      [12.85, 4.2, -10.4, false], [12.85, 5.6, -12.1, false], [12.85, 7.0, -10.5, false], [12.85, 8.4, -11.9, false],
-      [12.85, 9.8, -10.6, false], [12.85, 11.2, -11.7, false], [12.85, 4.6, -12.9, false],
+    // CCTV, installed like a real system: wall units on brackets at consistent heights, pole units at the kerb, pendant
+    // units clamped under the traffic-light arms. Each has a deliberate resting aim (along the street, at a door, at the
+    // crossing): yaws below are WORLD headings (atan2(x, z)); pitch + = looking down.
+    const E = -Math.PI / 2, W = Math.PI / 2;   // group rotations for the east (x = +12.85) and west (x = -12.85) facades
+    const SW = Math.atan2(-0.45, 0.9), NW = Math.atan2(-0.45, -0.9), SE = Math.atan2(0.45, 0.9), NE = Math.atan2(0.45, -0.9);
+    type Spot = { p: [number, number, number]; mount: "wall" | "pole" | "pendant"; face?: number; yaw: number; pitch: number; scale?: number };
+    const spots: Spot[] = [
+      // 0: the laundry camera (the one that turns in S01 and S09): resting aim up the street, north-west
+      { p: [12.85, 2.45, -11.5], mount: "wall", face: E, yaw: NW - 0.25, pitch: 0.12, scale: 1.7 },   // over the shop door, under the sign
+      // the Day 3 facade: a tidy 2 x 3 array, one pair per floor, the pairs covering both directions of the street
+      ...[5.8, 8.6, 11.4].flatMap((y) => [
+        { p: [12.85, y, -10.2] as [number, number, number], mount: "wall" as const, face: E, yaw: SW, pitch: 0.38, scale: 1.7 },
+        { p: [12.85, y, -12.8] as [number, number, number], mount: "wall" as const, face: E, yaw: NW, pitch: 0.38, scale: 1.7 },
+      ]),
+      // other facades: one unit at 4.2 m every few buildings, alternating directions
+      { p: [-12.85, 4.2, -9], mount: "wall", face: W, yaw: NE, pitch: 0.35, scale: 1.7 },
+      { p: [12.85, 4.2, -26], mount: "wall", face: E, yaw: SW, pitch: 0.35, scale: 1.7 },
+      { p: [-12.85, 4.2, -27], mount: "wall", face: W, yaw: SE, pitch: 0.35, scale: 1.7 },
+      { p: [12.85, 4.2, 2], mount: "wall", face: E, yaw: NW, pitch: 0.35, scale: 1.7 },
+      { p: [-12.85, 4.2, 6], mount: "wall", face: W, yaw: NE, pitch: 0.35, scale: 1.7 },
+      // kerb poles
+      { p: [-9.2, 0.15, -20], mount: "pole", yaw: Math.PI, pitch: 0.3 },
+      { p: [9.2, 0.15, -52], mount: "pole", yaw: 0, pitch: 0.3 },
+      { p: [-9.2, 0.15, -60], mount: "pole", yaw: Math.PI, pitch: 0.3 },
+      { p: [9.0, 0.15, -16], mount: "pole", yaw: Math.PI + 0.3, pitch: 0.3 },
+      { p: [-9.0, 0.15, -40], mount: "pole", yaw: -0.3, pitch: 0.3 },
+      { p: [-9.0, 0.15, -16], mount: "pole", yaw: Math.PI - 0.3, pitch: 0.3 },
+      // under the traffic-light arms, watching the crossing
+      { p: [-7.6, 5.47, -30.6], mount: "pendant", yaw: Math.PI, pitch: 0.42, scale: 1.4 },
+      { p: [-4.6, 5.47, -30.6], mount: "pendant", yaw: Math.PI - 0.5, pitch: 0.42, scale: 1.4 },
+      { p: [7.6, 5.47, -49.4], mount: "pendant", yaw: 0, pitch: 0.42, scale: 1.4 },
+      { p: [4.4, 5.47, -49.4], mount: "pendant", yaw: 0.5, pitch: 0.42, scale: 1.4 },
     ];
-    for (const [x, y, z, pole] of camSpots) {
-      const c = cctv(pole ? { pole: 4.2 } : {});
-      if (pole) c.group.position.set(x, 0.15, z);
-      else { c.group.position.set(x, y, z); c.group.add(mesh(rbox(0.2, 0.3, 0.2, 0.03), std("#1a1c24"), [0, 0.1, 0], false)); c.group.scale.setScalar(1.7); }
+    for (const sp of spots) {
+      const face = sp.face ?? 0;
+      const c = cctv(sp.mount === "pole" ? { mount: "pole", pole: 4.2, rest: { yaw: sp.yaw - face, pitch: sp.pitch } } : { mount: sp.mount, rest: { yaw: sp.yaw - face, pitch: sp.pitch } });
+      c.group.position.set(...sp.p); c.group.rotation.y = face; c.group.scale.setScalar(sp.scale ?? 1);
       R.add(c.group); this.cams.push(c);
     }
     this.heroCam = this.cams[0];

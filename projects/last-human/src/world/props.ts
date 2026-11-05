@@ -53,30 +53,60 @@ export function car(seed: number, o: { doorOpen?: boolean; lights?: number; tail
 }
 
 // ---------------------------------------------------------------- CCTV
-export type Cctv = { group: THREE.Group; pan: THREE.Group; tilt: THREE.Group; led: THREE.Mesh };
-export function cctv(o: { pole?: number; wall?: boolean } = {}): Cctv {
+export type Cctv = { group: THREE.Group; pan: THREE.Group; tilt: THREE.Group; led: THREE.Mesh; rest: { yaw: number; pitch: number } };
+/** A bullet security camera, mounted the way installers do it:
+ *  - pole: on top of its own pole (height `pole`)
+ *  - wall: wall plate, a horizontal arm out from the wall (local +z) with a diagonal brace, a swivel, and the cable
+ *    looping back to the plate; the group sits on the wall surface with +z pointing out into the street
+ *  - pendant: clamped under a horizontal arm (traffic-light / lamp arm), hanging below it
+ *  `rest` is the head's resting aim in the group's local frame (yaw around +y from +z, pitch + = down). */
+export function cctv(o: { pole?: number; mount?: "pole" | "wall" | "pendant"; rest?: { yaw: number; pitch: number } } = {}): Cctv {
   const group = new THREE.Group();
   const metal = std("#c9ccd3", { roughness: 0.4, metalness: 0.3 });
   const dark = std("#1a1c24", { roughness: 0.5, metalness: 0.4 });
-  let top = 0;
-  if (o.pole) {
-    group.add(mesh(new THREE.CylinderGeometry(0.07, 0.09, o.pole, 10), dark, [0, o.pole / 2, 0]));
-    top = o.pole;
+  const mount = o.mount ?? (o.pole ? "pole" : "wall");
+  const pan = new THREE.Group(); group.add(pan);
+  if (mount === "pole") {
+    const h = o.pole ?? 4.2;
+    group.add(mesh(new THREE.CylinderGeometry(0.07, 0.09, h, 10), dark, [0, h / 2, 0]));
+    group.add(mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.05, 12), dark, [0, h + 0.02, 0]));          // top cap
+    pan.position.set(0, h + 0.05, 0);
+    pan.add(mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.08, 10), dark, [0, 0.03, 0]));            // swivel
+  } else if (mount === "wall") {
+    group.add(mesh(rbox(0.17, 0.27, 0.035, 0.01), dark, [0, 0, 0.018]));                             // wall plate
+    for (const [x, y] of [[-0.055, 0.1], [0.055, 0.1], [-0.055, -0.1], [0.055, -0.1]]) group.add(mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.012, 6), metal, [x, y, 0.04], false).rotateX(Math.PI / 2));
+    const arm = mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.4, 10), dark, [0, 0.05, 0.23]); arm.rotation.x = Math.PI / 2; group.add(arm);
+    const br0 = new THREE.Vector3(0, -0.11, 0.04), br1 = new THREE.Vector3(0, 0.04, 0.27);
+    const brace = mesh(new THREE.CylinderGeometry(0.014, 0.014, br0.distanceTo(br1), 8), dark, [0, (br0.y + br1.y) / 2, (br0.z + br1.z) / 2]);
+    brace.rotation.x = Math.atan2(br1.z - br0.z, br1.y - br0.y); group.add(brace);
+    group.add(mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.06, 12), dark, [0, 0.08, 0.43]));      // swivel at the arm's end
+    const cable = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(0.03, 0.07, 0.4), new THREE.Vector3(0.05, -0.02, 0.33), new THREE.Vector3(0.04, -0.06, 0.16), new THREE.Vector3(0.03, -0.05, 0.04)]), 12, 0.008, 5);
+    group.add(mesh(cable, dark, [0, 0, 0], false));
+    pan.position.set(0, 0.11, 0.43);
+  } else {
+    // pendant: clamp on the arm above, a short drop pipe, the head below
+    group.add(mesh(rbox(0.11, 0.07, 0.16, 0.02), dark, [0, 0.3, 0]));
+    group.add(mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.25, 8), dark, [0, 0.15, 0]));
+    pan.position.set(0, 0.0, 0);
   }
-  const pan = new THREE.Group(); pan.position.set(0, top, 0); group.add(pan);
-  pan.add(mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.25, 8), dark, [0, -0.12, 0]));
-  pan.add(mesh(rbox(0.18, 0.08, 0.18, 0.02), dark, [0, 0.02, 0]));
-  const tilt = new THREE.Group(); tilt.position.set(0, 0.06, 0); pan.add(tilt);
+  pan.add(mesh(rbox(0.16, 0.05, 0.16, 0.02), dark, [0, 0.0, 0]));
+  const tilt = new THREE.Group(); tilt.position.set(0, mount === "pendant" ? -0.02 : 0.04, 0); pan.add(tilt);
   // housing points along +z
-  tilt.add(mesh(rbox(0.22, 0.2, 0.52, 0.05), metal, [0, 0.1, 0.12]));
-  tilt.add(mesh(rbox(0.26, 0.03, 0.62, 0.02), metal, [0, 0.215, 0.16]));       // sun hood
-  tilt.add(mesh(new THREE.CylinderGeometry(0.07, 0.075, 0.06, 20), dark, [0, 0.1, 0.39]).rotateX(Math.PI / 2));
-  const lens = mesh(new THREE.SphereGeometry(0.055, 18, 12), std("#05060c", { roughness: 0.05, metalness: 0.9 }), [0, 0.1, 0.41], false);
+  const hy = mount === "pendant" ? 0.1 : 0.1;
+  tilt.add(mesh(rbox(0.22, 0.2, 0.52, 0.05), metal, [0, hy, 0.12]));
+  tilt.add(mesh(rbox(0.26, 0.03, 0.62, 0.02), metal, [0, hy + 0.115, 0.16]));      // sun hood
+  tilt.add(mesh(new THREE.CylinderGeometry(0.07, 0.075, 0.06, 20), dark, [0, hy, 0.39]).rotateX(Math.PI / 2));
+  const lens = mesh(new THREE.SphereGeometry(0.055, 18, 12), std("#05060c", { roughness: 0.05, metalness: 0.9 }), [0, hy, 0.41], false);
   lens.scale.z = 0.5; tilt.add(lens);
-  const led = mesh(new THREE.SphereGeometry(0.014, 10, 8), glow("#ff2a2a", 6), [0.075, 0.16, 0.38], false);
+  const led = mesh(new THREE.SphereGeometry(0.014, 10, 8), glow("#ff2a2a", 6), [0.075, hy + 0.06, 0.38], false);
   tilt.add(led);
-  return { group, pan, tilt, led };
+  if (mount === "pendant") { pan.position.y = 0.0; tilt.position.y = -0.24; }
+  const c: Cctv = { group, pan, tilt, led, rest: o.rest ?? { yaw: 0, pitch: 0.3 } };
+  aimCctvRest(c);
+  return c;
 }
+/** put a camera in its resting pose */
+export function aimCctvRest(c: Cctv) { c.pan.rotation.set(0, c.rest.yaw, 0); c.tilt.rotation.set(c.rest.pitch, 0, 0); }
 /** aim a CCTV head at a world point: k = 0 keeps the rest pose `from`, k = 1 looks straight at the target.
  *  Pure function of its inputs (no state carried between frames), so any frame renders the same on its own. */
 export function aimCctv(c: Cctv, target: THREE.Vector3, k: number, from: { yaw: number; pitch: number } = { yaw: 0, pitch: 0.2 }) {

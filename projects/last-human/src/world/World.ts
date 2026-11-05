@@ -86,7 +86,7 @@ export class World {
     for (const c of [this.hero, this.refl, this.cu]) c.pivot.rotation.set(0, 0, 0);
     this.phone.visible = false;
     for (const l of this.city.pointLights) l.intensity = 0;
-    this.cu.mat.opacity = 1;
+    this.cu.mat.opacity = 1; this.watcher.mat.opacity = 1;
   }
 
   /** a temporary practical light for a shot (city point lights pool) */
@@ -142,8 +142,8 @@ export class World {
     card.blob.visible = o.blob ?? true;
   }
 
-  /** every (or the listed) CCTV head turns from its rest pose toward the target by k (0..1) */
-  aimCams(target: THREE.Vector3, k: number, which?: number[], rest?: (i: number) => { yaw: number; pitch: number }) {
-    this.city.cams.forEach((c, i) => { if (!which || which.includes(i)) aimCctv(c, target, k, rest ? rest(i) : { yaw: 1.3 + i * 1.7, pitch: 0.25 }); });
+  /** every (or the listed) CCTV head turns from its own resting aim toward the target by k (0..1) */
+  aimCams(target: THREE.Vector3, k: number, which?: number[]) {
+    this.city.cams.forEach((c, i) => { if (!which || which.includes(i)) aimCctv(c, target, k, c.rest); });
   }
 }

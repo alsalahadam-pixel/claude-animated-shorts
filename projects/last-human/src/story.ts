@@ -8,7 +8,7 @@ import { drawCharacter, drawHand, drawHeadOnly, drawPigeon, drawWatcher, Face, F
 import { CITY } from "./world/city";
 
 export const FPS = 30;
-export const FILM_END = 1800;          // 60.0 s: hard cut to black
+export const FILM_END = 1806;          // 60.2 s: hard cut to black
 export const PROMPT_AT = 1836;         // 61.2 s: after black and silence, the quiet PART 2? prompt
 export const TOTAL = 1875;             // 62.5 s
 type V3 = [number, number, number];
@@ -40,6 +40,13 @@ function keys(K: Key[], f: number, fov0 = 35): Cam {
   }
   const L = K[K.length - 1];
   return { pos: L.pos, look: L.look, fov: L.fov ?? fov0, roll: L.roll ?? 0 };
+}
+/** a deliberate dolly/zoom from A to B over [a, b]: near-constant speed with soft starts and stops */
+function glide(a: number, b: number, A: { pos: V3; look: V3; fov: number; roll?: number }, B: { pos: V3; look: V3; fov: number; roll?: number }): (f: number) => Cam {
+  return (f) => {
+    const x = clamp((f - a) / (b - a)), t = 0.6 * x + 0.4 * ss(x);
+    return { pos: lerp3(A.pos, B.pos, t), look: lerp3(A.look, B.look, t), fov: lerp(A.fov, B.fov, t), roll: lerp(A.roll ?? 0, B.roll ?? 0, t) };
+  };
 }
 /** a locked-off shot with an imperceptible creep toward the subject (k = fraction of the distance over the shot) */
 function locked(a: number, b: number, pos: V3, look: V3, fov: number, k = 0.04, roll = 0): (f: number) => Cam {
@@ -132,8 +139,8 @@ const SPOT_HEAD = V([10.4, 1.65, -11.5]);
 const S09_POS: V3 = [9.6, 1.5, -6.0], S09_LOOK: V3 = [11.45, 2.0, -12.0];
 const S09_RIGHT = new THREE.Vector3(-(S09_LOOK[2] - S09_POS[2]), 0, S09_LOOK[0] - S09_POS[0]).normalize();
 const END9 = SPOT.clone().addScaledVector(S09_RIGHT, 0.55);
-// S09 is framed a little left of its axis and a touch wider, so his step to the left stays well inside the frame
-const S09_FRAME_LOOK = V(S09_LOOK).addScaledVector(S09_RIGHT, -0.3).toArray() as V3;
+/** S09: his sideways steps under the camera (metres along S09_RIGHT): one to the left, then one to the right */
+const s09lat = (g: number) => -0.35 * ramp(g, 606, 620) + 0.9 * ramp(g, 681, 697);
 const GLASS_X = CITY.shopGlassX;            // the shop window (x = -12.9)
 const Z5 = -78.2;                           // where he stops at the glass
 const HERO_X5 = -11.75;
@@ -150,34 +157,63 @@ const CORNER_DIR = DEVIL_SPOT.clone().sub(BED_HIP).setY(0).normalize();
 const S21_POS: V3 = [3.1, 1.5, -0.9], S21_LOOK: V3 = [-3.12, 1.62, -2.68];   // over his shoulder: his head low right, out of focus
 /** torso pitch back from upright (rad): asleep under the duvet, then he jolts upright (the same jolt as S03), a settle */
 function bedPitch(f: number) {
-  if (f < 1670) return 1.35;
-  const k = ss((f - 1670) / 8) * 1.05 - Math.max(0, ss((f - 1678) / 7)) * 0.05;
+  if (f < 1665) return 1.35;
+  const k = ss((f - 1665) / 8) * 1.05 - Math.max(0, ss((f - 1673) / 7)) * 0.05;
   return 1.35 * (1 - k);
 }
 function bedPose(f: number, cam: THREE.PerspectiveCamera): Pose {
   const body = World.psi(BED_HIP, V([0, 0, 1]), cam), corner = World.psi(BED_HIP, CORNER_DIR, cam);
-  const up = f >= 1670, turn = ramp(f, 1712, 1742);
+  const up = f >= 1665, turn = ramp(f, 1700, 1721);
   const headPsi = lerp(body, corner, turn);
   // which way the corner is on screen, in his face's terms (the drawing mirrors the body when psi < 0, and the head again
   // when its own yaw is negative)
   const g = Math.sin(body * D2R) < -1e-3 ? -1 : 1, h = Math.sin(g * headPsi * D2R) < -1e-3 ? -1 : 1;
   const side = (Math.sign(Math.sin(corner * D2R)) || 1) * g * h;
-  const dart = saccade(f, [[0, [0, 0]], [1678, [0.5, 0.15]], [1685, [-0.55, 0]], [1692, [0.25, -0.25]], [1699, [-0.3, 0.1]], [1705, [0, 0]], [1709, [0.9 * side, 0]]]);
-  const pant = up ? Math.sin((f / FPS) * Math.PI * 2 * 1.5) * (1 - 0.5 * ramp(f, 1705, 1712)) : 0;
+  const dart = saccade(f, [[0, [0, 0]], [1673, [0.5, 0.15]], [1679, [-0.55, 0]], [1685, [0.25, -0.25]], [1690, [-0.3, 0.1]], [1695, [0, 0]], [1698, [0.9 * side, 0]]]);
+  // he pants, then holds his breath when he senses the corner
+  const pant = up ? Math.sin((f / FPS) * Math.PI * 2 * 1.5) * (1 - 0.8 * ramp(f, 1694, 1700)) : 0;
   const face: Face = {
     ...FACE0, tired: 1,
-    open: !up ? 0 : (f < 1704 ? 1.25 : lerp(1.25, 1.35, turn)) * blinkAt(f, [1696]),
+    open: !up ? 0 : (f < 1695 ? 1.25 : lerp(1.25, 1.38, turn)) * blinkAt(f, [1688]),
     pupil: up ? lerp(0.6, 0.45, turn) : 1, brow: up ? 0.9 : 0, browIn: up ? 1.25 : 0.3,
-    mouth: !up ? "neutral" : f < 1684 ? "gasp" : "part", mouthOpen: f < 1684 ? 0.6 : 0.35 + 0.15 * turn,
+    mouth: !up ? "neutral" : f < 1679 ? "gasp" : "part", mouthOpen: f < 1679 ? 0.6 : 0.35 + 0.15 * turn,
     look: dart,
   };
   const p = doublePose(face, headPsi);
   p.psi = body; p.breathe = pant;
-  const jolt = up ? Math.max(0, 1 - (f - 1670) / 10) : 0;   // hands shove back against the mattress, then come forward
+  const jolt = up ? Math.max(0, 1 - (f - 1665) / 10) : 0;   // hands shove back against the mattress, then come forward
   p.armL = [lerp(6, -28, jolt), 12, lerp(18, 26, jolt)]; p.armR = [lerp(6, -24, jolt), 12, lerp(18, 30, jolt)];
   p.handL = "open"; p.handR = "open";
-  p.headNod = lerp(-6, 3, ramp(f, 1678, 1700)) * (up ? 1 : 0); p.headTilt = -4 * turn;
+  p.headNod = lerp(-6, 3, ramp(f, 1673, 1690)) * (up ? 1 : 0); p.headTilt = -4 * turn;
   return p;
+}
+/** S17-S19: the phone, held low, throws his shadow up the door behind him, bigger. The shadow's head is wrong: too long,
+ *  on a neck too thin. It is the devil's shape. It never moves on its own; nothing points at it. */
+const SHADOW_FRAME = { x0: -46, y0: 140, w: 92, h: 120 };
+function wrongShadow(w: World, k: number, sway = 0) {
+  const c = w.watcher;
+  if (k <= 0) { c.visible = false; return; }
+  c.resize(736, 960); c.setFrame(SHADOW_FRAME);
+  c.draw((ctx) => {
+    // the shadow shape, softened like a cast shadow from a small close light
+    drawWatcher(ctx, SHADOW_FRAME, { eyes: 0, smile: 0, rim: 0, tilt: sway, lean: 0 });
+    const t = document.createElement("canvas"); t.width = ctx.canvas.width; t.height = ctx.canvas.height; t.getContext("2d")!.drawImage(ctx.canvas, 0, 0);
+    const W = t.width, H = t.height;
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H);
+    // the phone's cold light on the door: a soft pool...
+    const g = ctx.createRadialGradient(W * 0.5, H * 0.42, 10, W * 0.5, H * 0.5, W * 0.62);
+    g.addColorStop(0, "rgba(150,175,255,0.30)"); g.addColorStop(0.55, "rgba(120,140,240,0.12)"); g.addColorStop(1, "rgba(100,120,220,0)");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    // ...and his shadow inside it, with the wrong head
+    ctx.globalCompositeOperation = "destination-out"; ctx.filter = "blur(10px)"; ctx.globalAlpha = 0.95; ctx.drawImage(t, 0, 0);
+    ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 0.55; ctx.drawImage(t, 0, 0);
+    ctx.restore();
+  });
+  c.mat.opacity = k; c.mat.color.setScalar(1);
+  // the phone is held a little to his left, so the shadow falls to his right on the door, its head beside and just above
+  // his (the door's inner face is at z = 2.945, facing into the room)
+  c.pivot.position.set(-2.4, 0.97 - 2.195, 2.935); c.pivot.rotation.set(0, Math.PI, 0);
+  c.visible = true; c.blob.visible = false;
 }
 /** his card pivots at his hips in the bed: lying back under the duvet, then sitting bolt upright */
 function placeInBed(w: World, cam: THREE.PerspectiveCamera, f: number, L: Light) {
@@ -200,12 +236,13 @@ export const SHOTS: Shot[] = [
   // S01 — cold open: the camera turns to an empty spot, waits, and he walks into it
   {
     id: "S01", a: 0, b: 144, look: "night", grade: "night",
-    cam: locked(0, 144, S01_POS, S01_LOOK, 46, 0.03),
+    cam: (f) => keys([{ f: 0, pos: [9.85, 2.3, -5.3], look: [12.0, 2.62, -11.5], fov: 36 }, { f: 36, pos: [9.84, 2.28, -5.27], look: [12.0, 2.6, -11.5], fov: 36 },
+      { f: 100, pos: [9.6, 1.45, -4.0], look: [11.2, 1.55, -11.6], fov: 46 }, { f: 144, pos: [9.7, 1.47, -4.5], look: [11.22, 1.6, -11.6], fov: 44 }], f),
     dof: () => ({ cInf: 3, focus: [11.3, 2.2, -11.5] }),
     act: (f, w, cam) => {
       spotLights(w);
       // the camera turns 70° onto empty pavement (0.4-1.5 s), tilts down, blinks once
-      w.aimCams(SPOT_HEAD, ramp(f, 12, 45), [0], () => ({ yaw: -2.79, pitch: -0.05 }));
+      w.aimCams(SPOT_HEAD, ramp(f, 12, 45), [0]);
       w.aimCams(SPOT_HEAD, 0);
       w.city.heroCam.led.visible = !(f >= 50 && f < 54);
       // he steps in from the left edge (f86) and stops exactly where it is looking (f107), then looks up at it
@@ -213,7 +250,7 @@ export const SHOTS: Shot[] = [
       const dist = f < tStop - 8 ? (speed * (tStop - 4 - f)) / FPS : 0.11 * (1 - ramp(f, tStop - 8, tStop));
       const p = SPOT.clone().add(V([-dist, 0, 0]));
       const moving = f < tStop;
-      const face: Partial<Face> = { ...TIRED, browIn: 0.8, look: f > 113 ? [0.2, 0.7] : [0.3, 0] };
+      const face: Partial<Face> = { ...TIRED, browIn: 0.8, look: f > 113 ? [0.2, 0.7] : [0.3, 0], open: 0.92 * blinkAt(f, [129]) };
       const toCam = V([12.85, 0, -11.5]).sub(p).setY(0).normalize();
       const pose = moving ? walk(World.psi(p, V([1, 0, 0]), cam), -dist / 1.5, face, { amp: f > tStop - 10 ? 0.5 : 1 })
         : stand(World.psi(p, V([1, 0, 0]).lerp(V([0.5, 0, 0.87]), ramp(f, tStop, tStop + 10)).normalize(), cam), f / FPS, face);
@@ -249,7 +286,7 @@ export const SHOTS: Shot[] = [
   // S04 — the window: palm on the glass, "HELLO?!" — the city throws it back
   {
     id: "S04", a: 267, b: 342, look: "sunrise", grade: "warm",
-    cam: locked(267, 342, [1.8, 1.86, 0.78], [40, -6, 2.0], 40, 0.0008, -0.6),
+    cam: glide(267, 342, { pos: [1.8, 1.86, 0.78], look: [40, -6, 2.0], fov: 40, roll: -0.6 }, { pos: [2.1, 1.84, 0.8], look: [40, -6, 2.0], fov: 37.5, roll: -0.6 }),
     dof: () => ({ cInf: 5, focus: [60, -18, -1.5] }),
     act: (f, w, cam) => {
       const p = V([3.12, 0, 0.62]);
@@ -264,7 +301,7 @@ export const SHOTS: Shot[] = [
   // S05 — his face at the glass: hope draining away. "I haven't slept since."
   {
     id: "S05", a: 342, b: 402, look: "sunrise", grade: "warm",
-    cam: locked(342, 402, [3.98, 1.63, 0.42], [3.12, 1.6, 0.62], 30, 0.05),
+    cam: locked(342, 402, [3.98, 1.63, 0.42], [3.12, 1.6, 0.62], 30, 0.17),
     dof: () => ({ cInf: 9, focus: [3.12, 1.62, 0.62] }),
     act: (f, w, cam) => {
       const p = V([3.12, 0, 0.62]);
@@ -280,7 +317,7 @@ export const SHOTS: Shot[] = [
   // S06 — Day 2: the empty avenue; a pigeon hangs in the air, mid-wingbeat
   {
     id: "S06", a: 402, b: 450, look: "overcast", grade: "cool",
-    cam: locked(402, 450, [1.1, 5.6, 12.6], [-0.5, 0.8, -30], 38, 0.01),
+    cam: glide(402, 450, { pos: [1.1, 5.95, 12.95], look: [-0.5, 0.9, -30], fov: 38 }, { pos: [1.0, 5.0, 12.1], look: [-0.5, 0.75, -30], fov: 37 }),
     dof: () => ({ cInf: 0 }),
     act: (f, w, cam) => {
       const d = 3.0 + ((f - 402) / FPS) * 1.25;
@@ -298,7 +335,7 @@ export const SHOTS: Shot[] = [
   // S07 — the café: steam hangs over the cup like glass; his fingers pass through it and nothing moves
   {
     id: "S07", a: 450, b: 546, look: "overcast", grade: "cool",
-    cam: locked(450, 546, [-9.6, 1.2, -0.6], [-10.22, 1.03, -1.28], 34, 0.06),
+    cam: locked(450, 546, [-9.6, 1.2, -0.6], [-10.22, 1.03, -1.28], 34, 0.11),
     dof: () => ({ cInf: 10, focus: [-10.22, 1.06, -1.28] }),
     act: (f, w, cam) => {
       const steam = w.city.steam.position.clone().add(V([0, 0.1, 0]));
@@ -313,7 +350,7 @@ export const SHOTS: Shot[] = [
   // S08 — dusk: the light is red forever; the street clock says 06:12
   {
     id: "S08", a: 546, b: 591, look: "dusk", grade: "dusk",
-    cam: locked(546, 591, [-3.6, 1.0, -18.6], [-5.6, 4.7, -30.6], 56, 0.01, 1),
+    cam: glide(546, 591, { pos: [-3.6, 1.0, -18.6], look: [-5.6, 4.7, -30.6], fov: 56, roll: 1 }, { pos: [-3.8, 1.02, -19.6], look: [-5.6, 4.5, -30.6], fov: 54, roll: 1.6 }),
     dof: () => ({ cInf: 0 }),
     act: (f, w, cam) => {
       const d = ((f - 546) / FPS) * 1.1;
@@ -324,12 +361,15 @@ export const SHOTS: Shot[] = [
   // S09 — Day 3: he tests it. Step left: it follows. Step right: it follows.
   {
     id: "S09", a: 591, b: 744, look: "night", grade: "night",
-    cam: locked(591, 744, S09_POS, S09_FRAME_LOOK, 50, 0.02),
+    cam: (f) => {
+      const k = 0.6 * clamp((f - 591) / 153) + 0.4 * ss((f - 591) / 153), l = s09lat(f) * 0.85;   // the pan follows his steps
+      return { pos: lerp3([8.5, 0.86, -8.45], [8.72, 0.9, -8.8], k), look: [11.1 + S09_RIGHT.x * l, 2.05, -11.6 + S09_RIGHT.z * l], fov: lerp(48, 45, k) };
+    },
     dof: () => ({ cInf: 3, focus: [10.4, 1.6, -11.5] }),
     act: (f, w, cam) => {
       spotLights(w);
       const right = S09_RIGHT;
-      const lat = (g: number) => -0.35 * ramp(g, 606, 620) + 0.9 * ramp(g, 681, 697);
+      const lat = s09lat;
       const p = SPOT.clone().addScaledVector(right, lat(f));
       const stepping = (f >= 606 && f < 620) || (f >= 681 && f < 697);
       const toCctv = V([0.5, 0, 0.87]);
@@ -344,14 +384,14 @@ export const SHOTS: Shot[] = [
       w.place(w.hero, pose, NEON, BODY, p, cam, { floorY: 0.15 });
       // it follows his head with an 8-frame servo lag
       const lagged = SPOT_HEAD.clone().addScaledVector(right, lat(f - 8));
-      w.aimCams(lagged, 1, [0], () => ({ yaw: -2.79, pitch: -0.05 }));
+      w.aimCams(lagged, 1, [0]);
       w.aimCams(lagged, 0);
     },
   },
   // S10 — every camera on the street turns to him at once
   {
     id: "S10", a: 744, b: 813, look: "night", grade: "night",
-    cam: locked(744, 813, [9.15, 0.95, -11.55], [12.85, 7.2, -11.1], 50, 0.02, -3),
+    cam: glide(744, 813, { pos: [9.15, 0.95, -11.55], look: [12.85, 7.2, -11.1], fov: 50, roll: -3 }, { pos: [9.45, 1.3, -11.52], look: [12.85, 7.2, -11.1], fov: 48, roll: -6 }),
     dof: () => ({ cInf: 0 }),
     act: (f, w, cam) => {
       spotLights(w);
@@ -362,19 +402,21 @@ export const SHOTS: Shot[] = [
       w.place(w.hero, pose, NEON, BODY, p, cam, { floorY: 0.15 });
       const head = END9.clone().setY(1.65);
       w.city.cams.forEach((_, i) => { if (i > 0) w.aimCams(head, ramp(f, 753 + (i % 5) * 2, 780 + (i % 5) * 2), [i]); });
-      w.aimCams(head, 1, [0], () => ({ yaw: -2.79, pitch: -0.05 }));
+      w.aimCams(head, 1, [0]);
     },
   },
   // S11 — his face, looking up at them
   {
     id: "S11", a: 813, b: 849, look: "night", grade: "night",
-    cam: locked(813, 849, [END9.x + 1.15, 1.56, END9.z - 0.35], [END9.x, 1.83, END9.z], 34, 0.04),
+    cam: locked(813, 849, [END9.x + 1.15, 1.56, END9.z - 0.35], [END9.x, 1.83, END9.z], 34, 0.15),
     dof: () => ({ cInf: 12, focus: [END9.x, 1.81, END9.z] }),
     act: (f, w, cam) => {
       spotLights(w); w.practical(2, [11.6, 5.0, -11.2], "#b07bff", 40, 10);
       const p = END9.clone();
       const pose = stand(World.psi(p, V([1, 0, 0.05]), cam), f / FPS, { ...TIRED, open: 1.3, pupil: 0.5, brow: 1.1, browIn: 1.3, mouth: "part", mouthOpen: 0.3, look: [0.25, 0.7] });
-      pose.headNod = -16; pose.headTilt = 3;
+      const tr = Math.sin(f * 2.3) * 0.5 + Math.sin(f * 3.7 + 1) * 0.3;   // a fine fear tremble
+      pose.headNod = -16 + tr * 0.6; pose.headTilt = 3 + tr * 0.5;
+      pose.face = { ...pose.face, look: [0.25 + Math.sin(f * 1.9) * 0.03, 0.7 + Math.sin(f * 2.9) * 0.025] };
       w.cu.setFrame(HEAD_CU);
       w.cu.draw((ctx, F) => drawCharacter(ctx, pose, NEON_L, F, { lineK: 0.75 }));
       w.cu.stand(p, cam.position); w.cu.visible = true; w.cu.blob.visible = false;
@@ -389,36 +431,44 @@ export const SHOTS: Shot[] = [
       const z = z12(f), d = (f - 849) / FPS * 1.1;
       w.practical(0, [-11.0, 3.8, z - 1.5], "#b07bff", 30, 9); w.practical(1, [-8.6, 6.0, z + 4], "#3fd8d0", 22, 12);
       const p = V([HERO_X5, 0.15, z]), pr = V([mirrorX(HERO_X5), 0.15, z]);
-      w.place(w.hero, walk(World.psi(p, V([0, 0, -1]), cam), d / STRIDE, { ...TIRED, look: [0.2, 0], browIn: 0.8 }), NEON, BODY, p, cam, { floorY: 0.15 });
-      w.place(w.refl, walk(World.psi(pr, V([0, 0, -1]), cam), d / STRIDE, { ...TIRED, look: [0.2, 0], browIn: 0.8 }), GLASS, BODY, pr, cam, { blob: false });
+      w.place(w.hero, walk(World.psi(p, V([0, 0, -1]), cam), d / STRIDE, { ...TIRED, look: [0.2, 0], browIn: 0.8, open: 0.92 * blinkAt(f, [876]) }), NEON, BODY, p, cam, { floorY: 0.15 });
+      // his reflection blinks a beat after he does: the first thing that is wrong, easy to miss
+      w.place(w.refl, walk(World.psi(pr, V([0, 0, -1]), cam), d / STRIDE, { ...TIRED, look: [0.2, 0], browIn: 0.8, open: 0.92 * blinkAt(f, [882]) }), GLASS, BODY, pr, cam, { blob: false });
       w.refl.mat.opacity = 0.7;
     },
   },
   // S13 — the mirror test: in sync, then 4 frames late, then 10, then 14
   {
-    id: "S13", a: 918, b: 1062, look: "night", grade: "night",
-    cam: locked(918, 1062, [-11.95, 1.5, -71.6], [-12.9, 1.35, -78.2], 40, 0.06),
+    id: "S13", a: 918, b: 990, look: "night", grade: "night",
+    cam: locked(918, 990, [-11.95, 1.5, -71.6], [-12.9, 1.35, -78.2], 40, 0.05),
     dof: () => ({ cInf: 3, focus: [-12.9, 1.45, Z5] }),
+    act: (f, w, cam) => act13(f, w, cam),
+  },
+  // S13B — over his shoulder, onto its face in the glass: the head tilt comes late, the hand comes down late, it leans late
+  {
+    id: "S13B", a: 990, b: 1062, look: "night", grade: "night",
+    cam: glide(990, 1062, { pos: [-11.56, 1.67, -77.7], look: [-13.55, 1.58, -78.44], fov: 33 }, { pos: [-11.66, 1.67, -77.76], look: [-13.55, 1.58, -78.42], fov: 31 }),
+    dof: () => ({ cInf: 6, focus: [-13.55, 1.6, Z5] }),
     act: (f, w, cam) => act13(f, w, cam),
   },
   // S14 — he steps back; it steps back. He stops. It takes one more step.
   {
     id: "S14", a: 1062, b: 1152, look: "night", grade: "night",
-    cam: locked(1062, 1152, [-12.4, 1.32, -70.4], [-12.95, 1.25, -78.2], 46, 0.03),
+    cam: locked(1062, 1152, [-12.4, 1.32, -70.4], [-12.95, 1.25, -78.2], 46, 0.1),
     dof: () => ({ cInf: 3, focus: [-12.9, 1.4, Z5] }),
     act: (f, w, cam) => act14(f, w, cam),
   },
   // S15 — close on the reflection: his face, blank; it goes black; his shape drains out of it and the entity is left; eyes, then the grin
   {
     id: "S15", a: 1152, b: 1311, look: "night", grade: "night",
-    cam: snap(locked(1152, 1311, [-12.45, 1.64, -76.4], [-13.55, 1.63, -78.2], 28, 0.05), 1217, 0.06),
+    cam: locked(1152, 1311, [-12.45, 1.64, -76.4], [-13.55, 1.63, -78.2], 28, 0.1),
     dof: () => ({ cInf: 9, focus: [-13.55, 1.64, Z5] }),
     act: (f, w, cam) => {
       w.practical(0, [-12.2, 2.6, -77.6], "#b07bff", 14, 5);
       const pr = V([mirrorX(HERO_X13), 0.15, Z5]);
       const pose = stand(World.psi(pr, V([1, 0, 0.05]), cam), 0, { ...TIRED, open: 1.0, pupil: 0.9, brow: -0.05, browIn: 0.05, mouth: "neutral", look: [0, 0] });
       pose.breathe = 0; pose.headTilt = 0;
-      const ink = ramp(f, 1186, 1200), morph = ramp(f, 1199, 1214), eyes = ramp(f, 1217, 1219), grin = ramp(f, 1258, 1292);
+      const ink = ramp(f, 1186, 1200), morph = ramp(f, 1199, 1214), eyes = ramp(f, 1216, 1222), grin = ramp(f, 1258, 1292);
       const look = { eyes, smile: grin, rim: 0.45, tilt: -7 * ramp(f, 1236, 1290), lean: 0 };
       let head: DOMMatrix | null = null;
       w.cu.setFrame(GLASS_CU);
@@ -446,7 +496,7 @@ export const SHOTS: Shot[] = [
   // S16 — home: the door slams, the chain goes on, he slides down to the floor
   {
     id: "S16", a: 1311, b: 1377, look: "aptNight", grade: "night",
-    cam: locked(1311, 1377, [-1.05, 0.42, 1.0], [-2.1, 1.15, 2.9], 46, 0.03),
+    cam: (f) => keys([{ f: 1311, pos: [-1.05, 0.42, 1.0], look: [-2.1, 1.15, 2.9], fov: 46 }, { f: 1348, pos: [-1.08, 0.42, 1.06], look: [-2.1, 1.14, 2.9], fov: 46 }, { f: 1370, pos: [-1.12, 0.42, 1.12], look: [-2.1, 0.86, 2.9], fov: 45 }, { f: 1377, pos: [-1.13, 0.42, 1.13], look: [-2.1, 0.85, 2.9], fov: 45 }], f),
     dof: () => ({ cInf: 5, focus: [-2.1, 1.0, 2.6] }),
     act: (f, w, cam) => {
       const p = V([-2.05, 0, 2.55]);
@@ -470,8 +520,12 @@ export const SHOTS: Shot[] = [
         const fall = clamp((f - 1350) / 13);
         const s = clamp(fall * fall * 1.06 - 0.06 * Math.sin(clamp((f - 1363) / 10) * Math.PI));
         const st = stand(World.psi(p, face, cam), f / FPS, { ...TIRED, open: 1.2, browIn: 1.2 });
-        const fl = floorSit(f / FPS, { open: 1.2, browIn: 1.2 }, { psi: st.psi, hands: "fist" });
-        const pose: Pose = { ...fl, hip: [0, lerp(93, 18, s), 0], legL: [lerp(0, 130, s), 12, lerp(2, 110, s)], legR: [lerp(0, 126, s), 16, lerp(2, 106, s)], lean: lerp(2, 6, s), legsFront: s > 0.5 };
+        // he slides down clutching his phone (dark): the arms come in from his sides as he drops, no pop
+        const fl = floorSit(f / FPS, { open: 1.2, browIn: 1.2 }, { psi: st.psi, hands: "phone", phone: 0 });
+        const ak = ss(clamp((f - 1350) / 11));
+        const armIn = (a: [number, number, number]): [number, number, number] => [lerp(5, a[0], ak), lerp(6, a[1], ak), lerp(8, a[2], ak)];
+        const pose: Pose = { ...fl, armL: armIn(fl.armL), armR: armIn(fl.armR), handL: ak > 0.55 ? "phone" : "open", handR: ak > 0.55 ? "phone" : "open",
+          hip: [0, lerp(93, 18, s), 0], legL: [lerp(0, 130, s), 12, lerp(2, 110, s)], legR: [lerp(0, 126, s), 16, lerp(2, 106, s)], lean: lerp(2, 6, s), legsFront: s > 0.5 };
         w.place(w.hero, pose, NIGHT_ROOM, BODY, V([-2.05, 0, lerp(2.55, 2.6, s)]), cam);
       }
     },
@@ -479,7 +533,7 @@ export const SHOTS: Shot[] = [
   // S17 — on the floor in the dark; the phone buzzes for the first time in three days
   {
     id: "S17", a: 1377, b: 1437, look: "aptNight", grade: "night",
-    cam: locked(1377, 1437, [-1.45, 0.78, 1.25], [-2.05, 0.55, 2.55], 40, 0.03),
+    cam: locked(1377, 1437, [-1.45, 0.78, 1.25], [-2.05, 0.55, 2.55], 40, 0.12),
     dof: () => ({ cInf: 6, focus: [-2.05, 0.7, 2.6] }),
     act: (f, w, cam) => {
       const lit = f >= 1407;
@@ -490,6 +544,7 @@ export const SHOTS: Shot[] = [
       if (buzz) pose.hip = [((f % 2) - 0.5) * 0.6, 18, 0];
       w.place(w.hero, pose, lit ? PHONE : DARK, BODY, DOOR_SIT, cam);
       w.apt.phoneLight.position.set(-2.0, 0.6, 2.25); w.apt.phoneLight.intensity = lit ? 0.9 : 0; w.apt.phoneLight.distance = 1.6; w.apt.phoneLight.color.set("#bfe0ff");
+      wrongShadow(w, lit ? ramp(f, 1407, 1412) : 0);
     },
   },
   // S18 — the photo: him, asleep in his bed. From: Me. 1 min ago.
@@ -507,7 +562,7 @@ export const SHOTS: Shot[] = [
   // S19 — his eyes lift from the phone, then his head turns, slowly, toward the bed
   {
     id: "S19", a: 1563, b: 1635, look: "aptNight", grade: "night",
-    cam: locked(1563, 1635, [-1.86, 0.9, 1.95], [-2.05, 0.86, 2.6], 32, 0.04),
+    cam: locked(1563, 1635, [-1.86, 0.9, 1.95], [-2.05, 0.86, 2.6], 32, 0.13),
     dof: () => ({ cInf: 12, focus: [-2.05, 0.88, 2.6] }),
     act: (f, w, cam) => {
       const lift = ramp(f, 1575, 1582);
@@ -522,38 +577,44 @@ export const SHOTS: Shot[] = [
       w.apt.phoneLight.position.set(-2.0, 0.6, 2.25); w.apt.phoneLight.intensity = 0.8;
     },
   },
-  // S20 — something moves under the duvet. It is him: the same guy jolts upright in his bed, panting, terrified, and
-  // turns, slowly, to look over his shoulder into the dark corner
+  // S20 — something moves under the duvet. It is him: the same guy jolts upright in his bed, panting, terrified; he holds
+  // his breath, and turns, slowly, eyes first, to look over his shoulder into the dark corner
   {
-    id: "S20", a: 1635, b: 1749, look: "aptNight", grade: "night",
+    id: "S20", a: 1635, b: 1725, look: "aptNight", grade: "night",
     // the eye line from the floor by the door: holds on the breathing duvet, then a slow zoom closes on his face
-    cam: (f) => keys([{ f: 1635, pos: [-1.75, 0.82, 2.05], look: [1.55, 0.72, -1.7], fov: 30 }, { f: 1668, pos: [-1.74, 0.82, 2.04], look: [1.55, 0.74, -1.7], fov: 29 }, { f: 1704, pos: [-1.7, 0.83, 2.0], look: [1.55, 1.08, -1.62], fov: 17 }, { f: 1749, pos: [-1.66, 0.83, 1.96], look: [1.53, 1.1, -1.62], fov: 14.5 }], f),
+    cam: (f) => keys([{ f: 1635, pos: [-1.75, 0.82, 2.05], look: [1.55, 0.72, -1.7], fov: 30 }, { f: 1660, pos: [-1.745, 0.82, 2.045], look: [1.55, 0.73, -1.7], fov: 29.2 },
+      { f: 1698, pos: [-1.7, 0.83, 2.0], look: [1.55, 1.08, -1.62], fov: 17 }, { f: 1725, pos: [-1.67, 0.83, 1.97], look: [1.53, 1.1, -1.62], fov: 15 }], f),
     dof: () => ({ cInf: 4, focus: [1.55, 1.15, -1.62] }),
     act: (f, w, cam) => {
       const u = clamp((1.35 - bedPitch(f)) / 1.35);
-      const stir = f >= 1662 && f < 1670 ? 0.18 * Math.sin(((f - 1662) / 8) * Math.PI) : 0;   // the lump shifts: someone is under there
+      const stir = f >= 1657 && f < 1665 ? 0.18 * Math.sin(((f - 1657) / 8) * Math.PI) : 0;   // the lump shifts: someone is under there
       w.apt.setBody(Math.max(0.3, 1 - 0.7 * u) + stir, ((f - 1635) / FPS) * Math.PI * 2 * 0.55 * (1 - u));
       placeInBed(w, cam, f, NIGHT_ROOM);
     },
   },
-  // S21 — over his shoulder, into the corner, as in the first cut: the devil. Its eyes open; it grins at us. Hard cut.
+  // S21 — over his shoulder, into the corner, as in the first cut. Darkness first: the shape is only just there. Its eyes
+  // open, slowly. The camera begins to close in; the grin spreads; it leans toward us; it holds our eyes. Hard cut.
   {
-    id: "S21", a: 1749, b: 1800, look: "aptNight", grade: "night",
-    cam: snap((f) => keys([{ f: 1749, pos: S21_POS, look: S21_LOOK, fov: 30 }, { f: 1757, pos: S21_POS, look: S21_LOOK, fov: 30 }, { f: 1800, pos: [2.9, 1.54, -0.98], look: [-3.12, 2.12, -2.68], fov: 12 }], f), 1755, 0.04),
+    id: "S21", a: 1725, b: 1806, look: "aptNight", grade: "night",
+    cam: (f) => keys([{ f: 1725, pos: S21_POS, look: S21_LOOK, fov: 30 }, { f: 1752, pos: [3.07, 1.505, -0.915], look: S21_LOOK, fov: 28.5 },
+      { f: 1806, pos: [2.9, 1.54, -0.98], look: [-3.12, 2.12, -2.68], fov: 12 }], f),
     dof: () => ({ cInf: 7, focus: [-3.12, 1.9, -2.68] }),
     act: (f, w, cam) => {
       w.apt.setBody(0.3, 0);
       placeInBed(w, cam, f, DARK);
-      const eyes = ramp(f, 1755, 1757), grin = ramp(f, 1764, 1790), tilt = -4 - 6 * ramp(f, 1768, 1796);
+      const rim = lerp(0.2, 0.6, ramp(f, 1725, 1752));          // the shape surfaces as the eye adjusts to the dark
+      const eyes = ramp(f, 1750, 1758), grin = ramp(f, 1766, 1794);
+      const tilt = -2 - 8 * ramp(f, 1738, 1798), lean = 1 + 2.5 * ramp(f, 1778, 1806);
+      const look = { eyes, smile: grin, rim, tilt, lean };
       const c = w.watcher; c.resize(1240, 3520); c.setFrame(DEVIL_FRAME);
-      c.draw((ctx) => drawWatcher(ctx, DEVIL_FRAME, { eyes, smile: grin, rim: 0.6, tilt, lean: 1 }));
+      c.draw((ctx) => drawWatcher(ctx, DEVIL_FRAME, look));
       c.stand(DEVIL_SPOT, cam.position); c.visible = true; c.blob.visible = false;
-      if (eyes > 0) w.glowOver(c, (ctx) => drawWatcher(ctx, DEVIL_FRAME, { eyes, smile: grin, rim: 0, tilt, lean: 1, glowOnly: true }));
+      if (eyes > 0) w.glowOver(c, (ctx) => drawWatcher(ctx, DEVIL_FRAME, { ...look, rim: 0, glowOnly: true }));
     },
   },
   // END — black and silence (the PART 2? prompt is an overlay from PROMPT_AT)
   {
-    id: "END", a: 1800, b: 1875, look: "aptNight", grade: "night",
+    id: "END", a: 1806, b: 1875, look: "aptNight", grade: "night",
     cam: () => ({ pos: [0.97, 1.27, -0.95], look: [1.55, 1.26, -1.62], fov: 30 }),
     dof: () => ({ cInf: 0 }),
     act: () => {},
@@ -572,7 +633,7 @@ function act13(f: number, w: World, cam: THREE.PerspectiveCamera) {
   const turnH = ramp(f, 918, 930);
   const p = V([lerp(HERO_X5, HERO_X13, ramp(f, 920, 940)), 0.15, Z5]);
   const hface = V([0, 0, -1]).lerp(V([-1, 0, 0]), turnH).normalize();
-  const hero = stand(World.psi(p, hface, cam), f / FPS, { ...TIRED, open: 1.15, browIn: 1.1, look: [0, 0] });
+  const hero = stand(World.psi(p, hface, cam), f / FPS, { ...TIRED, open: 1.15 * blinkAt(f, [936]), browIn: 1.1, look: [0, 0] });
   const r = raise(f, 0);
   hero.armR = [lerp(3, 58, r), lerp(6, 6, r), lerp(8, 58, r)]; hero.handR = r > 0.5 ? "palm" : "open";
   hero.headTilt = tilt(f); hero.lean = 2 + 8 * lean(f);
@@ -580,7 +641,7 @@ function act13(f: number, w: World, cam: THREE.PerspectiveCamera) {
   // reflection: mirror position, mirror arm, same timing at first, then later and later
   const pr = V([mirrorX(p.x) - 0.25 * lean(f - 14), 0.15, Z5]);
   const rface = V([0, 0, -1]).lerp(V([1, 0, 0]), turnH).normalize();
-  const refl = stand(World.psi(pr, rface, cam), (f - 4) / FPS, { ...TIRED, open: 1.15, browIn: 1.1, look: [0, 0] });
+  const refl = stand(World.psi(pr, rface, cam), (f - 4) / FPS, { ...TIRED, open: 1.15 * blinkAt(f, [941, 1012]), browIn: 1.1, look: [0, 0] });
   const rr = raise(f, 10);
   refl.armL = [lerp(3, 58, rr), lerp(6, 6, rr), lerp(8, 58, rr)]; refl.handL = rr > 0.5 ? "palm" : "open";
   refl.headTilt = -tilt(f - 4); refl.lean = 2 + 8 * lean(f - 14);

@@ -109,8 +109,8 @@ export function smooth(pts: Vec[], closed = true, t = 0.5, path = new Path2D()):
   return path;
 }
 
-/** tapered limb outline through a chain of points with widths (round caps) */
-function limbPath(pts: Vec[], w: number[]): Path2D {
+/** tapered limb outline through a chain of points with widths (round caps; cap0/cap1 scale how far each end bulges) */
+function limbPath(pts: Vec[], w: number[], cap0k = 0.42, cap1k = 0.42): Path2D {
   const L: Vec[] = [], R: Vec[] = [];
   for (let i = 0; i < pts.length; i++) {
     const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)];
@@ -119,7 +119,7 @@ function limbPath(pts: Vec[], w: number[]): Path2D {
     R.push(add(pts[i], mul(n, -w[i] / 2)));
   }
   const d0 = norm(sub(pts[0], pts[1])), d1 = norm(sub(pts[pts.length - 1], pts[pts.length - 2]));
-  const cap0 = add(pts[0], mul(d0, w[0] * 0.42)), cap1 = add(pts[pts.length - 1], mul(d1, w[w.length - 1] * 0.42));
+  const cap0 = add(pts[0], mul(d0, w[0] * cap0k)), cap1 = add(pts[pts.length - 1], mul(d1, w[w.length - 1] * cap1k));
   return smooth([cap0, ...L, cap1, ...R.reverse()], true, 0.55);
 }
 
@@ -295,10 +295,16 @@ function drawArm(pt: Painter, R: Rig, P: Pose, side: "L" | "R", dim: number) {
   const ps = Math.sin(P.psi * D), pc = Math.cos(P.psi * D);
   const tx = t3[0] * pc + t3[2] * ps;
   const thumb = (tx * perp(dir)[0] >= 0 ? 1 : -1) as 1 | -1;
-  if (hand !== "pocket" && hand !== "hidden") drawHandShape(pt, w, dir, thumb, hand, dim);
-  // sleeve: shoulder cap, upper arm, elbow, baggy forearm
-  const m1 = lerpV(s, e, 0.45), m2 = lerpV(e, w, 0.5);
-  const sleeve = limbPath([add(s, mul(up, 1.5)), m1, e, m2, add(w, mul(dir, -0.5))], [13.8, 12.4, 10.8, 11.2, 10.2]);
+  // a forearm pointing at (or away from) the lens is foreshortened: draw the hand end-on, not stretched along a guess
+  const foreLen = len(sub(w, e)), endOn = foreLen < 9 && hand !== "phone" && hand !== "pocket" && hand !== "hidden";
+  const towardLens = R.depth(wr) > R.depth(el);   // an end-on hand in front of its cuff is drawn last; one pointing away hides behind it
+  if (hand !== "pocket" && hand !== "hidden" && !endOn) drawHandShape(pt, w, dir, thumb, hand, dim);
+  // sleeve: the head starts a little down the arm with an almost flat top (it tucks under the shoulder slope instead of
+  // bulging above it), upper arm, elbow, baggy forearm
+  const upLen = len(sub(e, s));
+  const head = add(s, mul(up, Math.min(3.2, upLen * 0.25)));
+  const m1 = lerpV(s, e, 0.5), m2 = lerpV(e, w, 0.5);
+  const sleeve = limbPath([head, m1, e, m2, add(w, mul(dir, -0.5))], [12.2, 11.4, 10.0, 10.4, 9.4], 0.16, 0.42);
   pt.part(sleeve, PAL.hood, { dim });
   // elbow: a crease on the inside of the bend
   const cr = up[0] * dir[1] - up[1] * dir[0];
@@ -313,6 +319,15 @@ function drawArm(pt: Painter, R: Rig, P: Pose, side: "L" | "R", dim: number) {
   const seam = new Path2D(); const s0 = add(w, add(mul(dir, -3.2), mul(nn, 4.9))), s1 = add(w, add(mul(dir, -3.2), mul(nn, -4.9)));
   seam.moveTo(s0[0], s0[1]); seam.quadraticCurveTo(...(add(w, mul(dir, -2.6)) as [number, number]), s1[0], s1[1]); pt.line(seam, 0.4);
   for (const k of [-2.6, -0.9, 0.9, 2.6]) { const l = new Path2D(); const c = add(w, add(mul(dir, -1.5), mul(nn, k))); l.moveTo(...(add(c, mul(dir, -1.2)) as [number, number])); l.lineTo(...(add(c, mul(dir, 0.9)) as [number, number])); pt.line(l, 0.18); }
+  if (endOn && towardLens) drawHandEndOn(pt, w, dim);
+}
+
+/** a hand seen along the forearm (pointing at or away from the lens): a rounded knuckle block with finger creases */
+function drawHandEndOn(pt: Painter, w: Vec, dim: number) {
+  const sk = { dim, shade: 0.45, lw: 0.8, rim: 0.3 };
+  const blk = smooth([[w[0] - 4.2, w[1] + 0.6], [w[0] - 3.6, w[1] + 3.4], [w[0], w[1] + 4.0], [w[0] + 3.6, w[1] + 3.2], [w[0] + 4.3, w[1] + 0.2], [w[0] + 3.2, w[1] - 3.0], [w[0] - 0.4, w[1] - 3.5], [w[0] - 3.6, w[1] - 2.4]], true, 0.5);
+  pt.part(blk, PAL.skin, sk);
+  for (const x of [-1.8, 0.1, 2.0]) { const l = new Path2D(); l.moveTo(w[0] + x, w[1] - 2.8); l.lineTo(w[0] + x * 1.05, w[1] - 0.6); pt.line(l, 0.25); }
 }
 
 /** A hand at wrist w, pointing along dir, thumb on side `th` of perp(dir). Proportions in cm (palm 8, fingers 5.6-7.6). */

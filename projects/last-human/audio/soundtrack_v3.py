@@ -8,7 +8,8 @@ are true silences, reverb tails included:
   A 0.00-11.40   the street, Day 1, the shout and its echoes      -> everything stops at 11.40 (silence to 11.75)
   B 11.75-43.70  Day 2, the cameras, the reflection, the entity   -> cut dead by the door slam at 43.70
   C 43.70-52.10  home: the chain, the floor, the buzz, the photo  -> everything drops out at 52.10
-  D 52.10-60.00  the bed, him, the devil                          -> all sound cuts at 60.00; silence after
+  D 52.10-60.20  the bed, him, the devil                          -> all sound cuts at 60.20
+  E 60.55-61.70  in the black: one CCTV servo turning somewhere   -> then silence under PART 2?
 Story rule 1 holds in sound too: no wind, no traffic, no ticking clocks. Only him, and "them".
 """
 import json
@@ -226,8 +227,9 @@ def build():
     cue(F(1186), "S15 its face goes black: sub drop, reversed swell into the eyes")
     add(B["music"], S.boom(3.0, 48, 26, 1.0), F(1186), until=43.7)
     add(B["music"], reverse_swell(F(1217) - F(1190), 0.5), F(1190), until=43.7)
-    cue(F(1217), "the entity's eyes snap open: stinger")
-    add(B["music"], S.stinger(0.9), F(1217), until=43.7)
+    cue(F(1216), "the entity's eyes open: a held, quieter sting (no jump)")
+    add(B["music"], S.stinger(0.5), F(1217), until=43.7)
+    add(B["music"], S.drone(30.9, 2.2, 0.5, 0.3, 0.8), F(1216), until=43.7)
     cue(F(1258), "the grin spreads: dissonant cluster")
     add(B["music"], S.cluster([466.2, 493.9, 523.3, 554.4], 3.0, 1.2, 0.4, 0.22, trem=9), F(1258), until=43.7)
     add(B["music"], S.drone(36.7, 3.4, 0.45, 1.0, 0.2), 40.3, until=43.7)
@@ -270,30 +272,40 @@ def build():
     for k in range(2):
         tb = t0 + k / 0.55
         add(D["sfx"], lp(S.breath(0.85, 0.07), 1400), tb, 1.0, 0.25); add(D["sfx"], lp(S.breath(0.95, 0.05, False), 1400), tb + 0.9, 1.0, 0.25)
-    add(D["sfx"], rustle(0.3, 0.05), F(1662), 1.0, 0.25)
-    cue(F(1670), "he jolts upright in the bed: gasp, duvet, a low hit")
-    add(D["sfx"], S.breath(0.42, 0.24), F(1669), 1.0, 0.2)
-    add(D["sfx"], rustle(0.55, 0.2), F(1670), 1.0, 0.2)
-    add(D["music"], S.boom(1.6, 62, 30, 0.55), F(1670))
-    pant(F(1680), F(1712), 1.5, 0.11, D["sfx"], 0.2)
-    cue(F(1712), "he turns to the corner: a creeping low cluster, fast heartbeat underneath")
-    add(D["music"], S.cluster([220, 233.1, 246.9], 2.4, 1.6, 0.1, 0.12, trem=5), F(1705), until=58.3)
-    add(D["music"], S.drone(32.7, 2.6, 0.5, 1.8, 0.1), F(1705), until=58.3)
-    t, gap = 56.4, 0.5
-    while t < 58.3:
-        add(D["sfx"], S.heartbeat(0.22), t, until=58.3)
+    add(D["sfx"], rustle(0.3, 0.05), F(1657), 1.0, 0.25)
+    cue(F(1665), "he jolts upright in the bed: gasp, duvet, a low hit")
+    add(D["sfx"], S.breath(0.42, 0.24), F(1664), 1.0, 0.2)
+    add(D["sfx"], rustle(0.55, 0.2), F(1665), 1.0, 0.2)
+    add(D["music"], S.boom(1.6, 62, 30, 0.5), F(1665))
+    pant(F(1673), F(1695), 1.5, 0.11, D["sfx"], 0.2)
+    cue(F(1695), "he holds his breath and turns to the corner: a creeping low cluster, fast heartbeat underneath")
+    add(D["music"], S.cluster([220, 233.1, 246.9], 1.9, 1.3, 0.1, 0.12, trem=5), F(1694), until=F(1725))
+    add(D["music"], S.drone(32.7, 2.0, 0.5, 1.4, 0.1), F(1694), until=F(1725))
+    t, gap = F(1686), 0.5
+    while t < F(1725):
+        add(D["sfx"], S.heartbeat(0.2), t, until=F(1725))
         t += gap
-    cue(58.3, "S21 the corner: sub pressure; eyes open (stinger), the grin rises; ALL SOUND CUTS at 60.00")
-    add(D["music"], S.drone(30.9, 1.8, 0.6, 0.2, 0.05), 58.3)
-    add(D["music"], S.stinger(1.3), F(1755))
-    add(D["sfx"], S.clink(900, 0.15), F(1755))
-    add(D["music"], S.riser(1.25, 300, 3200, 1.0), F(1764))
-    add(D["music"], S.cluster([987.8, 1046.5, 1108.7, 1174.7], 1.3, 1.25, 0.01, 0.3, trem=11), F(1764))   # builds right up to the cut
+    cue(F(1725), "S21 the corner: near silence, sub pressure, his breath trembling; nothing else")
+    add(D["music"], S.drone(30.9, 2.8, 0.55, 0.6, 0.05), F(1725))
+    for k, t in enumerate((F(1729), F(1741))):
+        add(D["sfx"], lp(S.breath(0.6, 0.06, rising=(k == 0)), 2200), t, 1.0, 0.35)
+    cue(F(1750), "its eyes open, slowly: a soft swell and a thin high tone (no hit)")
+    add(D["music"], reverse_swell(0.35, 0.35), F(1750) - 0.35)
+    add(D["music"], thin_note(2093.0, 1.9, 0.035), F(1750), 1.0, 0.0)
+    add(D["music"], S.boom(2.0, 44, 26, 0.35), F(1752))
+    cue(F(1766), "the grin spreads; it leans in: riser and cluster build right up to the cut at 60.20")
+    add(D["music"], S.riser(1.35, 300, 3200, 1.0), F(1766))
+    add(D["music"], S.cluster([987.8, 1046.5, 1108.7, 1174.7], 1.35, 1.3, 0.01, 0.3, trem=11), F(1766))
+
+    # ================= E: in the black, before PART 2?: somewhere, a camera turns
+    E = section()
+    cue(60.62, "black: one CCTV servo whirr and its stop, quiet, off to the side")
+    add(E["sfx"], S.servo(0.75, 160, 205, 0.1), 60.62, 1.0, 0.55)
 
     # reverb per section, then each section's own hard edge
-    edges = {"A": (0.0, 11.40, 0.012), "B": (11.75, 43.70, 0.008), "C": (43.69, 52.10, 0.15), "D": (52.10, 60.00, 0.005)}
+    edges = {"A": (0.0, 11.40, 0.012), "B": (11.75, 43.70, 0.008), "C": (43.69, 52.10, 0.15), "D": (52.10, 60.20, 0.005), "E": (60.55, 61.75, 0.2)}
     out = {"music": np.zeros((2, N)), "sfx": np.zeros((2, N)), "amb": np.zeros((2, N))}
-    for name, sec in zip("ABCD", (A, B, C, D)):
+    for name, sec in zip("ABCDE", (A, B, C, D, E)):
         s0, s1, fo = edges[name]
         mask = np.zeros(N); mask[ns(s0):ns(s1)] = 1
         nf = ns(fo); mask[ns(s1) - nf:ns(s1)] *= np.linspace(1, 0, nf)
@@ -328,7 +340,8 @@ def main():
     # the two silences that belong to the story: after the echoes, and from the cut to black onward
     gate = np.ones(N)
     gate[ns(11.40):ns(11.75)] = 0
-    gate[ns(60.0):] = 0
+    gate[ns(60.2):ns(60.55)] = 0
+    gate[ns(61.75):] = 0
     mix *= gate[None, :]
     g = dbg(-14.0 - integrated(mix))
     mix = S.limiter(mix * g, -1.2)

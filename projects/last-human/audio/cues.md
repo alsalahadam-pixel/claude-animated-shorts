@@ -20,7 +20,7 @@
 |  35.80 | S14 he steps back; it steps back |
 |  37.07 | THE EXTRA STEP: the glass tone stops; one wet footstep is the only sound; dead silence |
 |  39.53 | S15 its face goes black: sub drop, reversed swell into the eyes |
-|  40.57 | the entity's eyes snap open: stinger |
+|  40.53 | the entity's eyes open: a held, quieter sting (no jump) |
 |  41.93 | the grin spreads: dissonant cluster |
 |  43.70 | S16 SLAM on the cut; the chain; he slides down the door |
 |  45.00 | he drops to the floor |
@@ -28,8 +28,11 @@
 |  48.20 | S18 the photo: dread swell; heartbeat speeding up |
 |  52.10 | S19 everything drops out but one thin held note, gone by 54.5 |
 |  54.50 | S20 slow breathing from the bed (not his), muffled by the duvet |
-|  55.67 | he jolts upright in the bed: gasp, duvet, a low hit |
-|  57.07 | he turns to the corner: a creeping low cluster, fast heartbeat underneath |
-|  58.30 | S21 the corner: sub pressure; eyes open (stinger), the grin rises; ALL SOUND CUTS at 60.00 |
+|  55.50 | he jolts upright in the bed: gasp, duvet, a low hit |
+|  56.50 | he holds his breath and turns to the corner: a creeping low cluster, fast heartbeat underneath |
+|  57.50 | S21 the corner: near silence, sub pressure, his breath trembling; nothing else |
+|  58.33 | its eyes open, slowly: a soft swell and a thin high tone (no hit) |
+|  58.87 | the grin spreads; it leans in: riser and cluster build right up to the cut at 60.20 |
+|  60.62 | black: one CCTV servo whirr and its stop, quiet, off to the side |
 
 mix: -14.6 LUFS integrated, true peak -1.2 dBTP, 62.500 s
