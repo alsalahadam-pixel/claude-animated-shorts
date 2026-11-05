@@ -130,6 +130,8 @@ const SPOT_HEAD = V([10.4, 1.65, -11.5]);
 const S09_POS: V3 = [9.6, 1.5, -6.0], S09_LOOK: V3 = [11.45, 2.0, -12.0];
 const S09_RIGHT = new THREE.Vector3(-(S09_LOOK[2] - S09_POS[2]), 0, S09_LOOK[0] - S09_POS[0]).normalize();
 const END9 = SPOT.clone().addScaledVector(S09_RIGHT, 0.55);
+// S09 is framed a little left of its axis and a touch wider, so his step to the left stays well inside the frame
+const S09_FRAME_LOOK = V(S09_LOOK).addScaledVector(S09_RIGHT, -0.3).toArray() as V3;
 const GLASS_X = CITY.shopGlassX;            // the shop window (x = -12.9)
 const Z5 = -78.2;                           // where he stops at the glass
 const HERO_X5 = -11.75;
@@ -301,7 +303,8 @@ export const SHOTS: Shot[] = [
       const right = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0).normalize();
       const off = lerp(-0.42, -0.07, ramp(f, 465, 486)) + lerp(0, -0.38, ramp(f, 516, 540));
       const h = w.hand; h.setFrame({ x0: -62, y0: -12, w: 80, h: 24 });
-      h.draw((ctx, F) => drawHand(ctx, OVERCAST, F, 0.35));
+      const curl = 0.12 + 0.28 * ramp(f, 482, 500) - 0.2 * ramp(f, 514, 530);   // fingers close gently inside the steam, open as they leave
+      h.draw((ctx, F) => drawHand(ctx, OVERCAST, F, 0.35, curl));
       h.stand(steam.clone().addScaledVector(right, off).add(V([0, -0.035, 0])), cam.position); h.visible = true; h.blob.visible = false;
     },
   },
@@ -319,7 +322,7 @@ export const SHOTS: Shot[] = [
   // S09 — Day 3: he tests it. Step left: it follows. Step right: it follows.
   {
     id: "S09", a: 591, b: 744, look: "night", grade: "night",
-    cam: locked(591, 744, S09_POS, S09_LOOK, 46, 0.02),
+    cam: locked(591, 744, S09_POS, S09_FRAME_LOOK, 50, 0.02),
     dof: () => ({ cInf: 3, focus: [10.4, 1.6, -11.5] }),
     act: (f, w, cam) => {
       spotLights(w);

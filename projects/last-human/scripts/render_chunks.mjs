@@ -19,7 +19,7 @@ for (const s of shots) {
   const t1 = Date.now();
   await renderMedia({
     composition, serveUrl, codec: "h264", crf: 12, outputLocation: out + ".tmp.mp4", browserExecutable, chromiumOptions,
-    imageFormat: "jpeg", jpegQuality: 96, concurrency: 1, frameRange: [s.a, s.b - 1], timeoutInMilliseconds: 600000, muted: true,
+    imageFormat: "jpeg", jpegQuality: 96, concurrency: Number(process.env.CONC ?? 1), frameRange: [s.a, s.b - 1], timeoutInMilliseconds: 600000, muted: true,
     onBrowserLog: (l) => { if (l.type === "error" && !l.text.includes("404")) console.log(`[${s.id}] [error]`, l.text.slice(0, 200)); },
   });
   fs.renameSync(out + ".tmp.mp4", out);

@@ -970,23 +970,52 @@ export function walk(psi: number, phase: number, face: Partial<Face> = {}, o: { 
 }
 
 /** A forearm in the rust sleeve with an open hand reaching right (the frozen-steam close-up). */
-export function drawHand(ctx: Ctx, L: Light, F: Frame, spread = 0.3) {
+/** His right hand, seen from the back, reaching to the right (the steam close-up). Palm, knuckles, four fingers of
+ *  different lengths in three segments that fan and curl a little, nails, the thumb on the index side, the sleeve. */
+export function drawHand(ctx: Ctx, L: Light, F: Frame, spread = 0.3, curl = 0.2) {
   const W = ctx.canvas.width, Hc = ctx.canvas.height;
   ctx.clearRect(0, 0, W, Hc);
   ctx.save();
   const sx = W / F.w, sy = Hc / F.h;
   ctx.setTransform(sx, 0, 0, -sy, -F.x0 * sx, Hc + F.y0 * sy);
-  const pt = new Painter(ctx, L, 0.45);
-  const fingers: [number, number][] = [[3.8, 9.5], [1.4, 10.6], [-1.0, 10.0], [-3.2, 8.2]];
-  fingers.forEach(([y, len], i) => {
-    const a = (i - 1.5) * 0.06 * (1 + spread);
-    const tip: Vec = [8 + len * Math.cos(a), y + len * Math.sin(a) - 0.6];
-    pt.part(limbPath([[6, y * 0.8], [6 + len * 0.55, y * 0.9 + 0.2], tip], [2.2, 2.0, 1.6]), PAL.skin, { shade: 0.4 });
-  });
-  pt.part(smooth([[-6, 4.6], [3, 5.6], [8.5, 4.4], [9, -2.5], [5, -5.2], [-6, -4.6]], true, 0.5), PAL.skin, { shade: 0.5 });
-  pt.part(limbPath([[2, -4], [6.5, -6.6], [10.5, -6.0]], [2.6, 2.3, 1.9]), PAL.skin, { shade: 0.4 });
-  pt.part(limbPath([[-60, 0.5], [-20, 0.3], [-5.5, 0]], [12.5, 11.5, 11]), PAL.hood, { shade: 1 });
-  const cuff = new Path2D(); cuff.moveTo(-9, 5.2); cuff.lineTo(-9, -5.2); pt.line(cuff, 0.6);
+  const pt = new Painter(ctx, L, 0.42);
+  const nail = mixHex(PAL.skin, "#ffffff", 0.35);
+  // fingers, little finger first (index on top): root on the knuckle line, segment lengths, width, fan angle
+  const FING: [number, number, [number, number, number], number, number][] = [
+    [-2.7, 7.0, [3.0, 2.0, 1.6], 1.55, -0.16],
+    [-0.95, 7.7, [3.6, 2.5, 1.9], 1.75, -0.06],
+    [0.85, 7.9, [3.9, 2.7, 2.0], 1.85, 0.03],
+    [2.6, 7.6, [3.6, 2.4, 1.9], 1.8, 0.12],
+  ];
+  const tips: Vec[] = [];
+  for (const [y, x, seg, w, fan] of FING) {
+    let a = fan * (0.6 + spread), p: Vec = [x, y];
+    const pts: Vec[] = [p];
+    // curling fingers bend away from the lens: each segment turns a little and foreshortens
+    seg.forEach((l, k) => { a -= curl * 0.05 * k; p = add(p, [l * Math.cos(a) * (1 - curl * 0.25 * k), l * Math.sin(a)]); pts.push(p); });
+    pt.part(limbPath(pts, [w * 1.05, w, w * 0.92, w * 0.82]), PAL.skin, { shade: 0.45, lw: 0.75 });
+    // joint creases and the nail
+    for (const k of [1, 2]) { const c = pts[k], d = norm(sub(pts[k + 1], pts[k - 1])), n = perp(d); const l = new Path2D(); l.moveTo(c[0] + n[0] * w * 0.32, c[1] + n[1] * w * 0.32); l.quadraticCurveTo(c[0] + d[0] * 0.25, c[1] + d[1] * 0.25, c[0] - n[0] * w * 0.32, c[1] - n[1] * w * 0.32); pt.line(l, 0.2); }
+    const tip = pts[3], d = norm(sub(pts[3], pts[2])), n = perp(d);
+    const nl = smooth([add(tip, add(mul(d, -1.35), mul(n, w * 0.3))), add(tip, add(mul(d, -0.3), mul(n, w * 0.3))), add(tip, mul(d, -0.15)), add(tip, add(mul(d, -0.3), mul(n, -w * 0.3))), add(tip, add(mul(d, -1.35), mul(n, -w * 0.3)))], true, 0.4);
+    pt.fill(nl, litPair(nail, L)[1]); pt.line(nl, 0.18);
+    tips.push(tip);
+  }
+  // back of the hand: wider at the knuckles than at the wrist, a soft knuckle ridge
+  const back = smooth([[-5.5, 3.2], [0.5, 3.9], [5.2, 3.9], [8.1, 3.4], [8.6, 1.6], [8.4, -1.0], [7.6, -3.4], [4.8, -3.8], [0.0, -3.4], [-5.5, -3.0]], true, 0.5);
+  pt.part(back, PAL.skin, { shade: 0.55, lw: 0.8 });
+  for (const [x, y] of [[7.4, 2.6], [7.8, 0.85], [7.6, -0.95], [7.0, -2.7]] as Vec[]) { const k = new Path2D(); k.moveTo(x - 0.6, y + 0.65); k.quadraticCurveTo(x + 0.25, y, x - 0.6, y - 0.65); pt.line(k, 0.22); }
+  const ten = new Path2D(); ten.moveTo(-2, 1.2); ten.quadraticCurveTo(2.5, 1.5, 6.4, 1.6); ten.moveTo(-2, -0.6); ten.quadraticCurveTo(2.5, -0.5, 6.2, -0.4); pt.line(ten, 0.14);
+  // thumb: from the base of the hand on the index side, angled forward and a little under the index finger
+  const th: Vec[] = [[0.2, 3.2], [3.8, 5.0], [7.0, 5.6 - curl * 0.6], [9.0, 5.1 - curl * 0.9]];
+  pt.part(limbPath(th, [3.0, 2.5, 2.2, 1.85]), PAL.skin, { shade: 0.45, lw: 0.75 });
+  { const tip = th[3], d = norm(sub(th[3], th[2])), n = perp(d); const nl = smooth([add(tip, add(mul(d, -1.5), mul(n, 0.6))), add(tip, add(mul(d, -0.3), mul(n, 0.55))), add(tip, mul(d, -0.15)), add(tip, add(mul(d, -0.3), mul(n, -0.5))), add(tip, add(mul(d, -1.5), mul(n, -0.55)))], true, 0.4); pt.fill(nl, litPair(nail, L)[1]); pt.line(nl, 0.18); }
+  const tc = new Path2D(); tc.moveTo(3.6, 4.2); tc.quadraticCurveTo(4.0, 4.9, 3.5, 5.7); pt.line(tc, 0.2);
+  // sleeve with a ribbed cuff
+  pt.part(limbPath([[-60, 0.5], [-20, 0.3], [-5.0, 0]], [12.5, 11.5, 10.6]), PAL.hood, { shade: 1 });
+  const cuff = new Path2D(); cuff.moveTo(-8.6, 5.0); cuff.lineTo(-8.6, -5.0); pt.line(cuff, 0.6);
+  for (const y of [-3.4, -1.2, 1.0, 3.2]) { const r = new Path2D(); r.moveTo(-7.9, y); r.lineTo(-5.6, y); pt.line(r, 0.16); }
+  void tips;
   ctx.restore();
 }
 
