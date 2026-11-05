@@ -41,6 +41,8 @@ export class World {
   glow = new Card(768, 1536, { castShadow: false });   // additive: the entity's eyes and grin glow (bloom)
   fog = new THREE.FogExp2("#000", 0.01);
   photoTex: THREE.Texture | null = null;
+  photoUi: THREE.Texture | null = null;     // the "Me" message with the photo (set by applyPhoto)
+  lockTex: THREE.Texture | null = null;     // the lock screen: no service, 06:12
   envs = new Map<string, THREE.Texture>();
   phone: THREE.Group;
   phoneScreen: THREE.Mesh;
@@ -87,6 +89,34 @@ export class World {
     this.phone.visible = false;
     for (const l of this.city.pointLights) l.intensity = 0;
     this.cu.mat.opacity = 1; this.watcher.mat.opacity = 1;
+    const pm = this.phoneScreen.material as THREE.MeshBasicMaterial;
+    if (this.photoUi && pm.map !== this.photoUi) { pm.map = this.photoUi; pm.needsUpdate = true; }
+  }
+
+  /** the phone shows its lock screen: no service, the frozen clock, nothing new */
+  lockScreen() {
+    if (!this.lockTex) {
+      const c = document.createElement("canvas"); c.width = 680; c.height = 1460;
+      const x = c.getContext("2d")!;
+      const g = x.createLinearGradient(0, 0, 680, 1460);
+      g.addColorStop(0, "#1a1d44"); g.addColorStop(0.55, "#2a1f4e"); g.addColorStop(1, "#0d1a2c");
+      x.fillStyle = g; x.fillRect(0, 0, 680, 1460);
+      const r = x.createRadialGradient(470, 1050, 20, 470, 1050, 520);
+      r.addColorStop(0, "rgba(255,150,80,0.32)"); r.addColorStop(1, "rgba(255,150,80,0)");
+      x.fillStyle = r; x.fillRect(0, 0, 680, 1460);
+      x.fillStyle = "#c9cde0"; x.font = "500 30px sans-serif"; x.fillText("No Service", 40, 64);
+      x.strokeStyle = "#c9cde0"; x.lineWidth = 3; x.strokeRect(580, 42, 58, 26); x.fillStyle = "#c9cde0"; x.fillRect(584, 46, 14, 18);
+      x.textAlign = "center";
+      x.fillStyle = "#f2efe9"; x.font = "200 196px sans-serif"; x.fillText("06:12", 340, 400);
+      x.fillStyle = "#c9cde0"; x.font = "500 36px sans-serif"; x.fillText("Thursday", 340, 200);
+      x.fillStyle = "rgba(255,255,255,0.10)"; x.beginPath(); x.roundRect(48, 520, 584, 104, 30); x.fill();
+      x.fillStyle = "#c9cde0"; x.font = "400 30px sans-serif"; x.fillText("No new notifications", 340, 582);
+      x.fillStyle = "rgba(242,239,233,0.8)"; x.beginPath(); x.roundRect(250, 1404, 180, 10, 5); x.fill();
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+      this.lockTex = t;
+    }
+    const m = this.phoneScreen.material as THREE.MeshBasicMaterial;
+    if (m.map !== this.lockTex) { m.map = this.lockTex; m.color.setScalar(1.25); m.needsUpdate = true; }
   }
 
   /** a temporary practical light for a shot (city point lights pool) */

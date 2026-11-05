@@ -242,8 +242,8 @@ export const SHOTS: Shot[] = [
     act: (f, w, cam) => {
       spotLights(w);
       // the camera turns 70° onto empty pavement (0.4-1.5 s), tilts down, blinks once
-      w.aimCams(SPOT_HEAD, ramp(f, 12, 45), [0]);
-      w.aimCams(SPOT_HEAD, 0);
+      w.aimCams(SPOT_HEAD, 0);                         // every other camera at rest...
+      w.aimCams(SPOT_HEAD, ramp(f, 12, 45), [0]);       // ...then the laundry camera turns (after, so the rest call can't undo it)
       w.city.heroCam.led.visible = !(f >= 50 && f < 54);
       // he steps in from the left edge (f86) and stops exactly where it is looking (f107), then looks up at it
       const tStop = 107, speed = 1.15;
@@ -384,8 +384,8 @@ export const SHOTS: Shot[] = [
       w.place(w.hero, pose, NEON, BODY, p, cam, { floorY: 0.15 });
       // it follows his head with an 8-frame servo lag
       const lagged = SPOT_HEAD.clone().addScaledVector(right, lat(f - 8));
-      w.aimCams(lagged, 1, [0]);
       w.aimCams(lagged, 0);
+      w.aimCams(lagged, 1, [0]);
     },
   },
   // S10 — every camera on the street turns to him at once
@@ -602,6 +602,7 @@ export const SHOTS: Shot[] = [
     act: (f, w, cam) => {
       w.apt.setBody(0.3, 0);
       placeInBed(w, cam, f, DARK);
+      cornerWash(w);
       const rim = lerp(0.2, 0.6, ramp(f, 1725, 1752));          // the shape surfaces as the eye adjusts to the dark
       const eyes = ramp(f, 1750, 1758), grin = ramp(f, 1766, 1794);
       const tilt = -2 - 8 * ramp(f, 1738, 1798), lean = 1 + 2.5 * ramp(f, 1778, 1806);
@@ -729,3 +730,144 @@ export const PHOTO_SHOT: Shot = {
 };
 
 export const shotAt = (f: number) => SHOTS.find((s) => f >= s.a && f < s.b) ?? SHOTS[SHOTS.length - 1];
+
+// ================================================================ THE FINAL CUT (V1 x V3), second person, 1:48
+// The film is rebuilt as an edit of shots. Each FinalShot shows `src` (an existing or new Shot) starting at its source
+// frame `from`, optionally with its own camera; `reuse` shots come from the polished V3 render untouched; `black` shots
+// are plain black (the title cards live in the overlay pass). Captions, labels and titles are a separate overlay pass.
+export type FinalShot = { id: string; a: number; b: number; src?: Shot; from?: number; cam?: (f: number) => Cam; dof?: (f: number) => Dof; reuse?: string; black?: boolean };
+
+const HOOK_EYE: V3 = [10.75, 2.35, -10.3];
+/** the hook's button ("...that's what you think"): the laundry camera, close, turns until it stares down the lens */
+const HOOKCAM: Shot = {
+  id: "HOOKCAM", a: 0, b: 52, look: "night", grade: "night",
+  cam: glide(0, 52, { pos: HOOK_EYE, look: [12.05, 2.82, -11.45], fov: 32 }, { pos: [10.93, 2.41, -10.48], look: [12.05, 2.84, -11.48], fov: 29 }),
+  dof: () => ({ cInf: 9, focus: [12.1, 2.85, -11.5] }),
+  act: (f, w, cam) => {
+    spotLights(w);
+    w.aimCams(SPOT_HEAD, 0);
+    w.aimCams(cam.position.clone(), ramp(f, 3, 33), [0]);
+  },
+};
+
+/** Day 1: the phone on the nightstand (no signal, stuck at 06:12) beside the stopped clock */
+const P1: Shot = {
+  id: "P1", a: 0, b: 132, look: "sunrise", grade: "warm",
+  cam: glide(0, 132, { pos: [2.385, 0.95, -2.065], look: [2.885, 0.53, -2.445], fov: 34 }, { pos: [2.48, 0.88, -2.14], look: [2.885, 0.53, -2.445], fov: 32 }),
+  dof: () => ({ cInf: 7, focus: [2.9, 0.52, -2.45] }),
+  act: (f, w) => {
+    w.apt.setBody(0.3, 0);
+    w.apt.phoneOnStand.visible = false;
+    w.lockScreen();
+    w.phone.visible = true; w.phone.position.set(2.95, 0.511, -2.47); w.phone.rotation.set(-Math.PI / 2, 0, -0.85);   // beside the clock, reading upright to the lens
+  },
+};
+
+/** Day 2: close on the pigeon, frozen mid-wingbeat; the camera drifts round it and nothing in the frame moves */
+const PIGEON: Shot = {
+  ...SHOTS.find((s) => s.id === "S06")!, id: "PIGEON",
+  cam: (f) => glide(464, 560, { pos: [1.55, 4.45, 8.75], look: [0.25, 5.05, 6.4], fov: 30 }, { pos: [2.0, 4.6, 8.35], look: [0.22, 5.02, 6.38], fov: 28 })(f),
+  dof: () => ({ cInf: 9, focus: [0.25, 5.05, 6.4] }),
+};
+
+const CORNER_HEAD: V3 = [-3.12, 1.95, -2.68];
+/** the faint violet bounce of the city glow on the far walls: just enough to see the corner, and that it is empty */
+function cornerWash(w: World, k = 1) {
+  const l = w.apt.tvLight; l.color.set("#6f63d6"); l.position.set(-1.7, 2.1, -1.3); l.distance = 5.5; l.decay = 1.6; l.intensity = 2.2 * k;
+}
+/** the ending (V1): from the bed, the corner he is staring at. Empty. Nothing moves. */
+const E1: Shot = {
+  id: "E1", a: 0, b: 72, look: "aptNight", grade: "night",
+  cam: glide(0, 72, { pos: [3.14, 1.49, -0.87], look: S21_LOOK, fov: 30.6 }, { pos: S21_POS, look: S21_LOOK, fov: 30 }),
+  dof: () => ({ cInf: 7, focus: [-3.12, 1.9, -2.68] }),
+  act: (f, w, cam) => { w.apt.setBody(0.3, 0); placeInBed(w, cam, 1725, DARK); cornerWash(w); },
+};
+
+/** you, on the floor by the door: your eyes leave the bed and go to the corner; your head follows, slowly */
+const E2: Shot = {
+  id: "E2", a: 0, b: 90, look: "aptNight", grade: "night",
+  cam: locked(0, 90, [-1.86, 0.9, 1.95], [-2.05, 0.86, 2.6], 31, 0.16),
+  dof: () => ({ cInf: 12, focus: [-2.05, 0.88, 2.6] }),
+  act: (f, w, cam) => {
+    const bodyPsi = World.psi(DOOR_SIT, V([0.15, 0, -1]), cam);
+    const corner = V(CORNER_HEAD).sub(DOOR_SIT).setY(0).normalize();
+    const cornerPsi = World.psi(DOOR_SIT, corner, cam);
+    const turn = ss((f - 22) / 40);                                    // the head follows the eyes, slowly
+    const look = saccade(f, [[0, [-0.95, 0.0]], [14, [0.9, 0.05]]]);   // the eyes go first
+    const face: Partial<Face> = { open: 1.32 * blinkAt(f, [60]), pupil: 0.45, brow: 1.1, browIn: 1.3, mouth: "part", mouthOpen: 0.3, look };
+    const pose = floorSit(f / FPS, face, { phone: 1, nod: -2, headPsi: lerp(-40, cornerPsi, turn), psi: bodyPsi });
+    pose.breathe = Math.sin((f / FPS) * Math.PI * 2 * 0.5) * (1 - 0.7 * ss((f - 20) / 20));   // he stops breathing
+    w.cu.setFrame({ x0: -36, y0: 52, w: 72, h: 76 });
+    w.cu.draw((ctx, F) => drawCharacter(ctx, pose, PHONE, F, { lineK: 0.75 }));
+    w.cu.stand(DOOR_SIT, cam.position); w.cu.visible = true; w.cu.blob.visible = false;
+    w.apt.phoneLight.position.set(-2.0, 0.6, 2.25); w.apt.phoneLight.intensity = 0.8;
+  },
+};
+
+/** the watcher's point of view: from the corner, high, looking down the dark room at you by the door. It breathes. */
+const E3: Shot = {
+  id: "E3", a: 0, b: 72, look: "aptNight", grade: "night",
+  cam: (f) => {
+    const k = 0.6 * clamp(f / 72) + 0.4 * ss(f / 72), br = Math.sin((f / FPS) * Math.PI * 2 * 0.28);
+    return { pos: lerp3([-2.92, 2.28 + br * 0.012, -2.42], [-2.84, 2.22 + br * 0.012, -2.2], k), look: [-2.05, 0.82, 2.55], fov: lerp(30, 27, k), roll: -1.5 + br * 0.4 };
+  },
+  dof: () => ({ cInf: 5, focus: [-2.05, 0.85, 2.55] }),
+  act: (f, w, cam) => {
+    w.apt.setBody(0.3, 0);
+    const toCam = cam.position.clone().sub(DOOR_SIT).setY(0).normalize();
+    const face: Partial<Face> = { open: 1.35, pupil: 0.42, brow: 1.2, browIn: 1.35, mouth: "part", mouthOpen: 0.35, look: [0, 0.35] };
+    const pose = floorSit(f / FPS, face, { phone: 1, nod: -4, headPsi: World.psi(DOOR_SIT, toCam, cam), psi: World.psi(DOOR_SIT, V([0.15, 0, -1]), cam) });
+    pose.breathe = 0;
+    w.place(w.hero, pose, PHONE, BODY, DOOR_SIT, cam);
+    w.apt.phoneLight.position.set(-2.0, 0.6, 2.25); w.apt.phoneLight.intensity = 0.8; w.apt.phoneLight.distance = 1.6;
+    cornerWash(w);
+  },
+};
+
+const S = (id: string) => SHOTS.find((s) => s.id === id)!;
+/** build the edit: [id, frames, source] in order; frames are accumulated into absolute final frames */
+function edit(rows: [string, number, Omit<FinalShot, "id" | "a" | "b">][]): FinalShot[] {
+  let t = 0;
+  return rows.map(([id, n, o]) => { const fs = { id, a: t, b: t + n, ...o }; t += n; return fs; });
+}
+export const FINAL: FinalShot[] = edit([
+  // HOOK: you wake up; the window; the shout; nothing; "...that's what you think" -> the camera turns to the lens -> title
+  ["F_S02", 56, { src: S("S02"), from: 160 }],
+  ["F_S03", 51, { src: S("S03"), from: 216 }],
+  ["F_S04", 172, { src: S("S04"), from: 170, cam: glide(170, 342, { pos: [1.8, 1.86, 0.78], look: [40, -6, 2.0], fov: 41, roll: -0.6 }, { pos: [2.12, 1.84, 0.8], look: [40, -6, 2.0], fov: 37.5, roll: -0.6 }) }],
+  ["F_S05", 148, { src: S("S05"), from: 342, cam: locked(342, 490, [3.98, 1.63, 0.42], [3.12, 1.6, 0.62], 30, 0.22) }],
+  ["F_CAM", 52, { src: HOOKCAM, from: 0 }],
+  ["TITLE1", 60, { black: true }],
+  // DAY 1-2: the frozen world
+  ["F_P1", 132, { src: P1, from: 0 }],
+  ["F_S06", 84, { src: S("S06"), from: 380, cam: glide(380, 464, { pos: [1.1, 5.95, 12.95], look: [-0.5, 0.9, -30], fov: 38 }, { pos: [1.02, 5.15, 12.25], look: [-0.5, 0.78, -30], fov: 37.2 }) }],
+  ["F_PIGEON", 96, { src: PIGEON, from: 464 }],
+  ["F_S07", 108, { src: S("S07"), from: 450, cam: locked(450, 558, [-9.6, 1.2, -0.6], [-10.22, 1.03, -1.28], 34, 0.13) }],
+  ["F_S08", 102, { src: S("S08"), from: 546, cam: glide(546, 648, { pos: [-3.6, 1.0, -18.6], look: [-5.6, 4.7, -30.6], fov: 56, roll: 1 }, { pos: [-3.95, 1.03, -20.6], look: [-5.6, 4.4, -30.6], fov: 53, roll: 1.8 }) }],
+  // DAY 3: the cameras (a crane down onto the street; the camera turns to the empty spot before you arrive)
+  ["F_S01", 249, { src: S("S01"), from: -105, cam: (f) => keys([{ f: -105, pos: [8.6, 4.6, -1.2], look: [11.4, 2.3, -11.6], fov: 44 }, { f: 12, pos: [9.6, 1.6, -4.0], look: [11.35, 1.85, -11.6], fov: 46 }, { f: 144, pos: [9.72, 1.48, -4.6], look: [11.22, 1.6, -11.6], fov: 44 }], f) }],
+  ["F_S09", 153, { src: S("S09"), from: 591 }],
+  ["F_S10", 108, { src: S("S10"), from: 705, cam: glide(705, 813, { pos: [9.1, 0.92, -11.56], look: [12.85, 7.2, -11.1], fov: 51, roll: -2.5 }, { pos: [9.45, 1.3, -11.52], look: [12.85, 7.2, -11.1], fov: 48, roll: -6 }) }],
+  ["F_S11", 36, { src: S("S11"), from: 813 }],
+  // the reflection
+  ["F_S12", 129, { src: S("S12"), from: 789 }],
+  ["F_S13", 72, { reuse: "S13" }],
+  ["F_S13B", 72, { reuse: "S13B" }],
+  ["F_S14", 90, { reuse: "S14" }],
+  ["F_S15", 159, { src: S("S15"), from: 1152 }],
+  // home: the door, the phone, the photo, the bed
+  ["F_S16", 66, { reuse: "S16" }],
+  ["F_S17", 168, { src: S("S17"), from: 1269, cam: locked(1269, 1437, [-1.45, 0.78, 1.25], [-2.05, 0.55, 2.55], 40, 0.16) }],
+  ["F_S18", 180, { src: S("S18"), from: 1437, cam: (f) => keys([{ f: 1437, pos: [-1.74, 0.98, 1.74], look: [-2.03, 0.62, 2.2], fov: 34 }, { f: 1617, pos: [-1.98, 0.72, 2.04], look: [-2.03, 0.62, 2.2], fov: 29 }], f) }],
+  ["F_S19", 153, { src: S("S19"), from: 1482, cam: locked(1482, 1635, [-1.86, 0.9, 1.95], [-2.05, 0.86, 2.6], 32, 0.17) }],
+  ["F_S20", 90, { src: S("S20"), from: 1635 }],
+  // the ending (V1): the empty corner; you turn to it; something watching you from it; its eyes; black; the title
+  ["F_E1", 72, { src: E1, from: 0 }],
+  ["F_E2", 90, { src: E2, from: 0 }],
+  ["F_E3", 72, { src: E3, from: 0 }],
+  ["F_S21", 81, { src: S("S21"), from: 1725 }],
+  ["BLACK", 42, { black: true }],
+  ["TITLE2", 90, { black: true }],
+]);
+export const FINAL_TOTAL = FINAL[FINAL.length - 1].b;
+export const finalAt = (F: number) => FINAL.find((s) => F >= s.a && F < s.b) ?? FINAL[FINAL.length - 1];

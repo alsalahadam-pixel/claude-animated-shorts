@@ -6,8 +6,9 @@ model, npz, spec, out = sys.argv[1:5]
 cfg = json.load(open(spec)); os.makedirs(out, exist_ok=True)
 k = Kokoro(model, npz)
 meta = []
-for lid, text in cfg["lines"]:
-    speed = 1.05 if lid == "SHOUT" else cfg["speed"]
+for row in cfg["lines"]:
+    lid, text = row[0], row[1]
+    speed = row[2] if len(row) > 2 else 1.05 if lid == "SHOUT" else cfg["speed"]
     audio, sr = k.create(text, voice=cfg["voice"], speed=speed, lang="en-us")
     sf.write(os.path.join(out, lid + ".wav"), audio, sr)
     words = [{"w": w, "ph": len(k.tokenizer.phonemize(w.strip(".,?!"), "en-us").replace(" ", ""))} for w in text.split()]
