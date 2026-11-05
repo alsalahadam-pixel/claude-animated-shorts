@@ -146,6 +146,7 @@ function lightC(t, W) {
   W.flickC.intensity = 4 * (flick(t, 21, 8, 0.25) > 0.5 ? 1 : 0);
   W.tubesC.forEach((tb, i) => { tb.material.emissiveIntensity = i === 2 ? 2 * (flick(t, 21, 8, 0.25) > 0.5 ? 1 : 0) : 0; });
   W.escGlow.intensity = 8 + 6 * flick(t, 31, 5, 0.6);
+  W.redC.forEach((l) => { l.intensity = 7; }); // reset every frame (shots may boost it)
 }
 
 // ---------------------------------------------------------------- staging helpers
@@ -361,10 +362,10 @@ STAGE[27] = (t, lt, u, W, c, cam, out) => {
   cam.position.set(235.6 - u * 0.4, 4.3, 0.9); cam.up.set(0, 1, 0); cam.lookAt(215, 0.2, -0.3); cam.rotateZ(0.05 * u - 0.025); cam.fov = fovL(24);
   W.redC.forEach((l) => { l.intensity *= 2.2; }); W.flickC.intensity = 0; out.spots = [[230.3, -1.4], [210, 0]];
 };
-STAGE[28] = (t, lt, u, W, c, cam) => {
+STAGE[28] = (t, lt, u, W, c, cam, out) => {
   kaiCorridorDoor(c, t, 0.05); c.kai.look(0, 0); c.mop.visible = false;
   const seq = [[0.3, -1], [0.9, 1], [1.5, 0.2], [2.2, -0.6]]; let px = 0; for (const [tt, v] of seq) if (lt > tt) px = v; c.kai.setPupils(px, 0); c.kai.setBrows(0.6);
-  const e = eyeWorld(c.kai); const cz = Math.max(e.z - 0.36, -1.9); camKeys(cam, u, [{ u: 0, p: [e.x - 0.02, e.y + 0.01, cz], l: [e.x, e.y, e.z], fov: fovL(50) }, { u: 1, p: [e.x - 0.02, e.y + 0.01, cz + 0.02], l: [e.x, e.y, e.z], fov: creep(fovL(50), lt, 0.15) }]);
+  out.dim = 0.62; const e = eyeWorld(c.kai); const cz = Math.max(e.z - 0.36, -1.9); camKeys(cam, u, [{ u: 0, p: [e.x - 0.02, e.y + 0.01, cz], l: [e.x, e.y, e.z], fov: fovL(50) }, { u: 1, p: [e.x - 0.02, e.y + 0.01, cz + 0.02], l: [e.x, e.y, e.z], fov: creep(fovL(50), lt, 0.15) }]);
 };
 STAGE[29] = (t, lt, u, W, c, cam) => {
   kaiCorridorDoor(c, t, 0.05); c.mop.visible = false;

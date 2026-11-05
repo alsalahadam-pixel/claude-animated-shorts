@@ -18,9 +18,22 @@ const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=sw
 const page = await browser.newPage({ viewport: { width: Math.min(W, 1200), height: Math.min(H, 1200) } });
 page.on('pageerror', (e) => console.log('PAGE ERROR', e.message));
 page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') console.log('PAGE', m.type(), m.text().slice(0, 300)); });
-await page.goto(`http://localhost:${PORT}/index.html?w=${W}&h=${H}`);
-await page.waitForFunction('window.PV && window.PV.ready === true', null, { timeout: 120000 });
-const grab = async (f) => Buffer.from((await page.evaluate((f) => window.PV.frame(f), f)).split(',')[1], 'base64');
+const load = async () => {
+  await page.goto(`http://localhost:${PORT}/index.html?w=${W}&h=${H}`);
+  await page.waitForFunction('window.PV && window.PV.ready === true', null, { timeout: 120000 });
+};
+await load();
+// SwiftShader can lose the WebGL context on long runs: reload every 300 frames, and redo any frame rendered on a lost context.
+let sinceLoad = 0;
+const grab = async (f) => {
+  if (sinceLoad >= 300) { await load(); sinceLoad = 0; }
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const url = await page.evaluate((f) => window.PV.frame(f), f);
+    if (!(await page.evaluate(() => window.PV.lost()))) { sinceLoad++; return Buffer.from(url.split(',')[1], 'base64'); }
+    console.log('context lost at frame', f, '- reloading'); await load(); sinceLoad = 0;
+  }
+  throw new Error('WebGL context keeps getting lost at frame ' + f);
+};
 
 if (A.stills) {
   const dir = A.dir || 'out/stills'; fs.mkdirSync(dir, { recursive: true });

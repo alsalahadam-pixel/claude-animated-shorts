@@ -58,6 +58,7 @@ function renderTo(c) { rp.camera = c; composer.render(); }
 
 window.PV = {
   W, H, ready: false,
+  lost() { return renderer.getContext().isContextLost(); },
   probe(f) { frameState(f / FPS, world, cast, cam); const v = (o) => o.toArray().map((x) => +x.toFixed(3)); return { commHand: v(worldOf(cast.comm.armR.hand)), commPhone: v(worldOf(cast.commPhone)), commHead: v(worldOf(cast.comm.head)), kaiEyes: v(eyeWorld(cast.kai)), cam: v(cam.position) }; },
   setTiming(tm) { timing = tm; setTiming(tm); },
   frame(f) {
