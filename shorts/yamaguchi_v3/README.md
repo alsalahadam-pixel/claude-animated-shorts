@@ -36,6 +36,6 @@ python3 remotion/edl.py /home/user/remo/src/videos/yama3/edl.json
 cd audio && python3 soundtrack.py
 ```
 ```bash
-COMP=YamaShortV3 node scripts/render_final.mjs out/final_v3 456 2
+COMP=YamaShortV3 node scripts/render_final.mjs out/final_yama3 456 2   (use an empty folder: existing chunks are skipped)
 ```
 Then concatenate the chunks and mux with `audio/mix.wav` (`-map 0:v:0 -map 1:a:0`).
