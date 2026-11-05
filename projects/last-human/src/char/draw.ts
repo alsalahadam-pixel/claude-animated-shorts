@@ -1051,3 +1051,168 @@ export function inkOver(ctx: Ctx, k: number) {
   ctx.fillStyle = "#06050b"; ctx.fillRect(0, 0, W, H);
   ctx.restore();
 }
+
+// ---------------------------------------------------------------- the woman in the bed (a separate, ordinary human)
+// Drawn waist-up (she is only ever seen in the bed) or, for the reference sheet, standing. Body space: cm, y up,
+// origin at the hips. Same ink, cel shading and face construction as him, but her own build, hair, eyes and clothes.
+export const PAL_W = { skin: "#f2ddd2", lip: "#c98b8b", hair: "#15131b", hairHi: "#3d4566", shirt: "#8e919e", shirtDk: "#5d6070", iris: "#7c8c84", irisDk: "#2c3833", shorts: "#3a3550" };
+
+export type SleeperLook = {
+  body: "front" | "q3";       // torso: facing us, or turned three-quarters toward screen-right
+  head: "front" | "q3";       // head view (q3 = toward screen-right)
+  headFlip?: boolean;         // mirror the head (q3 toward screen-left)
+  headTilt: number;           // deg, screen roll
+  headNod: number;            // deg, + = chin down
+  face: Face;
+  arms: "lap" | "push";       // hands resting in her lap on the duvet, or pushing down on the mattress beside her hips
+  armK?: number;              // 0 = pushing .. 1 = in her lap (overrides arms; in-betweens move the arms between the two)
+  breathe: number;            // -1..1
+  sway?: number;              // hair lag, -1..1 (her hair swings a little behind the head as she moves)
+  legs?: boolean;             // reference sheet only: draw her standing
+};
+
+export function drawSleeper(ctx: Ctx, F: Frame, L: Light, o: SleeperLook, lineK = 0.7) {
+  const W = ctx.canvas.width, Hc = ctx.canvas.height;
+  ctx.clearRect(0, 0, W, Hc);
+  ctx.save();
+  const sx = W / F.w, sy = Hc / F.h;
+  ctx.setTransform(sx, 0, 0, -sy, -F.x0 * sx, Hc + F.y0 * sy);
+  const pt = new Painter(ctx, L, 0.62 * lineK);
+  const q = o.body === "q3", kx = q ? 0.86 : 1, cx = q ? 2.2 : 0;   // three-quarter torso: narrower, centre line toward the facing side
+  const X = (x: number) => x * kx + (x > 0 ? cx * 0.3 : cx * 0.0);
+  const br = o.breathe * 0.6;
+  // head placement (body space) and a helper mapping head space -> body space
+  const hs = 1.04, hx = cx * 0.9, hy = 59.8 + br * 0.5;
+  const tilt = -o.headTilt * D, nodK = Math.cos(o.headNod * D * 0.6), nodY = -Math.sin(o.headNod * D) * 3.2;
+  const flipH = o.headFlip ? -1 : 1;
+  const H2B = (p: Vec): Vec => { const r = rot([p[0] * hs * flipH, p[1] * hs * nodK], tilt); return [hx + r[0], hy + nodY + r[1]]; };
+  const sway = (o.sway ?? 0) * 2.2;
+
+  // legs (reference only): bare legs under the long shirt, simple shorts
+  if (o.legs) {
+    for (const k of [-1, 1]) {
+      pt.part(limbPath([[k * 7, -2], [k * 7.6, -40], [k * 6.6, -78]], [13, 9.6, 6.6]), PAL_W.skin, { shade: 0.6 });
+      pt.part(smooth([[k * 5, -79], [k * 10.5, -80.5], [k * 11.2, -84], [k * 3.6, -84], [k * 3.2, -80.5]], true, 0.5), PAL_W.skin, { shade: 0.4 });
+    }
+    pt.part(smooth([[-14, 2], [-14.2, -12], [-1, -14], [1, -14], [14.2, -12], [14, 2]], true, 0.4), PAL_W.shorts, { shade: 0.8 });
+  }
+  // long hair behind the shoulders
+  const backHair = smooth([H2B([-8.8, 6]), H2B([-9.6, -4]), [X(-14.5) + sway * 0.4, 30], [X(-15.5) + sway, 21], [X(-9), 19.5], [0, 22], [X(9), 19.5], [X(15.5) + sway, 21], [X(14.5) + sway * 0.4, 30], H2B([9.6, -4]), H2B([8.8, 6]), H2B([0, 14.2])], true, 0.45);
+  pt.part(backHair, PAL_W.hair, { shade: 0.7, rim: 0.8 });
+  // arms behind / at the sides
+  const shoulder = (k: number): Vec => [X(k * 14.6), 38.5 + br * 0.4];
+  const drawArm = (k: number) => {
+    const s = shoulder(k);
+    const t = o.armK ?? (o.arms === "lap" ? 1 : 0);
+    const e = lerpV([X(k * 17.2), 17], [X(k * 17.2), 15.0], t), w = lerpV([X(k * 17.8), 0], [X(k * 10.4), 7.6], t), hand = lerpV([X(k * 18.2), -4.6], [X(k * 5.6), 5.2], t);
+    const pushing = t < 0.5;
+    pt.part(limbPath([s, lerpV(s, e, 0.5), e, lerpV(e, w, 0.5), w], [8.6, 7.4, 6.6, 6.0, 5.2]), PAL_W.skin, { shade: 0.6 });
+    // hand
+    if (pushing) {
+      const hp = smooth([[w[0] - 3, w[1] + 0.5], [w[0] + 3, w[1] + 0.5], [hand[0] + 3.4, hand[1] - 1.2], [hand[0], hand[1] - 2.2], [hand[0] - 3.4, hand[1] - 1.2]], true, 0.5);
+      pt.part(hp, PAL_W.skin, { shade: 0.4, lw: 0.7, rim: 0.3 });
+      for (const v of [-1.3, 0, 1.3]) { const l = new Path2D(); l.moveTo(hand[0] + v, hand[1] + 0.2); l.lineTo(hand[0] + v * 1.15, hand[1] - 1.7); pt.line(l, 0.22); }
+    } else {
+      const d = norm(sub(hand, w)), n = perp(d);
+      const P = (u: number, v: number): Vec => add(w, add(mul(d, u), mul(n, v * k)));
+      // relaxed hand resting palm-down: palm, then fingers tapering to soft tips, thumb tucked along the inside
+      pt.part(smooth([P(-0.4, 2.4), P(4.4, 2.9), P(8.6, 2.2), P(10.6, 0.8), P(10.9, -0.6), P(9.4, -2.0), P(4.6, -2.6), P(-0.4, -2.2)], true, 0.5), PAL_W.skin, { shade: 0.4, lw: 0.7, rim: 0.3 });
+      for (const v of [1.1, 0.0, -1.1]) { const l = new Path2D(); const a = P(6.6, v), b = P(9.6, v * 0.75); l.moveTo(a[0], a[1]); l.lineTo(b[0], b[1]); pt.line(l, 0.2); }
+      const th = new Path2D(); const t0 = P(2.6, -2.4), t1 = P(6.4, -2.9); th.moveTo(t0[0], t0[1]); th.quadraticCurveTo(...(P(4.8, -3.4) as [number, number]), t1[0], t1[1]); pt.line(th, 0.26);
+    }
+  };
+  // shirt: oversized grey T, short sleeves, crew neck
+  const shirt = smooth([[X(-13.6), -9], [X(-13.2), 6], [X(-12.4), 16], [X(-13.8), 28], [X(-15.4), 37], [X(-13.6), 41.6], [X(-6.4) + cx * 0.4, 44 + br * 0.4], [cx * 0.6, 43.2 + br * 0.4], [X(6.4) + cx * 0.4, 44 + br * 0.4], [X(13.6), 41.6], [X(15.4), 37], [X(13.8), 28], [X(12.4), 16], [X(13.2), 6], [X(13.6), -9]], true, 0.45);
+  pt.part(shirt, PAL_W.shirt, { shade: 1 });
+  // soft folds
+  for (const [a, b, c] of [[[X(-9), 4], [X(-6), 14], [X(-7.5), 24]], [[X(8), 3], [X(6.5), 12], [X(8.5), 20]], [[X(-3), 30], [X(1), 27], [X(4.5), 31]]] as Vec[][]) { const p = new Path2D(); p.moveTo(a[0], a[1]); p.quadraticCurveTo(b[0], b[1], c[0], c[1]); pt.line(p, 0.3, litPair(PAL_W.shirtDk, L)[0]); }
+  // neck, then the crew collar over its base
+  pt.part(limbPath([[cx * 0.6, 40.6], [hx, 52.5]], [7.4, 6.6]), PAL_W.skin, { shade: 0.6 });
+  const col = new Path2D(); col.moveTo(X(-6.2) + cx * 0.4, 43.8 + br * 0.4); col.quadraticCurveTo(cx * 0.6, 38.6 + br * 0.4, X(6.2) + cx * 0.4, 43.8 + br * 0.4);
+  col.quadraticCurveTo(cx * 0.6, 40.4 + br * 0.4, X(-6.2) + cx * 0.4, 43.8 + br * 0.4); pt.part(col, PAL_W.shirtDk, { shade: 0.3, lw: 0.6, rim: 0 });
+  // sleeves and arms (near-side arm last)
+  for (const k of q ? [1, -1] : [-1, 1]) {
+    drawArm(k);
+    const s = shoulder(k);
+    const sleeve = smooth([[s[0] - k * 3.6, s[1] + 4.2], [s[0] + k * 2.6, s[1] + 2.4], [X(k * 18.6), 25.5], [X(k * 17.4), 23.2], [X(k * 12.2), 25.5], [X(k * 11.8), 31]], true, 0.45);
+    pt.part(sleeve, PAL_W.shirt, { shade: 0.9 });
+  }
+  // hair over the front of the shoulders: a curtain each side of the face; in 3/4 the far one hangs behind the cheek
+  const curtain = (k: number) => {
+    const far = o.head === "q3" && k > 0;
+    const top = H2B([k * (o.head === "q3" ? 7.0 : 1.2), o.head === "q3" ? 9.6 : 10.4]), tem = H2B([k * (far ? 8.2 : 8.4), 4.0]), jaw = H2B([k * (far ? 9.0 : 9.4), -9.5]);
+    const fx = (x: number) => (o.head === "q3" ? x : x);
+    const sh: Vec = [fx(H2B([k * 10.6, -16])[0]) + sway * 0.5, 36 + br * 0.4];
+    const tipA: Vec = [sh[0] + k * 0.6 + sway * 0.9, 26.5], tipB: Vec = [sh[0] - k * 2.0 + sway, 28.6];
+    pt.part(smooth([top, tem, jaw, [sh[0] + k * 2.6, sh[1]], tipA, [sh[0] - k * 0.4, 30.5], tipB, [sh[0] - k * 2.4, sh[1] + 1], [jaw[0] - k * 3.2, jaw[1] + 0.5], [tem[0] - k * 2.6, tem[1] + 0.8]], true, 0.42), PAL_W.hair, { shade: 0.6, rim: 0.9 });
+    for (const off of [-1.0, 0.8]) { const sp = new Path2D(); sp.moveTo(tem[0] - k * 1.2 + off * 0.5, tem[1]); sp.quadraticCurveTo(jaw[0] - k * 1.4 + off, jaw[1], sh[0] + off - k * 0.6, sh[1] - 5); pt.line(sp, 0.22, litPair(PAL_W.hairHi, L)[1]); }
+  };
+  if (o.head === "q3") curtain(1);
+  // head
+  ctx.save();
+  ctx.translate(hx, hy + nodY); ctx.rotate(tilt); ctx.scale(hs * flipH, hs * nodK);
+  const save = pt.L;
+  if (o.headFlip) pt.L = { ...pt.L, dir: 180 - pt.L.dir, rim: pt.L.rim ? { ...pt.L.rim, dir: 180 - pt.L.rim.dir } : undefined };
+  sleeperHead(pt, o.head, o.face);
+  pt.L = save;
+  ctx.restore();
+  if (o.head === "q3") curtain(-1); else { curtain(-1); curtain(1); }
+  ctx.restore();
+}
+
+function sleeperHead(pt: Painter, view: "front" | "q3", F: Face) {
+  const c = pt.c;
+  const face = view === "front"
+    ? smooth([[0, 9.5], [6.4, 7.6], [7.9, 2], [7.6, -2.8], [5.9, -7.6], [3.0, -11.2], [0, -12.4], [-3.0, -11.2], [-5.9, -7.6], [-7.6, -2.8], [-7.9, 2], [-6.4, 7.6]], true, 0.5)
+    : smooth([[0, 9.5], [6.3, 7.8], [8.0, 2.6], [8.0, -1.4], [7.6, -4.8], [6.5, -8.2], [4.2, -11.4], [1.3, -12.4], [-2.9, -11.0], [-6.2, -7.4], [-7.6, -2], [-7.6, 4], [-5.4, 8.4]], true, 0.5);
+  pt.part(face, PAL_W.skin, { shade: 0.6 });
+  // her features: thin brows, grey-green eyes with a longer lash flick, the same nose construction as his, soft lips
+  const keep = [PAL.iris, PAL.irisDk, PAL.lip];
+  PAL.iris = PAL_W.iris; PAL.irisDk = PAL_W.irisDk; PAL.lip = PAL_W.lip;
+  const lash = (x: number, y: number, side: number) => { const l = new Path2D(); l.moveTo(x, y); l.quadraticCurveTo(x + side * 0.9, y + 0.2, x + side * 1.4, y + 0.9); pt.line(l, 0.5); };
+  if (view === "front") {
+    drawBrow(pt, -3.8, -0.8, 4.2, -1, F, 0.6); drawBrow(pt, 3.8, -0.8, 4.2, 1, F, 0.6);
+    drawEye(pt, -3.8, -1.0, 4.4, 3.0, -1, F); drawEye(pt, 3.8, -1.0, 4.4, 3.0, 1, F);
+    if (F.open > 0.14) { lash(-6.0, -0.7, -1); lash(6.0, -0.7, 1); }
+    drawNose(pt, "front");
+    drawMouth(pt, 0, -8.4, 3.4, F);
+    pt.fill(smooth([[-1.3, -8.9], [0, -9.5], [1.3, -8.9], [0, -9.25]], true, 0.5), mixHex(PAL_W.lip, "#ffffff", 0.1), 0.55);
+  } else {
+    drawBrow(pt, -1.7, -0.8, 4.0, -1, F, 0.6); drawBrow(pt, 4.45, -0.8, 2.7, 1, F, 0.5);
+    drawEye(pt, -1.7, -1.0, 4.2, 3.0, -1, F); drawEye(pt, 4.55, -1.0, 2.7, 2.9, 1, F, 0.78);
+    if (F.open > 0.14) lash(-3.9, -0.8, -1);
+    drawNose(pt, "q3");
+    drawMouth(pt, 2.9, -8.4, 3.0, F, 1);
+  }
+  [PAL.iris, PAL.irisDk, PAL.lip] = keep;
+  // hair over the crown: centre parting, hairline sweeping down to the temples (no fringe)
+  const part = view === "front" ? 0 : 1.6;
+  const cap = smooth([[-8.5, 2.4], [-9.4, 8.4], [-6.4, 13.2], [part, 14.8], [6.4, 13.2], [9.4, 8.4], [8.5, 2.4], [6.4, 6.0], [part + 2.6, 8.8], [part + 0.25, 9.8], [part - 0.25, 9.8], [part - 2.6, 8.8], [-6.4, 6.0]], true, 0.42);
+  pt.part(cap, PAL_W.hair, { shade: 0.7, rim: 0.8 });
+  const pl = new Path2D(); pl.moveTo(part, 9.8); pl.quadraticCurveTo(part + 0.2, 12.6, part - 0.4, 14.6); pt.line(pl, 0.3);
+  c.save(); c.globalAlpha = 0.6; c.strokeStyle = litPair(PAL_W.hairHi, pt.L)[1]; c.lineWidth = 0.4; c.lineCap = "round";
+  for (const [a, b] of [[[-6.2, 10.6], [-2.4, 13.2]], [[2.6, 13.0], [6.0, 10.8]]] as Vec[][]) { c.beginPath(); c.moveTo(a[0], a[1]); c.quadraticCurveTo((a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + 0.9, b[0], b[1]); c.stroke(); }
+  c.restore();
+}
+
+/** for the photo: the back of a sleeping head, nearly all under the duvet, only a little dark hair on the pillow */
+export function drawHairOnPillow(ctx: Ctx, F: Frame, L: Light) {
+  const W = ctx.canvas.width, Hc = ctx.canvas.height;
+  ctx.clearRect(0, 0, W, Hc);
+  ctx.save();
+  const sx = W / F.w, sy = Hc / F.h;
+  ctx.setTransform(sx, 0, 0, -sy, -F.x0 * sx, Hc + F.y0 * sy);
+  const pt = new Painter(ctx, L, 0.45);
+  // a few long strands spill over the pillow (only noticed on a second look)
+  for (const [a, b, c2] of [[[7.0, 0.5], [11.5, -1.2], [15.4, -4.6]], [[7.8, 2.2], [12.4, 1.0], [16.0, -1.6]], [[6.2, -1.5], [9.4, -3.6], [11.8, -5.6]]] as Vec[][]) { const p = new Path2D(); p.moveTo(a[0], a[1]); p.quadraticCurveTo(b[0], b[1], c2[0], c2[1]); pt.line(p, 0.55, PAL_W.hair); }
+  const head = smooth([[-9, -2], [-9.6, 5], [-5.5, 10.4], [1, 11.4], [7, 8.6], [9.4, 3], [8.6, -2], [3, -3.4], [-4, -3.2]], true, 0.45);
+  pt.part(head, PAL_W.hair, { shade: 0.7 });
+  // the flash catches the hair: a sheen band across the crown and strands running from the whorl
+  const c = ctx; c.save(); c.clip(head);
+  c.globalAlpha = 0.45; c.strokeStyle = litPair(PAL_W.hairHi, L)[1]; c.lineWidth = 2.2; c.lineCap = "round";
+  c.beginPath(); c.moveTo(-6.8, 5.4); c.quadraticCurveTo(0, 10.2, 6.6, 5.6); c.stroke();
+  c.globalAlpha = 0.32; c.lineWidth = 0.28;
+  for (const [x0, bend, dx] of [[-6.2, 1.6, -2.6], [-3.1, 2.4, -3.4], [0.4, 1.2, -2.2], [3.3, 2.0, -3.0], [6.0, 1.0, -1.6]]) { c.beginPath(); c.moveTo(x0, 11.5); c.quadraticCurveTo(x0 + bend, 5, x0 + dx, -3.5); c.stroke(); }
+  c.restore();
+  ctx.restore();
+}

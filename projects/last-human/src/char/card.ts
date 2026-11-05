@@ -43,6 +43,12 @@ export class Card {
     this.mesh.position.set(F.x0 / 100, F.y0 / 100, 0);
   }
 
+  /** change the canvas resolution (e.g. for a close push-in); the texture is re-allocated on the next upload */
+  resize(pw: number, ph: number) {
+    if (this.canvas.width === pw && this.canvas.height === ph) return;
+    this.canvas.width = pw; this.canvas.height = ph; this.tex.dispose();
+  }
+
   /** redraw: fn draws onto the card canvas (it clears it itself) */
   draw(fn: (ctx: CanvasRenderingContext2D, F: Frame) => void) {
     fn(this.ctx, this.frame);

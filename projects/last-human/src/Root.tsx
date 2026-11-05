@@ -12,6 +12,7 @@ export const Root: React.FC = () => (
     <Composition id="Test" component={Test} durationInFrames={60} fps={30} width={1080} height={1920} />
     <Composition id="CharRef" component={CharRef} durationInFrames={1} fps={30} width={2160} height={2700} defaultProps={{ part: "hero" as const }} />
     <Composition id="EntityRef" component={CharRef} durationInFrames={1} fps={30} width={2160} height={2700} defaultProps={{ part: "entity" as const }} />
+    <Composition id="SleeperRef" component={CharRef} durationInFrames={1} fps={30} width={2160} height={2700} defaultProps={{ part: "sleeper" as const }} />
     <Composition id="CharSheet" component={CharSheet} durationInFrames={1} fps={30} width={1080} height={1920} />
   </>
 );

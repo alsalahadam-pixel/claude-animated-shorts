@@ -18,7 +18,8 @@ The viewer must be able to work these out, and no frame may break them.
 3. **Only two things move: him, and "them".** The cameras, the reflection, the message on his phone and the entity are
    all "them": one thing, wearing different shapes. Every moving human-made thing in the film is one of these.
 4. **He has not slept since 06:12 on Day 1.** This is said once, early (0:12), and never repeated. The photo pays it off.
-5. **Deliberately unanswered (Part 2 hook):** who took the photo of "him" asleep, and how long has it been practising?
+5. **Deliberately unanswered (Part 2 hook):** if he has not slept in three days, who is asleep in his bed with his face,
+   and how long has the devil been standing in the corner, watching?
 
 v1 details removed because they broke these rules: TV static, a ticking clock, neon flicker, wind gusts, blinking
 hazard lights, moving dust, street lamps switched off in the daytime shots.
@@ -70,8 +71,9 @@ From: "Me". A photo of him, asleep in his bed. Sent 03:13.
 
 > NARRATOR (V.O.): A photo of me… asleep. Taken one minute ago. So who's sleeping in my bed?
 
-Across the dark room, the duvet rises and falls. Something is breathing under it. It rises, slowly, far too tall
-to be him: the thing from the glass. It looks straight at us. Its eyes open. It grins.
+Across the dark room, the duvet rises and falls. Someone is breathing under it. Then he jolts upright, gasping: it
+is him. The same face, the same hoodie, terrified. He turns, slowly, to look over his shoulder into the dark corner.
+In the corner stands the devil: too tall, too thin. Its eyes open. It grins at us.
 
 CUT TO BLACK. **PART 2?**
 
@@ -230,18 +232,22 @@ Reaction rule: every visual beat lands 0–3 frames before its word.
 - V.O.: V14 "So who's sleeping in my bed?" 52.60–54.50
 - Sound: everything drops out except a thin held note that fades away by 54.50.
 
-**S20 · 54.50–58.30 · f1635–1749 · The bed**
-- Camera: his eye line, low from the floor by the door, across the dark room; very slow push toward the bed. Window
-  glow purple and teal; the bedside clock still reads 06:12.
-- Action: 54.50–55.70 the duvet rises and falls: two slow breaths. 55.70–58.03 a shape unfolds out of the bed,
-  slow, even and unnatural (no jolt, no weight): far too tall, too thin, arms too long. The duvet sinks as it leaves.
-  58.03–58.17 its head tips sharply to one side.
-- Sound: silence except the slow breathing from the bed, which is not his.
+**S20 · 54.50–58.30 · f1635–1749 · The bed: it is him**
+- Camera: his eye line, low from the floor by the door, across the dark room. Holds on the bed, then from 55.60 a
+  slow zoom closes from the bed to a medium close-up of the face in it.
+- Action: 54.50–55.40 the duvet rises and falls: two slow breaths. 55.40–55.67 the lump shifts. 55.67 **he jolts
+  upright** in 8 frames with a small overshoot, the same jolt as S03: the same guy, same face, same hoodie. Gasping,
+  eyes wide, pupils small. 55.90–57.00 he pants; his eyes dart. 57.00 he freezes. 57.03 his eyes slide toward the
+  dark corner first; 57.07–58.07 his head follows, slowly, over his shoulder. He is terrified. He never smiles.
+- Sound: slow, muffled breathing from under the duvet; a duvet rustle; on the jolt a gasp and a low hit; panting;
+  then a creeping low cluster and a fast heartbeat as he turns.
 
-**S21 · 58.30–60.00 · f1749–1800 · It looks at us**
-- Camera: locked close-up, straight on; a sudden 3-frame push-in on 58.53 as the eyes open.
-- Action: the entity's head, dark against the window, purple rim. 58.53 the eyes snap open, white. 58.80–59.67 the
-  grin spreads while the head keeps tipping. **Hard cut to black at 60.00.**
+**S21 · 58.30–60.00 · f1749–1800 · The corner (as in the first cut)**
+- Camera: over his shoulder from beside the bed: the back of his head low right, out of focus; the dark north-west
+  corner beside the wardrobe sharp. A 3-frame push-in on 58.50 as the eyes open, then a slow zoom to the devil's face.
+- Action: the devil stands in the corner, full height, its head near the ceiling, a purple rim of light. 58.50 its
+  eyes snap open, white. 58.80–59.67 the grin spreads while its head tips. It looks straight at us. It is not him and
+  it never was in the bed. **Hard cut to black at 60.00.**
 - Sound: a high cluster rises over the last second, then **all sound cuts at 60.00**.
 
 **60.00–60.40 · f1800–1812 · Black.** Absolute silence.
@@ -262,7 +268,7 @@ Reaction rule: every visual beat lands 0–3 frames before its word.
   arms to the knees with long fingers, a purple rim of light, white eyes with no pupils, a long grin full of teeth.
   It moves with no weight and no overshoot, and its scares are sudden (eyes open in 2 frames).
 - **New poses:** palm on glass and shout, facing the glass with hand raised, head tilt, stepping back, sliding down
-  the door to the floor, sitting on the floor with the phone, the entity rising from the bed.
+  the door to the floor, sitting on the floor with the phone, jolting upright in the bed and turning to the corner.
 
 ## 5. New production work (before any render)
 1. Cold-open camera choreography (aims before he arrives) and the camera-test steps.
@@ -270,8 +276,8 @@ Reaction rule: every visual beat lands 0–3 frames before its word.
 3. Frozen steam sculpture, hand pass-through, frozen pigeon, 06:12 public clock and bedside clock.
 4. Continuity pass: lamps lit in every scene, no flicker or blinking, brake lights on the queued cars, dust frozen.
 5. Mirror sequence with growing lag, the extra step and the independent head turn.
-6. Floor-sitting phone scene; phone UI from "Me" at 03:13; the bed with breathing duvet and the entity's rise; the
-   entity close-up; hard cut.
+6. Floor-sitting phone scene; phone UI from "Me" at 03:13; the bed with breathing duvet; him jolting upright in it;
+   the devil in the corner; hard cut.
 7. Day labels; captions moved to a separate overlay pass; new mix with the silences listed above.
 
 Then, before the full render: a storyboard sheet of real stills from every shot for your sign-off.
@@ -303,10 +309,11 @@ with acceleration and a settle. Long holds are dead still, and the scares are su
 - **S15 (0:38–0:43), the reveal.** The reflection that copied him, then lagged, then moved on its own, was never his.
   His face goes black, his shape drains away, and the entity is standing in the glass. The line lands on it: "It
   wasn't copying me. It was practising." Practising being him.
-- **S18 (0:48), the evidence.** The photo from "Me" of him asleep. He hasn't slept in three days. So the thing in
-  the photo is the entity, wearing his shape, in his bed.
-- **S20–S21 (0:55–1:00), the payoff.** Something breathes under his duvet and rises, too tall to be him. It looks
-  at us, its eyes open, it grins. Hard cut to black.
+- **S18 (0:48), the question.** The photo from "Me" of him asleep. He hasn't slept in three days.
+- **S20 (0:55–0:58), the answer is worse.** Someone breathes under his duvet, then jolts upright: him, the same guy,
+  terrified, and he turns to look into the dark corner.
+- **S21 (0:58–1:00), the payoff.** What he is looking at: the devil in the corner, as in the first cut. Separate from
+  him, never in the bed. Its eyes open; it grins at us. Hard cut to black.
 - **The rule:** the entity is "them". The cameras that turn, the reflection that moves on its own, the message from
   "Me" are all the same thing. He is the last human; it is learning to be one. He never smiles in the film; only it
   does.

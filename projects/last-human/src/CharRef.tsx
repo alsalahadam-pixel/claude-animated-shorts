@@ -2,14 +2,14 @@
 import React, { useLayoutEffect, useRef } from "react";
 import { AbsoluteFill, continueRender, delayRender } from "remotion";
 import "@fontsource/jetbrains-mono/500.css";
-import { drawCharacter, drawHeadOnly, drawWatcher, stand, walk, Light, FACE0, Face, Pose } from "./char/draw";
+import { drawCharacter, drawHeadOnly, drawSleeper, drawWatcher, stand, walk, Light, FACE0, Face, Pose, SleeperLook } from "./char/draw";
 
 const STUDIO: Light = { key: "#fff0e2", keyK: 0.95, amb: "#7a77a8", ambK: 0.62, dir: 130, rim: { color: "#9fd8ff", k: 0.35, dir: 20, w: 0.8 } };
 const W = 2160, H = 2700;
 
 type Cell = { x: number; y: number; w: number; h: number; label: string; draw: (c: CanvasRenderingContext2D) => void };
 
-export const CharRef: React.FC<{ part?: "hero" | "entity" }> = ({ part = "hero" }) => {
+export const CharRef: React.FC<{ part?: "hero" | "entity" | "sleeper" }> = ({ part = "hero" }) => {
   const ref = useRef<HTMLCanvasElement>(null);
   useLayoutEffect(() => {
     const h = delayRender("ref");
@@ -17,7 +17,7 @@ export const CharRef: React.FC<{ part?: "hero" | "entity" }> = ({ part = "hero" 
       const cv = ref.current!, x = cv.getContext("2d")!;
       const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "#1a1f3a"); g.addColorStop(1, "#231c36");
       x.fillStyle = g; x.fillRect(0, 0, W, H);
-      const cells: Cell[] = part === "hero" ? heroCells() : entityCells();
+      const cells: Cell[] = part === "hero" ? heroCells() : part === "sleeper" ? sleeperCells() : entityCells();
       for (const c of cells) {
         const o = document.createElement("canvas"); o.width = c.w; o.height = c.h;
         const ox = o.getContext("2d")!; c.draw(ox);
@@ -26,7 +26,7 @@ export const CharRef: React.FC<{ part?: "hero" | "entity" }> = ({ part = "hero" 
         x.font = '500 30px "JetBrains Mono"'; x.fillStyle = "#ffb35c"; x.fillText(c.label, c.x + 16, c.y + c.h - 18);
       }
       x.font = '500 44px "JetBrains Mono"'; x.fillStyle = "#f2efe9";
-      x.fillText(part === "hero" ? "THE LAST HUMAN ALIVE — protagonist reference" : "THE LAST HUMAN ALIVE — the entity", 40, 62);
+      x.fillText(part === "hero" ? "THE LAST HUMAN ALIVE — protagonist reference" : part === "sleeper" ? "THE LAST HUMAN ALIVE — the woman in the bed (a separate human)" : "THE LAST HUMAN ALIVE — the entity (the devil)", 40, 62);
       continueRender(h);
     });
   }, [part]);
@@ -83,4 +83,37 @@ function entityCells(): Cell[] {
     { x: 760, y: 840, w: 680, h: 760, label: "grin, half", draw: (c) => drawWatcher(c, { x0: -22, y0: 196, w: 44, h: 46 }, { eyes: 1, smile: 0.5, rim: 0.6, tilt: -2, lean: 0 }) },
     { x: 1460, y: 840, w: 680, h: 760, label: "grin, full", draw: (c) => drawWatcher(c, { x0: -22, y0: 196, w: 44, h: 46 }, { eyes: 1, smile: 1, rim: 0.6, tilt: -5, lean: 0 }) },
   ];
+}
+
+const W0: SleeperLook = { body: "front", head: "front", headTilt: 0, headNod: 0, face: { ...FACE0, open: 0.95, browIn: 0.15, tired: 0.3 }, arms: "lap", breathe: 0 };
+const wFace = (f: Partial<Face>): Face => ({ ...FACE0, open: 0.95, browIn: 0.15, tired: 0.3, ...f } as Face);
+
+function sleeperCells(): Cell[] {
+  const cells: Cell[] = [];
+  const up = { x0: -32, y0: -10, w: 64, h: 94 };
+  cells.push({ x: 40, y: 100, w: 680, h: 1000, label: "sitting up in bed: front", draw: (c) => drawSleeper(c, up, STUDIO, W0) });
+  cells.push({ x: 740, y: 100, w: 680, h: 1000, label: "3/4", draw: (c) => drawSleeper(c, up, STUDIO, { ...W0, body: "q3", head: "q3", face: wFace({ look: [0.3, -0.2] }) }) });
+  cells.push({ x: 1440, y: 100, w: 680, h: 1000, label: "3/4, looking at him", draw: (c) => drawSleeper(c, up, STUDIO, { ...W0, body: "q3", head: "front", headTilt: -3, face: wFace({ look: [-0.15, 0] }) }) });
+  const head = { x0: -15, y0: 43, w: 30, h: 36 };
+  const faces: [string, Partial<SleeperLook>, Partial<Face>][] = [
+    ["asleep", { headTilt: 6 }, { open: 0 }],
+    ["waking", { headNod: 10 }, { open: 0.45, look: [0, -0.6] }],
+    ["awake, blank", {}, {}],
+    ["slow blink", {}, { open: 0.2 }],
+    ["turning to him", { head: "q3", headFlip: true }, { look: [-0.7, 0] }],
+  ];
+  faces.forEach(([n, lk, f], i) => cells.push({ x: 40 + i * 420, y: 1120, w: 400, h: 500, label: n, draw: (c) => drawSleeper(c, head, STUDIO, { ...W0, ...lk, face: wFace(f) }) }));
+  cells.push({ x: 40, y: 1640, w: 400, h: 1000, label: "standing (ref only)", draw: (c) => drawSleeper(c, { x0: -40, y0: -88, w: 80, h: 172 }, STUDIO, { ...W0, legs: true, arms: "push" }) });
+  cells.push({ x: 460, y: 1640, w: 400, h: 1000, label: "pushing herself up", draw: (c) => drawSleeper(c, { x0: -36, y0: -12, w: 72, h: 180 }, STUDIO, { ...W0, arms: "push", headNod: 12, face: wFace({ look: [0, -0.5] }) }) });
+  // the cast, to scale: three different beings
+  cells.push({ x: 880, y: 1640, w: 1240, h: 1000, label: "the cast, to scale: him · her · the entity", draw: (c) => {
+    const parts: [number, number, (t: CanvasRenderingContext2D) => void][] = [
+      [0, 0, (t) => drawCharacter(t, stand(15, 0, { tired: 1 }), STUDIO, { x0: -50, y0: -4, w: 100, h: 262 })],
+      [1, 0, (t) => drawSleeper(t, { x0: -50, y0: -88, w: 100, h: 262 }, STUDIO, { ...W0, legs: true, arms: "push" })],
+      [2, 0, (t) => drawWatcher(t, { x0: -50, y0: -4, w: 100, h: 262 }, { eyes: 1, smile: 1, rim: 0.6, tilt: -4, lean: 0 })],
+    ];
+    const cw = 380, ch = 1000 * 0.94;
+    for (const [i, , fn] of parts) { const t = document.createElement("canvas"); t.width = cw; t.height = Math.round(cw * 262 / 100); fn(t.getContext("2d")!); c.drawImage(t, 30 + i * 400, 1000 - ch - 40, cw, ch); }
+  } });
+  return cells;
 }

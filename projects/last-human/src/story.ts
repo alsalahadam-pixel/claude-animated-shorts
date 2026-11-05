@@ -27,6 +27,7 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const lerp3 = (a: V3, b: V3, t: number): V3 => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
 const ramp = (f: number, a: number, b: number) => ss((f - a) / (b - a));
 const V = (v: V3) => new THREE.Vector3(...v);
+const D2R = Math.PI / 180;
 
 function keys(K: Key[], f: number, fov0 = 35): Cam {
   if (f <= K[0].f) return { pos: K[0].pos, look: K[0].look, fov: K[0].fov ?? fov0, roll: K[0].roll ?? 0 };
@@ -51,6 +52,8 @@ function locked(a: number, b: number, pos: V3, look: V3, fov: number, k = 0.04, 
 // ---------------------------------------------------------------- character lights (screen-space directions)
 const SUN_SIDE: Light = { key: "#ffbf8f", keyK: 1.05, amb: "#6260a6", ambK: 0.6, dir: 15, rim: { color: "#ff9a5a", k: 0.55, dir: 10, w: 0.8 } };
 const SUN_BACK: Light = { key: "#ffb27a", keyK: 0.35, amb: "#5c58a0", ambK: 0.55, dir: 60, rim: { color: "#ffa060", k: 1.0, dir: 60, w: 1.6 } };
+// S04 over the shoulder, out of focus: a thinner, softer rim (a strong one turned the hair-spike tips into glowing dots)
+const SUN_BACK_OTS: Light = { ...SUN_BACK, rim: { color: "#e89a6a", k: 0.45, dir: 40, w: 0.7 } };
 const SUN_FRONT: Light = { key: "#ffc596", keyK: 0.95, amb: "#5c58a0", ambK: 0.55, dir: 70, rim: { color: "#8a7aff", k: 0.35, dir: 160, w: 0.9 } };
 const OVERCAST: Light = { key: "#d6dcea", keyK: 0.62, amb: "#7680a6", ambK: 0.72, dir: 100, rim: { color: "#b8c8e8", k: 0.18, dir: 30, w: 0.6 } };
 const DUSK: Light = { key: "#ffb080", keyK: 0.4, amb: "#6a5a9a", ambK: 0.58, dir: 80, rim: { color: "#ff8a4a", k: 0.95, dir: 70, w: 1.3 } };
@@ -135,6 +138,53 @@ const mirrorX = (x: number) => 2 * GLASS_X - x;
 const DOOR_SIT = V([-2.05, 0, 2.6]);        // on the floor, back against the door
 const BED_HIP = V([1.55, 0.58, -1.62]);
 
+// ---------------------------------------------------------------- S20-S21: him in the bed (the same guy, terrified) and the devil in the corner
+const DEVIL_SPOT = V([-3.12, 0, -2.68]);   // the dark north-west corner, beside the wardrobe (as in the first cut)
+const DEVIL_FRAME = { x0: -45, y0: -4, w: 90, h: 255 };
+const BED_UP = { x0: -45, y0: -14, w: 90, h: 104 };   // his upper body in the bed, hip at the card origin
+const CORNER_DIR = DEVIL_SPOT.clone().sub(BED_HIP).setY(0).normalize();
+const S21_POS: V3 = [3.1, 1.5, -0.9], S21_LOOK: V3 = [-3.12, 1.62, -2.68];   // over his shoulder: his head low right, out of focus
+/** torso pitch back from upright (rad): asleep under the duvet, then he jolts upright (the same jolt as S03), a settle */
+function bedPitch(f: number) {
+  if (f < 1670) return 1.35;
+  const k = ss((f - 1670) / 8) * 1.05 - Math.max(0, ss((f - 1678) / 7)) * 0.05;
+  return 1.35 * (1 - k);
+}
+function bedPose(f: number, cam: THREE.PerspectiveCamera): Pose {
+  const body = World.psi(BED_HIP, V([0, 0, 1]), cam), corner = World.psi(BED_HIP, CORNER_DIR, cam);
+  const up = f >= 1670, turn = ramp(f, 1712, 1742);
+  const headPsi = lerp(body, corner, turn);
+  // which way the corner is on screen, in his face's terms (the drawing mirrors the body when psi < 0, and the head again
+  // when its own yaw is negative)
+  const g = Math.sin(body * D2R) < -1e-3 ? -1 : 1, h = Math.sin(g * headPsi * D2R) < -1e-3 ? -1 : 1;
+  const side = (Math.sign(Math.sin(corner * D2R)) || 1) * g * h;
+  const dart = saccade(f, [[0, [0, 0]], [1678, [0.5, 0.15]], [1685, [-0.55, 0]], [1692, [0.25, -0.25]], [1699, [-0.3, 0.1]], [1705, [0, 0]], [1709, [0.9 * side, 0]]]);
+  const pant = up ? Math.sin((f / FPS) * Math.PI * 2 * 1.5) * (1 - 0.5 * ramp(f, 1705, 1712)) : 0;
+  const face: Face = {
+    ...FACE0, tired: 1,
+    open: !up ? 0 : (f < 1704 ? 1.25 : lerp(1.25, 1.35, turn)) * blinkAt(f, [1696]),
+    pupil: up ? lerp(0.6, 0.45, turn) : 1, brow: up ? 0.9 : 0, browIn: up ? 1.25 : 0.3,
+    mouth: !up ? "neutral" : f < 1684 ? "gasp" : "part", mouthOpen: f < 1684 ? 0.6 : 0.35 + 0.15 * turn,
+    look: dart,
+  };
+  const p = doublePose(face, headPsi);
+  p.psi = body; p.breathe = pant;
+  const jolt = up ? Math.max(0, 1 - (f - 1670) / 10) : 0;   // hands shove back against the mattress, then come forward
+  p.armL = [lerp(6, -28, jolt), 12, lerp(18, 26, jolt)]; p.armR = [lerp(6, -24, jolt), 12, lerp(18, 30, jolt)];
+  p.handL = "open"; p.handR = "open";
+  p.headNod = lerp(-6, 3, ramp(f, 1678, 1700)) * (up ? 1 : 0); p.headTilt = -4 * turn;
+  return p;
+}
+/** his card pivots at his hips in the bed: lying back under the duvet, then sitting bolt upright */
+function placeInBed(w: World, cam: THREE.PerspectiveCamera, f: number, L: Light) {
+  const c = w.cu; c.setFrame(BED_UP); c.mat.opacity = 1;
+  const pose = bedPose(f, cam);
+  c.draw((ctx, F) => drawCharacter(ctx, pose, L, F));
+  const yaw = Math.atan2(cam.position.x - BED_HIP.x, cam.position.z - BED_HIP.z);
+  c.pivot.position.copy(BED_HIP); c.pivot.rotation.set(0, yaw, 0); c.pivot.rotateX(-bedPitch(f));
+  c.visible = true; c.blob.visible = false;
+}
+
 /** neon practicals around the Day 3 spot */
 function spotLights(w: World) {
   w.practical(0, [9.0, 3.6, -10.0], "#b07bff", 40, 12);
@@ -204,7 +254,7 @@ export const SHOTS: Shot[] = [
       pose.armR = [lerp(4, 62, reach), lerp(6, 38, reach), lerp(8, 36, reach)];
       const shout = ramp(f, 279, 284) * (1 - 0.5 * ramp(f, 296, 310));
       pose.lean = 3 + 9 * shout; pose.headNod = -6 * shout - 2;
-      w.place(w.hero, pose, SUN_BACK, BODY, p, cam);
+      w.place(w.hero, pose, SUN_BACK_OTS, BODY, p, cam);
     },
   },
   // S05 — his face at the glass: hope draining away. "I haven't slept since."
@@ -467,35 +517,33 @@ export const SHOTS: Shot[] = [
       w.apt.phoneLight.position.set(-2.0, 0.6, 2.25); w.apt.phoneLight.intensity = 0.8;
     },
   },
-  // S20 — his point of view: the duvet breathes. Then it sits up, slowly.
+  // S20 — something moves under the duvet. It is him: the same guy jolts upright in his bed, panting, terrified, and
+  // turns, slowly, to look over his shoulder into the dark corner
   {
     id: "S20", a: 1635, b: 1749, look: "aptNight", grade: "night",
-    cam: (f) => keys([{ f: 1635, pos: [-2.0, 0.86, 2.3], look: [1.55, 0.78, -1.75], fov: 36 }, { f: 1749, pos: [-1.55, 0.87, 1.82], look: [1.55, 0.82, -1.7], fov: 34 }], f),
-    dof: () => ({ cInf: 4, focus: [1.55, 0.9, -1.7] }),
+    // the eye line from the floor by the door: holds on the breathing duvet, then a slow zoom closes on his face
+    cam: (f) => keys([{ f: 1635, pos: [-1.75, 0.82, 2.05], look: [1.55, 0.72, -1.7], fov: 30 }, { f: 1668, pos: [-1.74, 0.82, 2.04], look: [1.55, 0.74, -1.7], fov: 29 }, { f: 1704, pos: [-1.7, 0.83, 2.0], look: [1.55, 1.08, -1.62], fov: 17 }, { f: 1749, pos: [-1.66, 0.83, 1.96], look: [1.53, 1.1, -1.62], fov: 14.5 }], f),
+    dof: () => ({ cInf: 4, focus: [1.55, 1.15, -1.62] }),
     act: (f, w, cam) => {
-      const u = clamp((f - 1671) / 70) ** 1.15;             // 1.2 s of breathing, then a slow, even, unnatural rise
-      w.apt.setBody(1 - 0.7 * u, ((f - 1635) / FPS) * Math.PI * 2 * 0.55);
-      // the entity's upper body (drawn waist-up); the card pivots at its waist, so it unfolds out of the bed
-      const c = w.watcher; c.setFrame({ x0: -45, y0: -10, w: 90, h: 150 });
-      c.draw((ctx) => drawWatcher(ctx, { x0: -45, y0: 100, w: 90, h: 150 }, { eyes: 0, smile: 0, rim: 0.45, tilt: f > 1741 ? -6 * ramp(f, 1741, 1745) : 0, lean: 0 }));
-      const yaw = Math.atan2(cam.position.x - BED_HIP.x, cam.position.z - BED_HIP.z);
-      c.pivot.position.copy(BED_HIP); c.pivot.rotation.set(0, yaw, 0); c.pivot.rotateX(-(1 - u) * 1.35);
-      c.visible = true; c.blob.visible = false;
+      const u = clamp((1.35 - bedPitch(f)) / 1.35);
+      const stir = f >= 1662 && f < 1670 ? 0.18 * Math.sin(((f - 1662) / 8) * Math.PI) : 0;   // the lump shifts: someone is under there
+      w.apt.setBody(Math.max(0.3, 1 - 0.7 * u) + stir, ((f - 1635) / FPS) * Math.PI * 2 * 0.55 * (1 - u));
+      placeInBed(w, cam, f, NIGHT_ROOM);
     },
   },
-  // S21 — the double: his face, looking straight at us, smiling. Hard cut to black at 60.0 s.
+  // S21 — over his shoulder, into the corner, as in the first cut: the devil. Its eyes open; it grins at us. Hard cut.
   {
     id: "S21", a: 1749, b: 1800, look: "aptNight", grade: "night",
-    cam: snap(locked(1749, 1800, [0.92, 1.6, -0.9], [1.55, 1.72, -1.62], 30, 0.04), 1756, 0.07),
-    dof: () => ({ cInf: 10, focus: [1.55, 1.72, -1.62] }),
+    cam: snap((f) => keys([{ f: 1749, pos: S21_POS, look: S21_LOOK, fov: 30 }, { f: 1757, pos: S21_POS, look: S21_LOOK, fov: 30 }, { f: 1800, pos: [2.9, 1.54, -0.98], look: [-3.12, 2.12, -2.68], fov: 12 }], f), 1755, 0.04),
+    dof: () => ({ cInf: 7, focus: [-3.12, 1.9, -2.68] }),
     act: (f, w, cam) => {
       w.apt.setBody(0.3, 0);
-      const eyes = ramp(f, 1756, 1758), grin = ramp(f, 1764, 1790), tilt = -6 - 4 * ramp(f, 1770, 1796);
-      const c = w.watcher; c.setFrame({ x0: -26, y0: 82, w: 52, h: 62 });
-      c.draw((ctx) => drawWatcher(ctx, { x0: -26, y0: 192, w: 52, h: 62 }, { eyes, smile: grin, rim: 0.5, tilt, lean: 0 }));
-      c.pivot.position.copy(BED_HIP); c.pivot.rotation.set(0, Math.atan2(cam.position.x - BED_HIP.x, cam.position.z - BED_HIP.z), 0);
-      c.visible = true; c.blob.visible = false;
-      if (eyes > 0) w.glowOver(c, (ctx) => drawWatcher(ctx, { x0: -26, y0: 192, w: 52, h: 62 }, { eyes, smile: grin, rim: 0, tilt, lean: 0, glowOnly: true }));
+      placeInBed(w, cam, f, DARK);
+      const eyes = ramp(f, 1755, 1757), grin = ramp(f, 1764, 1790), tilt = -4 - 6 * ramp(f, 1768, 1796);
+      const c = w.watcher; c.resize(1240, 3520); c.setFrame(DEVIL_FRAME);
+      c.draw((ctx) => drawWatcher(ctx, DEVIL_FRAME, { eyes, smile: grin, rim: 0.6, tilt, lean: 1 }));
+      c.stand(DEVIL_SPOT, cam.position); c.visible = true; c.blob.visible = false;
+      if (eyes > 0) w.glowOver(c, (ctx) => drawWatcher(ctx, DEVIL_FRAME, { eyes, smile: grin, rim: 0, tilt, lean: 1, glowOnly: true }));
     },
   },
   // END — black and silence (the PART 2? prompt is an overlay from PROMPT_AT)
@@ -607,7 +655,7 @@ export const PHOTO_SHOT: Shot = {
     w.apt.setBody(1, 0);
     const c = w.cu; c.setFrame({ x0: -26, y0: -40, w: 52, h: 60 });
     c.draw((ctx, F) => drawHeadOnly(ctx, "front", { ...FACE0, open: 0, mouth: "neutral", tired: 1 }, { ...PHONE, key: "#e6eeff", keyK: 1.0, ambK: 0.5, dir: 100 }, F, -12, 0.8, true));
-    // head on the pillow, turned a little toward the lens; crown toward the headboard
+    // him, asleep: head on the pillow, turned a little toward the lens; crown toward the headboard
     c.pivot.position.set(1.55, 0.72, -2.38); c.pivot.lookAt(cam.position); c.pivot.rotateX(-0.75);
     c.visible = true; c.blob.visible = false;
     w.apt.phoneLight.position.copy(cam.position); w.apt.phoneLight.intensity = 16; w.apt.phoneLight.distance = 10; w.apt.phoneLight.color.set("#e6eeff");
