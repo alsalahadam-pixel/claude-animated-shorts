@@ -605,7 +605,8 @@ export const SHOTS: Shot[] = [
       cornerWash(w);
       const rim = lerp(0.2, 0.6, ramp(f, 1725, 1752));          // the shape surfaces as the eye adjusts to the dark
       const eyes = ramp(f, 1750, 1758), grin = ramp(f, 1766, 1794);
-      const tilt = -2 - 8 * ramp(f, 1738, 1798), lean = 1 + 2.5 * ramp(f, 1778, 1806);
+      // final cut: it holds us a while longer; the head keeps cocking, it keeps leaning in (1806-1859)
+      const tilt = -2 - 8 * ramp(f, 1738, 1798) - 3.5 * ramp(f, 1806, 1859), lean = 1 + 2.5 * ramp(f, 1778, 1806) + 0.8 * ramp(f, 1806, 1859);
       const look = { eyes, smile: grin, rim, tilt, lean };
       const c = w.watcher; c.resize(1240, 3520); c.setFrame(DEVIL_FRAME);
       c.draw((ctx) => drawWatcher(ctx, DEVIL_FRAME, look));
@@ -865,9 +866,16 @@ export const FINAL: FinalShot[] = edit([
   ["F_E1", 72, { src: E1, from: 0 }],
   ["F_E2", 90, { src: E2, from: 0 }],
   ["F_E3", 72, { src: E3, from: 0 }],
-  ["F_S21", 81, { src: S("S21"), from: 1725 }],
+  // the grin holds 1.8 s longer than in V3; the camera keeps creeping in, a little faster, right up to the hard cut
+  ["F_S21", 135, { src: S("S21"), from: 1725, cam: (f) => {
+    const c = S("S21").cam(Math.min(f, 1806));
+    if (f <= 1806) return c;
+    const k = ((f - 1806) / 53) ** 2;
+    return { ...c, pos: lerp3([2.9, 1.54, -0.98], [2.84, 1.552, -1.0], k), fov: lerp(12, 10.2, k) };
+  } }],
   ["BLACK", 42, { black: true }],
   ["TITLE2", 90, { black: true }],
+  ["PART2", 75, { black: true }],
 ]);
 export const FINAL_TOTAL = FINAL[FINAL.length - 1].b;
 export const finalAt = (F: number) => FINAL.find((s) => F >= s.a && F < s.b) ?? FINAL[FINAL.length - 1];

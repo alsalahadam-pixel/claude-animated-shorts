@@ -36,13 +36,13 @@ ROWS = [("S02", 56, 160), ("S03", 51, 216), ("S04", 172, 170), ("S05", 148, 342)
         ("S01", 249, -105), ("S09", 153, 591), ("S10", 108, 705), ("S11", 36, 813), ("S12", 129, 789),
         ("S13", 72, 918), ("S13B", 72, 990), ("S14", 90, 1062), ("S15", 159, 1152), ("S16", 66, 1311),
         ("S17", 168, 1269), ("S18", 180, 1437), ("S19", 153, 1482), ("S20", 90, 1635), ("E1", 72, 0), ("E2", 90, 0),
-        ("E3", 72, 0), ("S21", 81, 1725), ("BLACK", 42, 0), ("TITLE2", 90, 0)]
+        ("E3", 72, 0), ("S21", 135, 1725), ("BLACK", 42, 0), ("TITLE2", 90, 0), ("PART2", 75, 0)]
 START, FROM = {}, {}
 _t = 0
 for _id, _n, _fr in ROWS:
     START[_id] = _t; FROM[_id] = _fr; _t += _n
 TOTAL = _t
-assert TOTAL == 3233, TOTAL
+assert TOTAL == 3362, TOTAL
 DUR = TOTAL / 30
 N = ns(DUR)
 R = V.R = rng(909)
@@ -348,9 +348,11 @@ def build():
     add(Fs["music"], V.reverse_swell(0.35, 0.35), ft("S21", 1750) - 0.35)
     add(Fs["music"], V.thin_note(2093.0, 1.9, 0.035), ft("S21", 1750), 1.0, 0.0)
     add(Fs["music"], S.boom(2.0, 44, 26, 0.35), ft("S21", 1752))
-    cue(ft("S21", 1766), "the grin spreads; it leans in: riser and cluster build right up to the hard cut")
-    add(Fs["music"], S.riser(1.35, 300, 3200, 1.0), ft("S21", 1766))
-    add(Fs["music"], S.cluster([987.8, 1046.5, 1108.7, 1174.7], 1.35, 1.3, 0.01, 0.3, trem=11), ft("S21", 1766))
+    cue(ft("S21", 1766), "the grin spreads; it holds us; riser and cluster build through the hold right up to the hard cut")
+    hold = st("BLACK") - ft("S21", 1766)
+    add(Fs["music"], S.riser(hold, 260, 3400, 1.0), ft("S21", 1766))
+    add(Fs["music"], S.cluster([987.8, 1046.5, 1108.7, 1174.7], hold, 2.2, 0.01, 0.3, trem=11), ft("S21", 1766))
+    add(Fs["music"], S.drone(27.5, hold, 0.45, 2.0, 0.01), ft("S21", 1766))
 
     # ================= G: the black and the title
     cue(st("BLACK") + 0.5, "black: one CCTV servo whirr and its stop, quiet, off to the side")
@@ -358,6 +360,8 @@ def build():
     cue(st("TITLE2"), "end title: a very low tone fades up with it and away")
     add(G["music"], S.drone(41.2, 3.0, 0.16, 1.2, 1.2), st("TITLE2"))
     add(G["music"], V.thin_note(1318.5, 2.8, 0.012), st("TITLE2") + 0.3, 1.0, 0.0)
+    cue(st("PART2") + 0.3, "PART 2?: silence, then one slow breath, close, that is not his")
+    add(G["sfx"], low_breath(1.5, 0.07, True), st("PART2") + 0.35, 1.0, 0.2)
 
     edges = {"A": (0.0, 9.30, 0.012), "B": (9.90, 17.95, 0.2), "C": (17.967, st("S01"), 0.03),
              "D": (st("S01"), st("S16"), 0.008), "E": (st("S16") - 0.01, st("S19"), 0.15),

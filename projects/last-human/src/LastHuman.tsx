@@ -345,6 +345,22 @@ const TitleFinal: React.FC<{ f: number }> = ({ f }) => {
   );
 };
 
+/** after the title: "PART 2?" fades up out of the black and stays to the last frame; the "?" flickers once */
+const Part2: React.FC<{ f: number }> = ({ f }) => {
+  const [a] = shotRange("PART2");
+  if (f < a) return null;
+  const age = f - a;
+  const o = interpolate(age, [6, 24], [0, 0.9], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const q = age >= 46 && age < 49 ? 0.15 : 1;
+  return (
+    <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", opacity: o }}>
+      <div style={{ fontFamily: "Anton", fontSize: 128, letterSpacing: 18, color: "#f2efe9" }}>
+        PART 2<span style={{ color: "#ffb35c", opacity: q }}>?</span>
+      </div>
+    </AbsoluteFill>
+  );
+};
+
 /** every word on screen, on a transparent background (composited over the plates in ffmpeg) */
 export const FinalOverlay: React.FC = () => {
   const f = useCurrentFrame();
@@ -354,6 +370,7 @@ export const FinalOverlay: React.FC = () => {
       <LabelFinal f={f} />
       <CaptionsFinal f={f} />
       <TitleFinal f={f} />
+      <Part2 f={f} />
     </AbsoluteFill>
   );
 };

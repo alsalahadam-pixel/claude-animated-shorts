@@ -42,8 +42,9 @@
 |  98.27 | E3 its point of view: we hear IT breathe, slow and close, in time with the sway |
 | 100.67 | S21 the corner: near silence, sub pressure, his breath trembling |
 | 101.50 | its eyes open, slowly: a soft swell and a thin high tone (no hit) |
-| 102.03 | the grin spreads; it leans in: riser and cluster build right up to the hard cut |
-| 103.87 | black: one CCTV servo whirr and its stop, quiet, off to the side |
-| 104.77 | end title: a very low tone fades up with it and away |
+| 102.03 | the grin spreads; it holds us; riser and cluster build through the hold right up to the hard cut |
+| 105.67 | black: one CCTV servo whirr and its stop, quiet, off to the side |
+| 106.57 | end title: a very low tone fades up with it and away |
+| 109.87 | PART 2?: silence, then one slow breath, close, that is not his |
 
-mix: -14.1 LUFS integrated, true peak -1.2 dBTP, 107.767 s
+mix: -14.1 LUFS integrated, true peak -1.2 dBTP, 112.067 s

@@ -17,7 +17,7 @@ sys.path.insert(0, HERE)
 import build_voice as B  # noqa: E402
 from build_voice import SR, hp, peq, shelf, make_ir, convolve_st, integrated, dbg, write_wav, ns  # noqa: E402
 
-DUR = 3233 / 30
+DUR = 3362 / 30
 SLOTS = {"L01": 0.45, "L02": 3.75, "SHOUT": 7.25, "L03": 9.95, "L04": 11.2, "L05": 13.45, "L06": 18.3, "L07": 22.6,
          "L08": 25.35, "L09": 28.55, "L10": 32.2, "L11": 35.6, "L12": 37.9, "L13": 43.95, "L14": 46.3, "L15": 48.85,
          "L16": 53.75, "L17": 62.8, "L18": 67.3, "L19": 69.3, "L20": 71.15, "L21": 74.1, "L22": 79.0, "L23": 81.5,
@@ -74,7 +74,7 @@ def main(tts):
     for a, b in zip(caps, caps[1:]):
         a["e"] = round(min(a["e"], b["s"]), 3)
     for c in caps:   # never over the title cards
-        for t0, t1 in ((479 / 30, 539 / 30), (3143 / 30, DUR)):
+        for t0, t1 in ((479 / 30, 539 / 30), (3197 / 30, DUR)):
             if c["s"] < t0 < c["e"]:
                 c["e"] = round(t0 - 0.02, 3)
     json.dump(words, open(os.path.join(data, "words_final.json"), "w"), indent=0)

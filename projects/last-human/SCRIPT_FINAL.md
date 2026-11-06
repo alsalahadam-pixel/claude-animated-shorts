@@ -1,7 +1,7 @@
 # THE LAST HUMAN ALIVE: final cut
 
 The final version combines the second-person hook and the ending of V1 with the strongest scenes of V3.
-It runs 107.8 s (3233 frames at 30 fps) at 1080×1920.
+It runs 112.1 s (3362 frames at 30 fps) at 1080×1920.
 
 - **From V1:** "You woke up today…", the corner, and "who's been watching you sleep?"
 - **From V3:** the cameras, the reflection, the photo and the double.
@@ -50,9 +50,10 @@ The film is an edit (`FINAL` in `src/story.ts`). Each row shows a source shot fr
 | 92.87 | E1 | Over his shoulder, into the corner (the exact framing of S21). Empty. One floorboard creaks. | (silence) |
 | 95.27 | E2 | You on the floor: your eyes go to the corner, your head follows; you stop breathing. | "You're the last human alive." |
 | 98.27 | E3 | From the corner, high, looking down at you. We hear it breathe. | "So who's been watching you sleep?" |
-| 100.67 | S21 | The same frame as E1, but it is standing there, black against the dim wall. Its eyes open; it grins. Hard cut. | |
-| 103.37 | BLACK | Silence; somewhere, one camera turns. | |
-| 104.77 | TITLE | THE LAST HUMAN ALIVE | |
+| 100.67 | S21 | The same frame as E1, but it is standing there, black against the dim wall. Its eyes open; it grins and holds us (1.8 s longer than V3), its head still cocking as the camera creeps in. Hard cut. | |
+| 105.17 | BLACK | Silence; somewhere, one camera turns. | |
+| 106.57 | TITLE | THE LAST HUMAN ALIVE | |
+| 109.57 | PART 2? | Fades up and stays; the "?" flickers once. One slow breath that is not his. | |
 
 ## Rules kept
 
@@ -70,7 +71,7 @@ The film is an edit (`FINAL` in `src/story.ts`). Each row shows a source shot fr
 
 - **Master:** `out/last_human_FINAL.mp4`, H.264 CRF 17 (331 MB).
 - **Upload copy:** `out/last_human_FINAL_upload.mp4`, CRF 21 (117 MB).
-- **Both:** 3233 frames, 1080×1920, 30 fps; mix at -14.1 LUFS, true peak -1.1 dBFS.
+- **Both:** 3362 frames, 1080×1920, 30 fps; mix at -14.1 LUFS, true peak -1.1 dBFS.
 - **QA (`scripts/qa.py`):**
   - Black frames only at the title cards and the planned cut to black.
   - Holds only where the picture is meant to be still: the entity's stare, the empty corner, the titles.
