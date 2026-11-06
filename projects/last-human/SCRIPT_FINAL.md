@@ -69,8 +69,8 @@ The film is an edit (`FINAL` in `src/story.ts`). Each row shows a source shot fr
 
 ## Delivery
 
-- **Master:** `out/last_human_FINAL.mp4`, H.264 CRF 17 (331 MB).
-- **Upload copy:** `out/last_human_FINAL_upload.mp4`, CRF 21 (117 MB).
+- **Master:** `out/last_human_FINAL.mp4`, H.264 CRF 17.
+- **Upload copy:** `out/last_human_FINAL_upload.mp4`, CRF 21.
 - **Both:** 3362 frames, 1080×1920, 30 fps; mix at -14.1 LUFS, true peak -1.1 dBFS.
 - **QA (`scripts/qa.py`):**
   - Black frames only at the title cards and the planned cut to black.
