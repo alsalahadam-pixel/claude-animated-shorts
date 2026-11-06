@@ -57,3 +57,16 @@ These are the lessons from Part 1:
 - **Playlist:** add Part 1 and Part 2 to one TikTok playlist ("The Last Human Alive") so viewers can binge.
 - **Reaching Part 1's viewers:** post Part 2 as a video reply to a comment on Part 1 (or at least link it in a pinned comment on Part 1), so they're told it's out.
 - **Don't add an end card or "follow for part 3".** It breaks the loop; ask in the pinned comment instead.
+
+## Delivery
+
+- **Upload copy:** `out/last_human_PART2_upload.mp4`, CRF 21, 83 MB.
+- **Master:** `out/last_human_PART2.mp4`, CRF 17.
+- **Both:** 1380 frames, 1080×1920, 30 fps.
+- **Cover:** `out/last_human_PART2_cover.jpg`.
+- **Mix:** -14.1 LUFS integrated, peak -1.0 dBFS.
+- **QA (`scripts/qa.py`):**
+  - No black or frozen frames.
+  - Jumps occur only on the cuts, the sit-up, the glitch jump and the turn.
+  - Mean brightness 0.25, about twice Part 1's 0.12.
+- **Loop seam:** the last and first frames differ by 2.6/255, against 1.8 between any two neighbouring frames (that is the camera noise).
