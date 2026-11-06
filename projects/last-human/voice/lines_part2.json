@@ -1,0 +1,11 @@
+{"voice": "am_michael", "speed": 0.95, "lines": [
+ ["P01", "There are no cameras in your room."],
+ ["P02", "So why is your phone showing you a live feed of it?"],
+ ["P03", "And why is the one in your bed... awake?"],
+ ["P04", "It's not in the bed anymore."],
+ ["P05", "It's not in the corner."],
+ ["P06", "It's done practising.", 0.84],
+ ["P07", "Then the feed switches... to the camera behind you."],
+ ["P08", "A message. From you."],
+ ["P09", "So who's watching this?", 0.82]
+]}

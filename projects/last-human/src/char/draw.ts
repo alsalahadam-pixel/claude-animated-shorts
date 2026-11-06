@@ -22,6 +22,7 @@ export type Face = {
   mouthOpen: number;     // 0..1
   shine: boolean;        // eye highlights (off = dead eyes)
   tired?: number;        // 0..1: heavier under-eye lines, slightly lowered upper lids (days without sleep)
+  possessed?: { eyes: number; smile: number };   // Part 2: the entity wearing his face (front view): its white eyes, its grin
 };
 
 export type Pose = {
@@ -691,7 +692,9 @@ function drawHead(pt: Painter, view: HeadView, F: Face, flipFace: boolean) {
     drawBrow(pt, -3.9, -1.0, 4.6, -1, F); drawBrow(pt, 3.9, -1.0, 4.6, 1, F);
     drawEye(pt, -3.9, -1.0, 4.6, 3.0, -1, F); drawEye(pt, 3.9, -1.0, 4.6, 3.0, 1, F);
     drawNose(pt, "front");
-    drawMouth(pt, 0, -8.6, 3.8, F);
+    if (F.possessed && F.possessed.smile > 0.02) possessedGrin(pt, F.possessed.smile);
+    else drawMouth(pt, 0, -8.6, 3.8, F);
+    if (F.possessed && F.possessed.eyes > 0.02) possessedEyes(pt, F.possessed.eyes);
   } else if (view === "q3") {
     drawBrow(pt, -1.7, -1.0, 4.4, -1, F); drawBrow(pt, 4.45, -1.0, 2.9, 1, F, 0.85);
     drawEye(pt, -1.7, -1.0, 4.4, 3.0, -1, F); drawEye(pt, 4.55, -1.0, 2.8, 2.9, 1, F, 0.78);
@@ -850,6 +853,52 @@ export function drawCharacter(ctx: Ctx, P: Pose, L: Light, F: Frame, opts: { lin
 }
 
 /** Just a head (and a little neck) — the pillow close-up. */
+/** Part 2: the entity's eyes over his: the sockets sink to ink, then two flat white ellipses, tilted like its own */
+function possessedEyes(pt: Painter, k: number) {
+  const c = pt.c;
+  for (const side of [-1, 1]) {
+    const cx = side * 3.9, cy = -1.0;
+    // the socket darkens first
+    c.save(); c.globalAlpha = Math.min(1, k * 1.6) * 0.92; c.fillStyle = "#07060c";
+    c.beginPath(); c.ellipse(cx, cy, 2.75, 1.95, side * 0.16, 0, Math.PI * 2); c.fill(); c.restore();
+    // then the white
+    const o = clamp01((k - 0.25) / 0.75);
+    if (o > 0) { c.fillStyle = "#f2f6ff"; c.beginPath(); c.ellipse(cx + side * 0.2, cy + 0.15, 2.2, 1.25 * o, side * 0.18, 0, Math.PI * 2); c.fill(); }
+  }
+}
+/** Part 2: the entity's grin on his face: far too wide, white, rows of thin teeth; s 0..1 spreads it */
+function possessedGrin(pt: Painter, s: number) {
+  const c = pt.c;
+  const cx = 2.4 + 4.6 * s, cy = -7.4 + 1.3 * s, lo = -11.0 - 1.4 * s, up = -9.0 - 0.5 * s;
+  const p = new Path2D();
+  p.moveTo(-cx, cy); p.quadraticCurveTo(0, lo - (lo - cy) * 0.15 - 1.2, cx, cy);
+  p.quadraticCurveTo(0, up, -cx, cy);
+  c.fillStyle = "#07060c"; c.save(); c.lineWidth = 0.9; c.strokeStyle = "#07060c"; c.stroke(p); c.restore();
+  c.fillStyle = "#eef2fa"; c.fill(p);
+  c.save(); c.clip(p); c.lineWidth = 0.22; c.strokeStyle = "#1a1626";
+  for (let k = -12; k <= 12; k++) { c.beginPath(); c.moveTo(k * 0.62, -16); c.lineTo(k * 0.62, -6); c.stroke(); }
+  c.beginPath(); c.moveTo(-cx, cy - 0.2); c.quadraticCurveTo(0, (lo + up) / 2 - 0.3, cx, cy - 0.2); c.stroke();
+  c.restore();
+}
+const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+/** Part 2: only the entity's white eyes and grin on his face, for the additive glow card (same frame and tilt as drawHeadOnly) */
+export function possessedGlow(ctx: Ctx, F: Frame, eyes: number, smile: number, tilt = 0) {
+  const W = ctx.canvas.width, Hc = ctx.canvas.height;
+  ctx.save();
+  const sx = W / F.w, sy = Hc / F.h;
+  ctx.setTransform(sx, 0, 0, -sy, -F.x0 * sx, Hc + F.y0 * sy);
+  ctx.rotate(tilt * D);
+  ctx.fillStyle = "#cfe0ff";
+  const o = clamp01((eyes - 0.25) / 0.75);
+  if (o > 0) for (const side of [-1, 1]) { ctx.beginPath(); ctx.ellipse(side * 3.9 + side * 0.2, -0.85, 2.2, 1.25 * o, side * 0.18, 0, Math.PI * 2); ctx.fill(); }
+  if (smile > 0.02) {
+    const cx = 2.4 + 4.6 * smile, cy = -7.4 + 1.3 * smile, lo = -11.0 - 1.4 * smile, up = -9.0 - 0.5 * smile;
+    const p = new Path2D(); p.moveTo(-cx, cy); p.quadraticCurveTo(0, lo - (lo - cy) * 0.15 - 1.2, cx, cy); p.quadraticCurveTo(0, up, -cx, cy);
+    ctx.globalAlpha = 0.55; ctx.fill(p);
+  }
+  ctx.restore();
+}
+
 export function drawHeadOnly(ctx: Ctx, view: HeadView, face: Face, L: Light, F: Frame, tilt = 0, lineK = 0.7, collar = false) {
   const W = ctx.canvas.width, Hc = ctx.canvas.height;
   ctx.clearRect(0, 0, W, Hc);

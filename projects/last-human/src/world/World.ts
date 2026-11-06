@@ -43,6 +43,8 @@ export class World {
   photoTex: THREE.Texture | null = null;
   photoUi: THREE.Texture | null = null;     // the "Me" message with the photo (set by applyPhoto)
   lockTex: THREE.Texture | null = null;     // the lock screen: no service, 06:12
+  msgImg: HTMLImageElement | null = null;   // Part 2: the photo in the message (public/photo2.jpg)
+  msgTex: THREE.Texture | null = null;      // Part 2: "Don't turn around." from Me
   envs = new Map<string, THREE.Texture>();
   phone: THREE.Group;
   phoneScreen: THREE.Mesh;
@@ -91,6 +93,39 @@ export class World {
     this.cu.mat.opacity = 1; this.watcher.mat.opacity = 1;
     const pm = this.phoneScreen.material as THREE.MeshBasicMaterial;
     if (this.photoUi && pm.map !== this.photoUi) { pm.map = this.photoUi; pm.needsUpdate = true; }
+  }
+
+  /** Part 2: a message from "Me", just now: a photo of the back of your head, taken from above, and "Don't turn around." */
+  msgScreen() {
+    if (!this.msgTex) {
+      const c = document.createElement("canvas"); c.width = 680; c.height = 1460;
+      const x = c.getContext("2d")!;
+      x.fillStyle = "#07080d"; x.fillRect(0, 0, 680, 1460);
+      x.fillStyle = "#8a90a8"; x.font = "500 28px sans-serif"; x.fillText("No Service", 36, 58);
+      x.strokeStyle = "#8a90a8"; x.lineWidth = 3; x.strokeRect(586, 38, 54, 24); x.fillStyle = "#8a90a8"; x.fillRect(590, 42, 10, 16);
+      x.fillStyle = "#151824"; x.fillRect(0, 96, 680, 136);
+      const img = this.msgImg;
+      x.save(); x.beginPath(); x.arc(92, 164, 44, 0, 7); x.clip();
+      if (img) x.drawImage(img, img.width * 0.3, img.height * 0.3, img.width * 0.4, img.width * 0.4, 48, 120, 88, 88);
+      else { x.fillStyle = "#3a3f55"; x.fillRect(48, 120, 88, 88); }
+      x.restore();
+      x.fillStyle = "#eef1f8"; x.font = "700 46px sans-serif"; x.fillText("Me", 158, 160);
+      x.fillStyle = "#8a90a8"; x.font = "400 28px sans-serif"; x.fillText("now", 158, 200);
+      // the photo, small, then the words, big and centred on the screen
+      const pw = 400, ph = img ? (pw * img.height) / img.width : 533;
+      x.save(); x.beginPath(); x.roundRect(250, 280, pw, ph, 22); x.clip();
+      if (img) x.drawImage(img, 250, 280, pw, ph); else { x.fillStyle = "#2a3a2e"; x.fillRect(250, 280, pw, ph); }
+      x.restore();
+      const by = 280 + ph + 40;
+      x.fillStyle = "#2c3142"; x.beginPath(); x.roundRect(40, by, 600, 220, 40); x.fill();
+      x.fillStyle = "#ffffff"; x.font = "700 64px sans-serif"; x.textAlign = "left";
+      x.fillText("Don't turn", 112, by + 92); x.fillText("around.", 112, by + 172);
+      x.fillStyle = "#8a90a8"; x.font = "400 26px sans-serif"; x.textAlign = "right"; x.fillText("Delivered", 640, by + 262);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+      this.msgTex = t;
+    }
+    const m = this.phoneScreen.material as THREE.MeshBasicMaterial;
+    if (m.map !== this.msgTex) { m.map = this.msgTex; m.color.setScalar(1.2); m.needsUpdate = true; }
   }
 
   /** the phone shows its lock screen: no service, the frozen clock, nothing new */

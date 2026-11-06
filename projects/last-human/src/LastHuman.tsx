@@ -13,12 +13,15 @@ import { useComposer } from "./post/Composer";
 import { LensBlur, GrainEffect } from "./post/lensblur";
 import { GradeEffect, GradeParams } from "./post/grade";
 import { World } from "./world/World";
-import { SHOTS, shotAt, FPS, TOTAL, Shot, PHOTO_SHOT, FILM_END, PROMPT_AT, FINAL, FINAL_TOTAL, finalAt } from "./story";
+import { SHOTS, shotAt, FPS, TOTAL, Shot, PHOTO_SHOT, FILM_END, PROMPT_AT, FINAL, FINAL_TOTAL, finalAt, P2, P2_TOTAL, p2At, FinalShot } from "./story";
+import { CctvEffect } from "./post/cctv";
 import captions from "./data/captions.json";
 import captionsFinal from "./data/captions_final.json";
+import captionsP2 from "./data/captions_part2.json";
 
 export const LAST_HUMAN_FRAMES = TOTAL;
 export const FINAL_FRAMES = FINAL_TOTAL;
+export const P2_FRAMES = P2_TOTAL;
 
 const GRADES: Record<Shot["grade"], GradeParams> = {
   warm: { ky: [0, 0.085, 0.25, 0.55, 0.8, 0.93, 1], sat: [1.0, 1.08, 1.05], tintS: [0.024, 0.006], tintM: [0.004, 0.002], tintH: [-0.014, 0.01], vig: [0.32, 0.32] },
@@ -26,6 +29,8 @@ const GRADES: Record<Shot["grade"], GradeParams> = {
   dusk: { ky: [0, 0.08, 0.24, 0.54, 0.8, 0.93, 1], sat: [1.0, 1.1, 1.08], tintS: [0.024, 0.012], tintM: [0.0, 0.004], tintH: [-0.016, 0.012], vig: [0.34, 0.32] },
   // night: deeper shadows and a heavier vignette (darker, more unsettling), mids kept so faces still read on a phone
   night: { ky: [0, 0.072, 0.215, 0.5, 0.775, 0.925, 1], sat: [0.96, 1.08, 1.06], tintS: [0.032, 0.012], tintM: [0.012, 0.002], tintH: [0.0, 0.0], vig: [0.52, 0.24] },
+  // Part 2 security-camera shots: neutral here; the CctvEffect does the look
+  cctv: { ky: [0, 0.1, 0.25, 0.5, 0.75, 0.9, 1], sat: [1, 1, 1], tintS: [0, 0], tintM: [0, 0], tintH: [0, 0], vig: [0, 0.3] },
 };
 
 class ExposureEffect extends Effect {
@@ -36,25 +41,29 @@ class ExposureEffect extends Effect {
   set exposure(v: number) { this.uniforms.get("exposure")!.value = v; }
 }
 const EXPOSURE: Record<string, number> = { S01: 1.32, S02: 1.1, S03: 1.1, S04: 1.0, S05: 1.1, S06: 1.0, S07: 1.1, S08: 1.0, S09: 1.32, S10: 1.27, S11: 1.2, S12: 1.32, S13: 1.38, S13B: 1.38, S14: 1.36, S15: 1.35, S16: 1.36, S17: 1.24, S18: 1.25, S19: 1.24, S20: 1.48, S21: 1.32, END: 1,
-  HOOKCAM: 1.32, P1: 1.1, PIGEON: 1.0, E1: 1.32, E2: 1.3, E3: 1.4 };
+  HOOKCAM: 1.32, P1: 1.1, PIGEON: 1.0, E1: 1.32, E2: 1.3, E3: 1.4,
+  // Part 2: brighter than Part 1 (it has to read in a bright TikTok feed)
+  P2A: 1.9, P2B: 1.55, P2C: 1.9, P2D: 2.1, P2E: 1.9, P2F: 2.0, P2G: 1.6, P2H: 1.9, P2I: 1.55, P2J: 1.45, P2K: 1.9, P2L: 1.55 };
 
 type Toggles = { lens: boolean; bloom: boolean; grade: boolean; grain: boolean; msaa: number };
 const toggles = (): Toggles => ({ lens: true, bloom: true, grade: true, grain: true, msaa: 4, ...((getInputProps() as { post?: Partial<Toggles> }).post ?? {}) });
 
 const fwd = new THREE.Vector3(), fpt = new THREE.Vector3();
 
-/** the final cut: final frame -> (source shot, source frame, camera/dof overrides) */
-const resolveFinal = (F: number) => {
-  const fs = finalAt(F);
+/** an edit table: final frame -> (source shot, source frame, camera/dof overrides) */
+type Resolve = (F: number) => { shot: Shot; f: number };
+const resolveIn = (at: (F: number) => FinalShot): Resolve => (F) => {
+  const fs = at(F);
   const re = fs.reuse ? SHOTS.find((x) => x.id === fs.reuse) : undefined;
   const src = fs.src ?? re ?? SHOTS[0];
   const f = (fs.from ?? re?.a ?? 0) + (F - fs.a);
   return { shot: { ...src, cam: fs.cam ?? src.cam, dof: fs.dof ?? src.dof }, f };
 };
+const resolveFinal = resolveIn(finalAt), resolveP2 = resolveIn(p2At);
 
-const Inner: React.FC<{ photo: THREE.Texture | null; override?: Shot; final?: boolean }> = ({ photo, override, final }) => {
+const Inner: React.FC<{ photo: THREE.Texture | null; override?: Shot; resolve?: Resolve; msg?: HTMLImageElement | null }> = ({ photo, override, resolve, msg }) => {
   const F = useCurrentFrame();
-  const R = final ? resolveFinal(F) : null;
+  const R = resolve ? resolve(F) : null;
   const f = R ? R.f : F;
   const { camera, scene, gl } = useThree();
   const world = useMemo(() => new World(), []);
@@ -66,7 +75,7 @@ const Inner: React.FC<{ photo: THREE.Texture | null; override?: Shot; final?: bo
     return {
       lens: new LensBlur({ maxCoC: 22, nearScale: 1.2 }), bloom, exp: new ExposureEffect(),
       tone: new ToneMappingEffect({ mode: ToneMappingMode.NEUTRAL }), grade: new GradeEffect(GRADES.night, 1),
-      grain: new GrainEffect({ amount: 0.016, cellPx: 1.6 }),
+      grain: new GrainEffect({ amount: 0.016, cellPx: 1.6 }), cctv: new CctvEffect(),
     };
   }, []);
   useEffect(() => { gl.toneMapping = THREE.NoToneMapping; gl.shadowMap.type = THREE.PCFSoftShadowMap; }, [gl]);
@@ -74,8 +83,10 @@ const Inner: React.FC<{ photo: THREE.Texture | null; override?: Shot; final?: bo
   useComposer([
     ...(on.lens ? [fx.lens.pre, fx.lens.main] : []),
     [...(on.bloom ? [fx.bloom] : []), fx.exp, fx.tone, ...(on.grade ? [fx.grade] : []), ...(on.grain ? [fx.grain] : [])],
+    [fx.cctv],
   ], { msaa: on.msaa });
   if (photo) applyPhoto(world, photo);
+  if (msg && !world.msgImg) world.msgImg = msg;
 
   const shot = R ? R.shot : override ?? shotAt(f);
   const cam = camera as THREE.PerspectiveCamera;
@@ -101,6 +112,7 @@ const Inner: React.FC<{ photo: THREE.Texture | null; override?: Shot; final?: bo
   const gtag = fx.grade as unknown as { _g?: string };
   if (gtag._g !== shot.grade) { fx.grade.set(GRADES[shot.grade]); gtag._g = shot.grade; }
   fx.grain.seed = F;
+  fx.cctv.amount = shot.grade === "cctv" ? 1 : 0; fx.cctv.seed = F; fx.cctv.glitch = shot.post?.(f).glitch ?? 0;
   return null;
 };
 
@@ -250,7 +262,7 @@ export const FinalPlate: React.FC = () => {
   return (
     <AbsoluteFill style={{ background: "#000" }}>
       <ThreeCanvas width={1080} height={1920} shadows gl={{ antialias: false, stencil: false, powerPreference: "high-performance" }} camera={{ fov: 36, near: 0.05, far: 2000 }}>
-        <Inner photo={photo} final />
+        <Inner photo={photo} resolve={resolveFinal} />
       </ThreeCanvas>
       {finalAt(useCurrentFrame()).black && <AbsoluteFill style={{ background: "#000" }} />}
     </AbsoluteFill>
@@ -382,3 +394,137 @@ export const FinalPreview: React.FC = () => (
     <FinalOverlay />
   </AbsoluteFill>
 );
+
+
+// ---------------------------------------------------------------- PART 2 (TikTok): "There are no cameras in your room."
+// Same two passes. Text stays inside TikTok's safe area: below the top tabs (y > 220), left of the button column
+// (x < 900 below y 880), above the caption block (y < 1540).
+
+const useImage = (file: string) => {
+  const [img, setImg] = useState<HTMLImageElement | null>(null);
+  const [h] = useState(() => delayRender(file));
+  useEffect(() => {
+    const i = new Image(); i.onload = () => { setImg(i); continueRender(h); }; i.onerror = () => continueRender(h); i.src = staticFile(file);
+  }, [h, file]);
+  return img;
+};
+
+export const Part2Plate: React.FC = () => {
+  const photo = usePhoto();
+  const msg = useImage("photo2.jpg");
+  return (
+    <AbsoluteFill style={{ background: "#000" }}>
+      <ThreeCanvas width={1080} height={1920} shadows gl={{ antialias: false, stencil: false, powerPreference: "high-performance" }} camera={{ fov: 36, near: 0.05, far: 2000 }}>
+        <Inner photo={photo} resolve={resolveP2} msg={msg} />
+      </ThreeCanvas>
+    </AbsoluteFill>
+  );
+};
+
+const CAPS_P2 = captionsP2 as Cap[];
+const P2_FEED = new Set(["P2_BED", "P2_SITUP", "P2_STAND", "P2_GRIN", "P2_BEHIND", "P2_END"]);
+const STROKE_P2: React.CSSProperties = { WebkitTextStroke: "12px #07060c", paintOrder: "stroke fill", textShadow: "0 6px 18px rgba(0,0,0,0.7)" };
+
+const CaptionsP2: React.FC<{ f: number }> = ({ f }) => {
+  const t = f / FPS;
+  const cap = CAPS_P2.find((c) => t >= c.s && t < c.e);
+  if (!cap) return null;
+  const id = p2At(f).id;
+  const top = id === "P2_MSG" || id === "P2_GRIN" ? 300 : 1160;
+  const age = (t - cap.s) * FPS;
+  const pop = interpolate(age, [0, 4], [0.86, 1], { extrapolateRight: "clamp" });
+  const quiet = cap.words.some((w) => w.w.startsWith("practising") || w.w.startsWith("this?")) || t > 43;
+  return (
+    <div style={{ position: "absolute", left: 70, right: 180, top, display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0 34px", transform: `scale(${pop})`, transformOrigin: "50% 50%" }}>
+      {cap.words.map((w, i) => {
+        const active = t >= w.s - 0.03 && (t < w.e || i === cap.words.length - 1);
+        const spoken = t >= w.s - 0.03;
+        return (
+          <span key={i} style={{
+            fontFamily: "Montserrat", fontWeight: 800, fontSize: 74, lineHeight: 1.12, letterSpacing: 0.5, textTransform: "uppercase",
+            color: active && !quiet ? "#ffb35c" : spoken ? "#ffffff" : "rgba(255,255,255,0.92)", ...STROKE_P2,
+            transform: active && !quiet ? "translateY(-3px) scale(1.06)" : "none", display: "inline-block",
+          }}>{w.w}</span>
+        );
+      })}
+    </div>
+  );
+};
+
+/** the first frame: the hook, already on screen (no fade-in: it is also the thumbnail) */
+const HookP2: React.FC<{ f: number }> = ({ f }) => {
+  if (f >= 84) return null;
+  const o = interpolate(f, [72, 82], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const big: React.CSSProperties = { fontFamily: "Montserrat", fontWeight: 800, fontSize: 92, lineHeight: 1.06, color: "#ffffff", textAlign: "center", ...STROKE_P2 };
+  return (
+    <div style={{ position: "absolute", top: 330, left: 40, right: 40, opacity: o, display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <div style={{ fontFamily: "Anton", fontSize: 50, letterSpacing: 12, color: "#ffb35c", ...STROKE_P2, WebkitTextStroke: "8px #07060c", marginBottom: 14 }}>PART 2</div>
+      <div style={big}>THERE ARE NO</div>
+      <div style={big}>CAMERAS IN</div>
+      <div style={{ ...big, color: "#ffb35c" }}>YOUR ROOM</div>
+    </div>
+  );
+};
+
+/** the security camera's own interface over the feed: REC, camera name, a clock frozen at 06:12, corner marks */
+const FeedUI: React.FC<{ f: number }> = ({ f }) => {
+  const fs = p2At(f);
+  if (!P2_FEED.has(fs.id)) return null;
+  const sf = (fs.from ?? 0) + (f - fs.a);
+  const g = fs.src?.post?.(sf).glitch ?? 0;
+  const jx = g > 0 ? Math.round(Math.sin(f * 12.9898) * 18 * g) : 0;
+  const cam = fs.id === "P2_BEHIND" ? "CAM 07 · HALL" : "CAM 04 · BEDROOM";
+  const rec = Math.floor(f / 15) % 2 === 0;
+  const mono: React.CSSProperties = { fontFamily: "JetBrains Mono", fontWeight: 500, fontSize: 32, letterSpacing: 2, color: "rgba(235,255,240,0.9)", textShadow: "0 0 6px rgba(160,255,190,0.45), 0 2px 4px rgba(0,0,0,0.8)" };
+  const mark = (x: number, y: number, sx: number, sy: number) => (
+    <div style={{ position: "absolute", left: x, top: y, width: 54, height: 54, borderLeft: sx > 0 ? "4px solid rgba(235,255,240,0.75)" : undefined, borderRight: sx < 0 ? "4px solid rgba(235,255,240,0.75)" : undefined, borderTop: sy > 0 ? "4px solid rgba(235,255,240,0.75)" : undefined, borderBottom: sy < 0 ? "4px solid rgba(235,255,240,0.75)" : undefined }} />
+  );
+  return (
+    <AbsoluteFill style={{ transform: `translateX(${jx}px)`, opacity: g > 0.7 && f % 2 ? 0.4 : 1 }}>
+      {mark(56, 236, 1, 1)}{mark(1080 - 56 - 54, 236, -1, 1)}{mark(56, 1490, 1, -1)}{mark(1080 - 56 - 54, 1490, -1, -1)}
+      <div style={{ ...mono, position: "absolute", left: 86, top: 262, display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{ display: "inline-block", width: 22, height: 22, borderRadius: 11, background: rec ? "#ff3b3b" : "transparent", boxShadow: rec ? "0 0 10px #ff3b3b" : "none" }} />REC
+      </div>
+      <div style={{ ...mono, position: "absolute", right: 86, top: 262, textAlign: "right" }}>{cam}</div>
+      <div style={{ ...mono, position: "absolute", right: 86, top: 306, textAlign: "right" }}>LIVE  06:12:00</div>
+    </AbsoluteFill>
+  );
+};
+
+export const Part2Overlay: React.FC = () => {
+  const f = useCurrentFrame();
+  useFonts();
+  return (
+    <AbsoluteFill>
+      <FeedUI f={f} />
+      <HookP2 f={f} />
+      <CaptionsP2 f={f} />
+    </AbsoluteFill>
+  );
+};
+
+export const Part2Preview: React.FC = () => (
+  <AbsoluteFill style={{ background: "#000" }}>
+    <Part2Plate />
+    <Part2Overlay />
+  </AbsoluteFill>
+);
+
+
+/** TikTok cover (one frame): the grin in the feed, "PART 2", the hook. Text kept inside the 3:4 grid crop (y 240-1680). */
+export const Part2Cover: React.FC = () => {
+  const f = useCurrentFrame();
+  useFonts();
+  const big: React.CSSProperties = { fontFamily: "Montserrat", fontWeight: 800, fontSize: 78, lineHeight: 1.05, color: "#ffffff", textAlign: "center", ...STROKE_P2 };
+  return (
+    <AbsoluteFill style={{ background: "#000" }}>
+      <Part2Plate />
+      <FeedUI f={f} />
+      <div style={{ position: "absolute", top: 380, left: 40, right: 40, display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div style={{ fontFamily: "Anton", fontSize: 132, letterSpacing: 14, color: "#ffb35c", ...STROKE_P2, WebkitTextStroke: "12px #07060c", lineHeight: 1.05 }}>PART 2</div>
+        <div style={big}>THERE ARE NO</div>
+        <div style={big}>CAMERAS IN YOUR ROOM</div>
+      </div>
+    </AbsoluteFill>
+  );
+};

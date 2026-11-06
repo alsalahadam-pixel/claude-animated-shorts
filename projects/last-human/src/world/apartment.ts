@@ -40,6 +40,7 @@ export class Apartment {
   dust: Dust;
   chainLoose: THREE.Group;
   chainLocked: THREE.Group;
+  chainSlide: THREE.Group;   // Part 2: the chain coming off, link by link (setChainSlide)
   blinds = new THREE.Group();
   phoneOnStand: THREE.Mesh;
   duvet!: THREE.Mesh;
@@ -146,6 +147,9 @@ export class Apartment {
     for (let i = 0; i < 10; i++) link(this.chainLoose, -0.55 + 0.004 * i, 1.46 - i * 0.022, 0);
     for (let i = 0; i < 12; i++) link(this.chainLocked, -0.53 + i * 0.062, 1.47 - Math.sin((i / 11) * Math.PI) * 0.03, Math.PI / 2);
     door.add(this.chainLoose, this.chainLocked);
+    this.chainSlide = new THREE.Group(); door.add(this.chainSlide); this.chainSlide.visible = false;
+    for (let i = 0; i < 12; i++) link(this.chainSlide, 0, 0, Math.PI / 2);
+    this.chainSlide.add(mesh(new THREE.SphereGeometry(0.014, 10, 8), brass, [0, 0, -0.05], false));   // the knob on the free end
     // lights
     this.hemi = new THREE.HemisphereLight("#6a74b8", "#1a1424", 0.6); R.add(this.hemi);
     this.sun = new THREE.DirectionalLight("#ffb070", 4.5);
@@ -186,6 +190,44 @@ export class Apartment {
     return m;
   }
 
+  /** Part 2: the chain lock undoing itself. slide 0..1: the knob moves back along the slot to its open end (the act
+   *  makes it jerk link by link); swingT: seconds since it dropped out (< 0 = still in the slot): it swings down from
+   *  its anchor like a pendulum and settles. */
+  setChainSlide(slide: number, swingT: number) {
+    this.chainLocked.visible = false; this.chainLoose.visible = false; this.chainSlide.visible = true;
+    const A = new THREE.Vector2(-0.53, 1.47), L = 0.7;
+    let E: THREE.Vector2;
+    if (swingT < 0) E = new THREE.Vector2(0.3 - 0.13 * Math.max(0, Math.min(1, slide)), 1.48);
+    else {
+      const ang0 = Math.atan2(1.48 - A.y, 0.17 - A.x), amp = ang0 + Math.PI / 2;
+      const a = -Math.PI / 2 + amp * Math.cos(3.74 * swingT) * Math.exp(-1.2 * swingT);
+      E = new THREE.Vector2(A.x + Math.cos(a) * L * 0.97, A.y + Math.sin(a) * L * 0.97);
+    }
+    const n = 12, d = A.distanceTo(E), sag = Math.sqrt(Math.max(0, L * L - d * d)) * 0.5;
+    for (let i = 0; i < n; i++) {
+      const s = (i + 0.5) / n, s2 = (i + 1) / n;
+      const P = A.clone().lerp(E, s), Q = A.clone().lerp(E, s2);
+      P.y -= sag * Math.sin(Math.PI * s); Q.y -= sag * Math.sin(Math.PI * s2);
+      const l = this.chainSlide.children[i];
+      l.position.set(P.x, P.y, -0.05);
+      l.rotation.set(i % 2 ? Math.PI / 2 : 0, 0, Math.atan2(Q.y - P.y, Q.x - P.x));
+    }
+    this.chainSlide.children[n].position.set(E.x, E.y, -0.05);
+  }
+
+  /** Part 2: the duvet thrown back off an empty bed: the top part folds over toward the foot (k 0..1) */
+  setThrownBack(k: number) {
+    const g = this.duvet.geometry as THREE.PlaneGeometry, p = g.attributes.position as THREE.BufferAttribute, b = this.duvetBase;
+    const y0 = -0.05, th = Math.PI * 0.92 * k;
+    for (let i = 0; i < p.count; i++) {
+      const x = b[i * 3], y = b[i * 3 + 1], z = b[i * 3 + 2];
+      if (y <= y0) { p.setXYZ(i, x, y, z); continue; }
+      const r = y - y0, lift = 0.03 * Math.sin(Math.min(1, r / 0.6) * Math.PI);
+      p.setXYZ(i, x * (1 - 0.06 * k), y0 + r * Math.cos(th), z + r * Math.sin(th) * 0.55 + lift * k + 0.012 * k);
+    }
+    p.needsUpdate = true; g.computeVertexNormals();
+  }
+
   /** a body under the duvet: torso k (0 = flat, 1 = someone lying there), breath phase in radians */
   setBody(k: number, breath = 0) {
     const g = this.duvet.geometry as THREE.PlaneGeometry, p = g.attributes.position as THREE.BufferAttribute, b = this.duvetBase;
@@ -217,7 +259,10 @@ export class Apartment {
     (this.tvScreen.material as THREE.MeshBasicMaterial).color.setRGB(0.02, 0.025, 0.035);
     (this.fog.material as THREE.MeshBasicMaterial).opacity = 0;
     this.setBody(0.35, 0);
+    this.chainSlide.visible = false;
   }
 }
+
+
 
 export { glow };

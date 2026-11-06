@@ -4,7 +4,7 @@
 // Story rules (SCRIPT_v2.md §1): the world froze at 06:12 on Day 1; only the sky, he, and "them" move.
 import * as THREE from "three";
 import { World, Look } from "./world/World";
-import { drawCharacter, drawHand, drawHeadOnly, drawPigeon, drawWatcher, Face, FACE0, haloBehind, inkOver, Light, Pose, stand, walk, watcherBody } from "./char/draw";
+import { drawCharacter, drawHand, drawHeadOnly, drawPigeon, drawWatcher, Face, FACE0, haloBehind, inkOver, Light, Pose, possessedGlow, stand, walk, watcherBody } from "./char/draw";
 import { CITY } from "./world/city";
 
 export const FPS = 30;
@@ -16,9 +16,11 @@ export type Cam = { pos: V3; look: V3; fov: number; roll?: number; up?: V3 };
 type Key = { f: number; pos: V3; look: V3; fov?: number; roll?: number };
 export type Dof = { cInf: number; focus?: V3 };
 export type Shot = {
-  id: string; a: number; b: number; look: Look; grade: "warm" | "cool" | "night" | "dusk";
+  id: string; a: number; b: number; look: Look; grade: "warm" | "cool" | "night" | "dusk" | "cctv";
   cam: (f: number) => Cam; dof: (f: number) => Dof;
   act: (f: number, w: World, cam: THREE.PerspectiveCamera) => void;
+  /** Part 2: per-frame post settings (glitch 0..1 tears the security-camera picture) */
+  post?: (f: number) => { glitch?: number };
 };
 
 export const clamp = (x: number, a = 0, b = 1) => Math.min(b, Math.max(a, x));
@@ -879,3 +881,242 @@ export const FINAL: FinalShot[] = edit([
 ]);
 export const FINAL_TOTAL = FINAL[FINAL.length - 1].b;
 export const finalAt = (F: number) => FINAL.find((s) => F >= s.a && F < s.b) ?? FINAL[FINAL.length - 1];
+
+
+// ================================================================ PART 2: "There are no cameras in your room."
+// A 46 s loop for TikTok. Your phone shows a live night-vision feed of your own bedroom, from the corner where it stood.
+// Shots use local frames (0 = their first frame). The last shot is the first shot again: the film loops on itself.
+
+const IR: Light = { key: "#f2f2f2", keyK: 0.95, amb: "#8a8a92", ambK: 0.7, dir: 100, rim: { color: "#ffffff", k: 0.12, dir: 40, w: 0.6 } };
+const IR_CLOSE: Light = { ...IR, keyK: 1.1, ambK: 0.8 };
+const PHONE_P2: Light = { ...PHONE, keyK: 0.9, ambK: 0.5 };   // Part 2 is brighter: faces must read on a phone
+const CAM_CORNER: V3 = [-3.28, 2.5, -2.78];       // the camera nobody installed, high in the corner where it stood
+const CAM_BEHIND: V3 = [-2.3, 2.6, 2.93];         // the second one: right above the door, behind your head
+const BED_SIDE = { x0: -110, y0: 40, w: 220, h: 150 };
+const P2_BED_LOOK: V3 = [1.4, 0.7, -2.1];        // on the sleeper: the face on the pillow, the chest under the duvet
+/** the camera's own infrared lamp: a white light at the lens (the picture is monochrome, so only its reach matters) */
+function irLight(w: World, at: V3, k = 1) {
+  const l = w.apt.lampLight; l.color.set("#ffffff"); l.position.set(...at); l.intensity = 10 * k; l.distance = 10; l.decay = 1.3;
+}
+/** a cold fill from the window over the bed, so the empty bed reads */
+function bedFill(w: World, k = 1) {
+  const l = w.apt.tvLight; l.color.set("#8a94e8"); l.position.set(1.3, 2.3, -0.6); l.distance = 4.5; l.decay = 1.4; l.intensity = 3.2 * k;
+}
+/** a point along the corner camera's view, on the floor, d metres out (for staging things in its picture) */
+function alongCorner(d: number) {
+  const dir = V(P2_BED_LOOK).sub(V(CAM_CORNER)).setY(0).normalize();
+  return V(CAM_CORNER).setY(0).addScaledVector(dir, d);
+}
+/** the room in Part 2: door chained (he locked every door), his phone is in his hands, not on the nightstand */
+function p2Room(w: World) {
+  w.apt.chainLocked.visible = true; w.apt.chainLoose.visible = false;
+  w.apt.phoneOnStand.visible = false;
+}
+const corner = (fov: number): Cam => ({ pos: CAM_CORNER, look: P2_BED_LOOK, fov });
+/** asleep on his back in the bed, seen side-on (the same pose as waking in Part 1); breath period 4 s, phase 0 at f = 0 */
+function sleeperPose(f: number, k: number, face: Partial<Face>, headPsi: number) {
+  const pose = lieToSit(k, f / FPS, face, headPsi);
+  pose.breathe = k > 0.02 ? 0 : Math.sin((f / FPS) * Math.PI * 2 * 0.25);
+  return pose;
+}
+
+/** 0:00 / 0:43.0: the feed. Someone asleep in your bed. Also the last shot (negative frames), so the loop is seamless. */
+const P2A: Shot = {
+  id: "P2A", a: -90, b: 84, look: "aptNight", grade: "cctv",
+  cam: () => ({ pos: CAM_CORNER, look: [1.25, 0.68, -2.3], fov: 29 }), dof: () => ({ cInf: 0 }),
+  act: (f, w, cam) => {
+    p2Room(w); irLight(w, CAM_CORNER); w.apt.setBody(0.22, 0);
+    w.place(w.hero, sleeperPose(f, 0, { open: 0, mouth: "neutral", mouthOpen: 0 }, 90), IR, BED_SIDE, V([1.55, -0.37, -1.62]), cam, { blob: false });
+  },
+};
+/** 0:02.8: you, on the floor by the door, lit by the phone, reading the feed */
+const P2B: Shot = {
+  id: "P2B", a: 0, b: 102, look: "aptNight", grade: "night",
+  cam: locked(0, 102, [-1.86, 0.9, 1.95], [-2.05, 0.8, 2.6], 40, 0.12),     // face in the upper half: the captions sit on the hoodie
+  dof: () => ({ cInf: 12, focus: [-2.05, 0.88, 2.6] }),
+  act: (f, w, cam) => {
+    p2Room(w);
+    const look = saccade(f, [[0, [0.15, -0.8]], [40, [-0.25, -0.75]], [70, [0.1, -0.85]]]);
+    const face: Partial<Face> = { open: 1.15 * blinkAt(f, [28]), pupil: 0.6, brow: 0.7, browIn: 1.3, mouth: "part", mouthOpen: 0.2, look };
+    const pose = floorSit(f / FPS, face, { phone: 1, nod: 12, psi: World.psi(DOOR_SIT, V([0.15, 0, -1]), cam) });
+    pose.breathe = Math.sin((f / FPS) * Math.PI * 2 * 0.7);
+    w.cu.setFrame({ x0: -36, y0: 52, w: 72, h: 76 });
+    w.cu.draw((ctx, F) => drawCharacter(ctx, pose, PHONE_P2, F, { lineK: 0.75 }));
+    w.cu.stand(DOOR_SIT, cam.position); w.cu.visible = true; w.cu.blob.visible = false;
+    w.apt.phoneLight.position.set(-2.0, 0.6, 2.25); w.apt.phoneLight.intensity = 1.0; w.apt.phoneLight.distance = 1.8;
+  },
+};
+/** 0:06.2: the feed. It sits bolt upright, with no effort, like something pulled on a string, and turns to the lens */
+const P2C: Shot = {
+  id: "P2C", a: 0, b: 132, look: "aptNight", grade: "cctv",
+  // starts exactly as the opening frame; when it sits up the camera pans and zooms onto it by itself (a PTZ camera)
+  cam: (f) => { const k = ss((f - 53) / 14), z = ss((f - 84) / 44); return { pos: CAM_CORNER, look: lerp3([1.25, 0.68, -2.3], [1.5, 1.02, -1.75], k), fov: lerp(29, 21, z) }; },
+  dof: () => ({ cInf: 0 }),
+  post: (f) => ({ glitch: f >= 124 ? 0.9 : f >= 54 && f < 56 ? 0.35 : 0 }),
+  act: (f, w, cam) => {
+    p2Room(w); irLight(w, CAM_CORNER);
+    const k = f < 54 ? 0 : 1.0 - Math.pow(1 - clamp((f - 54) / 5), 2);
+    w.apt.setBody(0.22 * (1 - k), 0);
+    const turn = f < 66 ? 0 : clamp((f - 66) / 4);
+    const face: Partial<Face> = { open: f < 54 ? 0 : 1.12, pupil: 0.55, shine: false, brow: -0.1, browIn: 0, mouth: "neutral", mouthOpen: 0, look: [0, 0.1] };
+    const pose = sleeperPose(f, k, face, lerp(90, 4, turn));
+    pose.breathe = 0; pose.headNod = lerp(pose.headNod, -8, turn);
+    w.place(w.hero, pose, IR, BED_SIDE, V([1.55, -0.37, -1.62]), cam, { blob: false });
+  },
+};
+/** 0:10.6: you look up at the real bed. Empty. The duvet thrown back. */
+const P2D: Shot = {
+  id: "P2D", a: 0, b: 72, look: "aptNight", grade: "night",
+  cam: (f) => { const c = locked(0, 72, [-1.75, 0.82, 2.05], [1.55, 0.72, -1.7], 30, 0.1)(f); const t = ss(f / 4); return { ...c, pos: lerp3([-1.8, 0.82, 2.12], c.pos, t) }; },
+  dof: () => ({ cInf: 5, focus: [1.55, 0.7, -1.62] }),
+  act: (f, w) => { p2Room(w); bedFill(w); w.apt.setBody(0, 0); w.apt.setThrownBack(1); },
+};
+/** 0:13.0: the feed. It is standing in the room now, looking up at the lens. Then, between two frames, it is closer. */
+const P2E: Shot = {
+  id: "P2E", a: 0, b: 108, look: "aptNight", grade: "cctv",
+  cam: () => corner(34), dof: () => ({ cInf: 0 }),
+  post: (f) => ({ glitch: f >= 68 && f < 76 ? 0.85 : 0 }),
+  act: (f, w, cam) => {
+    p2Room(w); irLight(w, CAM_CORNER); w.apt.setBody(0, 0); w.apt.setThrownBack(1);
+    const near = f >= 72;
+    const p = alongCorner(near ? 1.95 : 3.3);
+    const toCam = V(CAM_CORNER).sub(p).setY(0).normalize();
+    const face: Partial<Face> = { open: 1.1, pupil: 0.55, shine: false, brow: -0.1, browIn: 0, mouth: "neutral", look: [0, 0.4] };
+    const pose = stand(World.psi(p, toCam, cam), 0, face);
+    pose.headNod = near ? -22 : -14; pose.headTilt = near ? 10 : 4; pose.breathe = 0;
+    pose.armL = [2, 4, 4]; pose.armR = [2, 4, 4];
+    w.place(w.hero, pose, IR, BODY, p, cam);
+  },
+};
+/** 0:16.6: you look at the corner where it stood in Part 1. Empty. */
+const P2F: Shot = {
+  id: "P2F", a: 0, b: 96, look: "aptNight", grade: "night",
+  // the exact framing of Part 1's last shot (where it stood and grinned), from over the empty bed, pushing in
+  cam: glide(0, 96, { pos: [3.14, 1.49, -0.87], look: S21_LOOK, fov: 30 }, { pos: S21_POS, look: S21_LOOK, fov: 25 }),
+  dof: () => ({ cInf: 7, focus: [-3.12, 1.9, -2.68] }),
+  act: (f, w) => { p2Room(w); cornerWash(w, 3.5); w.apt.setBody(0, 0); w.apt.setThrownBack(1); },
+};
+/** 0:19.8: the feed. A face fills the lens: yours. Its eyes go white. It grins. "It's done practising." */
+const P2G: Shot = {
+  id: "P2G", a: 0, b: 162, look: "aptNight", grade: "cctv",
+  cam: () => corner(34), dof: () => ({ cInf: 0 }),
+  post: (f) => ({ glitch: f >= 150 ? 0.4 + 0.6 * clamp((f - 150) / 8) : f >= 33 && f < 35 ? 0.5 : 0 }),
+  act: (f, w, cam) => {
+    p2Room(w); irLight(w, CAM_CORNER); w.apt.setBody(0, 0); w.apt.setThrownBack(1);
+    const eyes = ramp(f, 30, 42), smile = ramp(f, 74, 114);
+    const face: Face = { ...FACE0, tired: 1, open: 1.0, pupil: 0.85, shine: false, brow: -0.15, browIn: -0.1, mouth: "neutral", mouthOpen: 0, look: [0, 0], possessed: { eyes, smile } };
+    const c = w.cu; c.resize(1400, 1520); c.setFrame({ x0: -24, y0: -33, w: 48, h: 52 });
+    const tilt = lerp(-2, 8, ramp(f, 60, 150));
+    c.draw((ctx, F) => drawHeadOnly(ctx, "front", face, IR_CLOSE, F, tilt, 0.85, true));
+    const fwd = new THREE.Vector3(); cam.getWorldDirection(fwd);
+    const d = lerp(0.85, 0.58, ss(f / 155));
+    c.pivot.position.copy(cam.position).addScaledVector(fwd, d).add(new THREE.Vector3(0, -0.02, 0));
+    c.pivot.lookAt(cam.position);
+    c.mat.opacity = 1; c.visible = true; c.blob.visible = false;
+    if (eyes > 0.3 || smile > 0.02) w.glowOver(c, (ctx) => possessedGlow(ctx, c.frame, eyes, smile, tilt));   // IR eyeshine: they glow
+  },
+};
+/** 0:25.2: the feed switches to a camera behind you: high in the corner over the door, looking down at you and your phone */
+const P2H: Shot = {
+  id: "P2H", a: 0, b: 114, look: "aptNight", grade: "cctv",
+  cam: (f) => ({ pos: CAM_BEHIND, look: [-2.0, 0.35, 2.05], fov: lerp(50, 44, ss((f - 40) / 70)) }),
+  dof: () => ({ cInf: 0 }),
+  post: (f) => ({ glitch: f < 7 ? 1 - f / 7 : 0 }),
+  act: (f, w, cam) => {
+    p2Room(w); irLight(w, CAM_BEHIND, 0.8);
+    const face: Partial<Face> = { open: 1.15, pupil: 0.6, brow: 0.7, browIn: 1.3, mouth: "part", mouthOpen: 0.2, look: [0, -0.8] };
+    const pose = floorSit(f / FPS, face, { phone: 1, nod: 16, psi: World.psi(DOOR_SIT, V([0.15, 0, -1]), cam) });
+    pose.breathe = Math.sin((f / FPS) * Math.PI * 2 * 0.7);
+    w.place(w.hero, pose, IR, BODY, DOOR_SIT, cam, { blob: false });
+    w.hero.pivot.rotateX(-0.85);   // a card seen from this high would foreshorten: lean it back toward the lens
+    w.apt.phoneLight.position.set(-2.0, 0.6, 2.25); w.apt.phoneLight.intensity = 1.0; w.apt.phoneLight.distance = 1.8;
+  },
+};
+/** 0:29.0: you. You don't move. You don't breathe. */
+const P2I: Shot = {
+  id: "P2I", a: 0, b: 90, look: "aptNight", grade: "night",
+  cam: glide(0, 90, { pos: [-1.86, 0.9, 1.95], look: [-2.05, 0.86, 2.6], fov: 32 }, { pos: [-1.9, 0.9, 2.08], look: [-2.05, 0.87, 2.6], fov: 27 }),
+  dof: () => ({ cInf: 12, focus: [-2.05, 0.88, 2.6] }),
+  act: (f, w, cam) => {
+    p2Room(w);
+    const face: Partial<Face> = { open: 1.34, pupil: 0.42, brow: 1.15, browIn: 1.45, mouth: "part", mouthOpen: 0.28, look: [0.02, -0.82] };
+    const pose = floorSit(f / FPS, face, { phone: 1, nod: 10, psi: World.psi(DOOR_SIT, V([0.15, 0, -1]), cam) });
+    pose.breathe = 0;
+    w.cu.setFrame({ x0: -36, y0: 52, w: 72, h: 76 });
+    w.cu.draw((ctx, F) => drawCharacter(ctx, pose, PHONE_P2, F, { lineK: 0.75 }));
+    w.cu.stand(DOOR_SIT, cam.position); w.cu.visible = true; w.cu.blob.visible = false;
+    w.apt.phoneLight.position.set(-2.0, 0.6, 2.25); w.apt.phoneLight.intensity = 1.0; w.apt.phoneLight.distance = 1.8;
+  },
+};
+/** 0:32.0: the phone buzzes in his hands. A message from Me: "Don't turn around." and a photo of the back of his head */
+const P2J: Shot = {
+  id: "P2J", a: 0, b: 150, look: "aptNight", grade: "night",
+  cam: (f) => keys([{ f: 0, pos: [-1.74, 0.98, 1.74], look: [-2.03, 0.62, 2.2], fov: 34 }, { f: 100, pos: [-1.9, 0.79, 1.96], look: [-2.03, 0.62, 2.2], fov: 30 }, { f: 150, pos: [-1.92, 0.775, 1.99], look: [-2.03, 0.62, 2.2], fov: 29 }], f),
+  dof: () => ({ cInf: 8, focus: [-2.03, 0.62, 2.2] }),
+  act: (f, w, cam) => {
+    p2Room(w);
+    const pose = floorSit(f / FPS, { open: 1.2, look: [0, -0.8] }, { nod: 18, hands: "fist", psi: World.psi(DOOR_SIT, V([0.15, 0, -1]), cam) });
+    pose.breathe = 0;
+    w.place(w.hero, pose, PHONE_P2, BODY, DOOR_SIT, cam);
+    const buzz = (f >= 2 && f < 9) || (f >= 13 && f < 20) ? 0.0016 * Math.sin(f * 2.7) : 0;
+    w.phone.visible = true; w.phone.position.set(-2.03 + buzz, 0.62, 2.2); w.phone.lookAt(cam.position); w.phone.rotateZ(0.04);
+    w.msgScreen();
+    w.apt.phoneLight.position.set(-2.03, 0.75, 2.1); w.apt.phoneLight.intensity = 1.0; w.apt.phoneLight.distance = 1.8;
+  },
+};
+/** 0:37.0: above your head, the chain on the door starts to move. One link. Another. It drops out and swings. */
+const CHAIN_TUGS = [18, 31, 41, 52, 60, 69, 77];
+const P2K: Shot = {
+  id: "P2K", a: 0, b: 135, look: "aptNight", grade: "night",
+  cam: glide(0, 135, { pos: [-1.88, 0.8, 1.66], look: [-2.02, 1.12, 2.94], fov: 47 }, { pos: [-1.9, 0.8, 1.76], look: [-2.03, 1.14, 2.94], fov: 45 }),
+  dof: () => ({ cInf: 4, focus: [-2.0, 1.3, 2.92] }),
+  act: (f, w, cam) => {
+    p2Room(w);
+    let slide = 0;
+    CHAIN_TUGS.forEach((t0) => { slide += clamp((f - t0) / 3) / CHAIN_TUGS.length; });
+    w.apt.setChainSlide(slide, f >= 88 ? (f - 88) / FPS : -1);
+    const up = ramp(f, 20, 23);       // his eyes go up at the first sound; his head does not move
+    const face: Partial<Face> = { open: 1.34, pupil: 0.42, brow: 1.2, browIn: 1.45, mouth: "part", mouthOpen: 0.28, look: [0, lerp(-0.8, 0.55, up)] };
+    const pose = floorSit(f / FPS, face, { phone: 1, nod: 10, psi: World.psi(DOOR_SIT, V([0.15, 0, -1]), cam) });
+    pose.breathe = 0;
+    w.place(w.hero, pose, PHONE_P2, BODY, DOOR_SIT, cam);
+    w.apt.phoneLight.position.set(-2.0, 0.6, 2.25); w.apt.phoneLight.intensity = 1.0; w.apt.phoneLight.distance = 1.8;
+    const l = w.apt.tvLight; l.color.set("#aeb8ff"); l.position.set(-2.0, 0.95, 2.5); l.distance = 1.6; l.decay = 1.5; l.intensity = 2.2;   // the phone's glow up the door
+  },
+};
+/** 0:41.5: you turn around. Cut before you see. */
+const P2L: Shot = {
+  id: "P2L", a: 0, b: 45, look: "aptNight", grade: "night",
+  cam: (f) => ({ pos: lerp3([-1.86, 0.9, 1.95], [-1.9, 0.9, 2.05], ss(f / 45)), look: [-2.05, 0.88, 2.6], fov: 30 }),
+  dof: () => ({ cInf: 12, focus: [-2.05, 0.88, 2.6] }),
+  act: (f, w, cam) => {
+    p2Room(w); w.apt.chainLocked.visible = false; w.apt.setChainSlide(1, 3);
+    const turn = ss((f - 6) / 18);
+    const look = saccade(f, [[0, [0, 0.5]], [3, [0.95, 0.35]]]);
+    const face: Partial<Face> = { open: 1.36, pupil: 0.4, brow: 1.2, browIn: 1.45, mouth: "gasp", mouthOpen: 0.45, look };
+    const pose = floorSit(f / FPS, face, { phone: 1, nod: lerp(8, -10, turn), headPsi: lerp(0, 130, turn), psi: World.psi(DOOR_SIT, V([0.15, 0, -1]), cam) });
+    pose.breathe = 0;
+    w.cu.setFrame({ x0: -36, y0: 52, w: 72, h: 76 });
+    w.cu.draw((ctx, F) => drawCharacter(ctx, pose, PHONE_P2, F, { lineK: 0.75 }));
+    w.cu.stand(DOOR_SIT, cam.position); w.cu.visible = true; w.cu.blob.visible = false;
+    w.apt.phoneLight.position.set(-2.0, 0.6, 2.25); w.apt.phoneLight.intensity = 1.0; w.apt.phoneLight.distance = 1.8;
+  },
+};
+
+export const P2: FinalShot[] = edit([
+  ["P2_BED", 84, { src: P2A, from: 0 }],
+  ["P2_FACE", 102, { src: P2B, from: 0 }],
+  ["P2_SITUP", 132, { src: P2C, from: 0 }],
+  ["P2_EMPTY", 72, { src: P2D, from: 0 }],
+  ["P2_STAND", 108, { src: P2E, from: 0 }],
+  ["P2_CORNER", 96, { src: P2F, from: 0 }],
+  ["P2_GRIN", 162, { src: P2G, from: 0 }],
+  ["P2_BEHIND", 114, { src: P2H, from: 0 }],
+  ["P2_FREEZE", 90, { src: P2I, from: 0 }],
+  ["P2_MSG", 150, { src: P2J, from: 0 }],
+  ["P2_CHAIN", 135, { src: P2K, from: 0 }],
+  ["P2_TURN", 45, { src: P2L, from: 0 }],
+  ["P2_END", 90, { src: P2A, from: -90 }],
+]);
+export const P2_TOTAL = P2[P2.length - 1].b;
+export const p2At = (F: number) => P2.find((s) => F >= s.a && F < s.b) ?? P2[P2.length - 1];
