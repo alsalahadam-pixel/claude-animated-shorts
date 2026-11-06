@@ -866,18 +866,21 @@ function possessedEyes(pt: Painter, k: number) {
     if (o > 0) { c.fillStyle = "#f2f6ff"; c.beginPath(); c.ellipse(cx + side * 0.2, cy + 0.15, 2.2, 1.25 * o, side * 0.18, 0, Math.PI * 2); c.fill(); }
   }
 }
-/** Part 2: the entity's grin on his face: far too wide, white, rows of thin teeth; s 0..1 spreads it */
+/** Part 2: the entity's grin on his face: a crescent far too wide, its corners pulled up into the cheeks, rows of thin
+ *  teeth, a heavy ink edge; s 0..1 spreads it */
+function grinPath(s: number) {
+  const cx = 2.0 + 4.3 * s, cy = -8.0 + 2.3 * s, lo = -11.0 - 3.6 * s, up = -8.8 - 0.8 * s;
+  const p = new Path2D(); p.moveTo(-cx, cy); p.quadraticCurveTo(0, lo, cx, cy); p.quadraticCurveTo(0, up, -cx, cy);
+  return { p, cx, cy, lo, up };
+}
 function possessedGrin(pt: Painter, s: number) {
   const c = pt.c;
-  const cx = 2.4 + 4.6 * s, cy = -7.4 + 1.3 * s, lo = -11.0 - 1.4 * s, up = -9.0 - 0.5 * s;
-  const p = new Path2D();
-  p.moveTo(-cx, cy); p.quadraticCurveTo(0, lo - (lo - cy) * 0.15 - 1.2, cx, cy);
-  p.quadraticCurveTo(0, up, -cx, cy);
-  c.fillStyle = "#07060c"; c.save(); c.lineWidth = 0.9; c.strokeStyle = "#07060c"; c.stroke(p); c.restore();
-  c.fillStyle = "#eef2fa"; c.fill(p);
-  c.save(); c.clip(p); c.lineWidth = 0.22; c.strokeStyle = "#1a1626";
-  for (let k = -12; k <= 12; k++) { c.beginPath(); c.moveTo(k * 0.62, -16); c.lineTo(k * 0.62, -6); c.stroke(); }
-  c.beginPath(); c.moveTo(-cx, cy - 0.2); c.quadraticCurveTo(0, (lo + up) / 2 - 0.3, cx, cy - 0.2); c.stroke();
+  const { p, cx, cy, lo, up } = grinPath(s);
+  c.save(); c.lineJoin = "round"; c.lineWidth = 1.3; c.strokeStyle = "#07060c"; c.stroke(p); c.restore();
+  c.fillStyle = "#f2f5fb"; c.fill(p);
+  c.save(); c.clip(p); c.lineWidth = 0.32; c.strokeStyle = "#141020";
+  for (let k = -12; k <= 12; k++) { c.beginPath(); c.moveTo(k * 0.78, -16); c.lineTo(k * 0.78, -5); c.stroke(); }
+  c.lineWidth = 0.4; c.beginPath(); c.moveTo(-cx, cy - 0.15); c.quadraticCurveTo(0, (lo + up) / 2 - 0.6, cx, cy - 0.15); c.stroke();
   c.restore();
 }
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
@@ -891,11 +894,7 @@ export function possessedGlow(ctx: Ctx, F: Frame, eyes: number, smile: number, t
   ctx.fillStyle = "#cfe0ff";
   const o = clamp01((eyes - 0.25) / 0.75);
   if (o > 0) for (const side of [-1, 1]) { ctx.beginPath(); ctx.ellipse(side * 3.9 + side * 0.2, -0.85, 2.2, 1.25 * o, side * 0.18, 0, Math.PI * 2); ctx.fill(); }
-  if (smile > 0.02) {
-    const cx = 2.4 + 4.6 * smile, cy = -7.4 + 1.3 * smile, lo = -11.0 - 1.4 * smile, up = -9.0 - 0.5 * smile;
-    const p = new Path2D(); p.moveTo(-cx, cy); p.quadraticCurveTo(0, lo - (lo - cy) * 0.15 - 1.2, cx, cy); p.quadraticCurveTo(0, up, -cx, cy);
-    ctx.globalAlpha = 0.55; ctx.fill(p);
-  }
+  if (smile > 0.02) { ctx.globalAlpha = 0.28; ctx.fill(grinPath(smile).p); }
   ctx.restore();
 }
 
