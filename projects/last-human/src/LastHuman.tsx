@@ -671,3 +671,22 @@ export const Part3Preview: React.FC = () => (
     <Part3Overlay />
   </AbsoluteFill>
 );
+
+
+/** TikTok cover for Part 3: the copy in the doorway, PART 3, IT HAS YOUR FACE (inside the 3:4 grid crop) */
+export const Part3Cover: React.FC = () => {
+  useFonts();
+  const big: React.CSSProperties = { fontFamily: "Montserrat", fontWeight: 800, fontSize: 104, lineHeight: 1.02, color: "#ffffff", textAlign: "center", ...STROKE_P2, WebkitTextStroke: "14px #07060c" };
+  return (
+    <AbsoluteFill style={{ background: "#000" }}>
+      <Part3Plate />
+      <div style={{ position: "absolute", top: 290, left: 30, right: 30, display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div style={{ fontFamily: "Anton", fontSize: 120, letterSpacing: 14, color: "#ffb35c", ...STROKE_P2, WebkitTextStroke: "12px #07060c", lineHeight: 1.05 }}>PART 3</div>
+      </div>
+      <div style={{ position: "absolute", top: 1330, left: 30, right: 30, display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div style={big}>IT HAS</div>
+        <div style={{ ...big, color: "#ff5a4a" }}>YOUR FACE</div>
+      </div>
+    </AbsoluteFill>
+  );
+};
