@@ -28,4 +28,4 @@
 | 115.50 | T20B back to the glass: a cluster and riser to the hard cut, then silence |
 | 119.33 | END: silence, then one low hit as PART 4 appears |
 
-mix: -14.3 LUFS integrated, true peak -1.2 dBTP, 122.000 s
+mix: -14.1 LUFS integrated, true peak -1.2 dBTP, 122.000 s

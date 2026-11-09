@@ -238,9 +238,9 @@ def build():
     add(sfx, glass_shatter(0.9), st("T04"), 1.0, 0.1)
     add(amb, np.stack([hp(lp(colored(ns(7.2), R, 1.2), 800), 60)] * 2) * 0.05, st("T04"), 1.0, 0.0, until=en("T04"))
     add(sfx, clang(380, 0.6, 0.3), ft("T04", 9), 1.0, 0.1)
-    for t in np.arange(ft("T04", 24), ft("T04", 74), 0.17):
+    for t in np.arange(ft("T04", 30), ft("T04", 76), 0.17):
         add(sfx, clang(R.uniform(300, 460), 0.32, 0.18), t, 1.0, 0.25 + R.uniform(-0.1, 0.1))
-    add(music, S.riser(ft("T04", 74) - st("T04"), 200, 1200, 0.4), st("T04"), until=ft("T04", 74))
+    add(music, S.riser(ft("T04", 76) - st("T04"), 200, 1200, 0.4), st("T04"), until=ft("T04", 76))
     cue(ft("T04", 96), "it at the window: silence, then its head tilts (a slow creak), then it is out on the wall, upside down")
     add(sfx, F2.creak(0.7, 0.12), ft("T04", 104), 1.0, -0.3)
     for k in range(128, 210, 5):
@@ -354,12 +354,12 @@ def build():
     add(sub, creak_wave(1.5, 0.35), ft("T15", 96), 1.0, 0.0)
     cue(st("T16A"), "T16A RUN!: sprinting steps echoing; behind him a rumble of many feet stepping together; the dive")
     add(music, S.boom(1.5, 64, 30, 0.9), st("T16A") + 0.1)
-    steps(st("T16A"), ft("T16A", 66), 3.6, "dry", 0.32, sub, 0.0)
+    steps(st("T16A"), ft("T16A", 50), 3.6, "dry", 0.32, sub, 0.0)
     for k in range(6):
         t0 = st("T16A") + k * 0.6
         for _ in range(16):
             add(sub, lp(S.footstep("dry", 0.08), 700), t0 + R.uniform(0, 0.05), 1.0, R.uniform(-0.9, -0.2))
-    add(sfx, lp(colored(ns(0.3), R, 1.0), 400) * np.exp(-T(ns(0.3)) / 0.05) * 0.8, ft("T16A", 76), 1.0, 0.0)
+    add(sfx, lp(colored(ns(0.3), R, 1.0), 400) * np.exp(-T(ns(0.3)) / 0.05) * 0.8, ft("T16A", 60), 1.0, 0.0)
     add(music, S.riser(en("T16A") - st("T16A"), 300, 2400, 0.6), st("T16A"), until=en("T16A"))
 
     # ---- in the train
@@ -375,11 +375,13 @@ def build():
     add(sfx, S.door_slam(0.4), ft("T17", 50), 1.0, 0.0)
     add(sfx, motor(en("T17") - ft("T17", 50), 40, 380, 0.12), ft("T17", 50), 1.0, 0.0, until=en("T17"))
     add(amb, rumble(en("T17") - ft("T17", 50), 0.25), ft("T17", 50), 1.0, 0.0, until=en("T17"))
-    clatter(ft("T17", 60), en("T17"), sfx, lambda t: 1.6 * (t - ft("T17", 50)) + 0.5, 0.5)
+    clatter(ft("T17", 60), en("T17"), sfx, lambda t: 2.4 * (t - ft("T17", 50)) + 0.5, 0.5)
     add(sfx, S.clink(4200, 0.08), ft("T17", 82), 1.0, 0.3)
     add(music, S.cluster([987.8, 1046.5, 1108.7], en("T17") - ft("T17", 140), 2.0, 0.3, 0.1, trem=9), ft("T17", 140), until=en("T17"))
-    for k in range(18):
-        add(sfx, S.whoosh(0.35, 0.12), ft("T17", 150) + k * 0.65 + R.uniform(0, 0.1), 1.0, 0.6)
+    t = ft("T17", 190)
+    while t < en("T17"):
+        add(sfx, S.whoosh(0.3, 0.12), t + R.uniform(0, 0.05), 1.0, 0.6)
+        v = 2.4 * (t - ft("T17", 50)); t += 2.6 / max(4.0, v)
     cue(st("T19"), "T19 slumped on the seat: steady muffled rumble and clatter; when the other one appears, a slow breath close in the right ear")
     add(amb, rumble(en("T20B") - st("T19"), 0.22), st("T19"), 1.0, 0.0, until=en("T20B"))
     clatter(st("T19"), en("T20B"), sfx, lambda t: 11.0, 0.35)
@@ -416,7 +418,7 @@ def main():
     sfx *= dbg(-22.0 - integrated(sfx))
     amb *= dbg(-30.0 - integrated(amb))
     mix = voice * dbg(1.0) + music * duck_curve(words)[None, :] + sfx * duck_curve(words, -4.0)[None, :] + amb
-    for _ in range(3):
+    for _ in range(4):
         mix = S.limiter(mix * dbg(-14.0 - integrated(mix)), -1.2)
     write_wav(os.path.join(HERE, "mix_part3.wav"), mix)
     with open(os.path.join(HERE, "cues_part3.md"), "w") as fh:
