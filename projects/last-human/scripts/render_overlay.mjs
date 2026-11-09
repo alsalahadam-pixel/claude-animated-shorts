@@ -4,10 +4,11 @@ import path from "node:path";
 import { bundle } from "@remotion/bundler";
 import { renderMedia, selectComposition } from "@remotion/renderer";
 const browserExecutable = new URL("./chrome.sh", import.meta.url).pathname;
-const two = process.env.PART === "2", dir = two ? "out/part2" : "out/final";
+import { PARTS } from "./render_final.mjs";
+const P = PARTS[process.env.PART ?? "1"], dir = P.out;
 fs.mkdirSync(dir, { recursive: true });
 const serveUrl = await bundle({ entryPoint: path.resolve("src/index.ts"), publicDir: path.resolve("public") });
-const composition = await selectComposition({ serveUrl, id: two ? "Part2Overlay" : "FinalOverlay", browserExecutable });
+const composition = await selectComposition({ serveUrl, id: P.overlay, browserExecutable });
 const t0 = Date.now();
 await renderMedia({ composition, serveUrl, codec: "prores", proResProfile: "4444", pixelFormat: "yuva444p10le", imageFormat: "png",
   outputLocation: `${dir}/overlay.mov`, browserExecutable, concurrency: 1, muted: true, timeoutInMilliseconds: 600000 });

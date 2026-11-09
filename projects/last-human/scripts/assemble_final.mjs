@@ -4,7 +4,7 @@
 import fs from "node:fs";
 import { execFileSync } from "node:child_process";
 import { finalRows, PARTS } from "./render_final.mjs";
-const two = process.env.PART === "2", P = PARTS[two ? 2 : 1];
+const P = PARTS[process.env.PART ?? "1"];
 const rows = finalRows(P.table);
 const total = rows[rows.length - 1].b;
 const inputs = [], labels = [];
@@ -21,7 +21,7 @@ for (const r of rows) {
 const n = labels.length;
 const filter = labels.join(";") + ";" + Array.from({ length: n }, (_, i) => `[v${i}]`).join("") + `concat=n=${n}:v=1:a=0[base];` +
   `[${n}:v]format=yuva444p10le[ov];[base][ov]overlay=0:0:format=auto,format=yuv420p[out]`;
-execFileSync("ffmpeg", ["-y", "-loglevel", "error", ...inputs, "-i", `${P.out}/overlay.mov`, "-i", two ? "audio/mix_part2.wav" : "audio/mix_final.wav", "-filter_complex", filter,
+execFileSync("ffmpeg", ["-y", "-loglevel", "error", ...inputs, "-i", `${P.out}/overlay.mov`, "-i", P.audio, "-filter_complex", filter,
   "-map", "[out]", "-map", `${n + 1}:a:0`, "-c:v", "libx264", "-preset", "slow", "-crf", "17", "-pix_fmt", "yuv420p", "-profile:v", "high", "-level", "4.2", "-r", "30",
-  "-c:a", "aac", "-b:a", "256k", "-ar", "48000", "-movflags", "+faststart", "-frames:v", String(total), two ? "out/last_human_PART2.mp4" : "out/last_human_FINAL.mp4"], { stdio: "inherit" });
-console.log(execFileSync("ffprobe", ["-v", "error", "-count_frames", "-select_streams", "v:0", "-show_entries", "stream=nb_read_frames,width,height,r_frame_rate", "-of", "csv=p=0", two ? "out/last_human_PART2.mp4" : "out/last_human_FINAL.mp4"]).toString());
+  "-c:a", "aac", "-b:a", "256k", "-ar", "48000", "-movflags", "+faststart", "-frames:v", String(total), P.video], { stdio: "inherit" });
+console.log(execFileSync("ffprobe", ["-v", "error", "-count_frames", "-select_streams", "v:0", "-show_entries", "stream=nb_read_frames,width,height,r_frame_rate", "-of", "csv=p=0", P.video]).toString());

@@ -6,7 +6,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { bundle } from "@remotion/bundler";
 import { renderMedia, selectComposition } from "@remotion/renderer";
-export const PARTS = { 1: { table: "FINAL", comp: "FinalPlate", out: "out/final" }, 2: { table: "P2", comp: "Part2Plate", out: "out/part2" } };
+export const PARTS = { 1: { table: "FINAL", comp: "FinalPlate", out: "out/final", audio: "audio/mix_final.wav", video: "out/last_human_FINAL.mp4", overlay: "FinalOverlay" },
+  2: { table: "P2", comp: "Part2Plate", out: "out/part2", audio: "audio/mix_part2.wav", video: "out/last_human_PART2.mp4", overlay: "Part2Overlay" },
+  3: { table: "P3", comp: "Part3Plate", out: "out/part3", audio: "audio/mix_part3.wav", video: "out/last_human_PART3.mp4", overlay: "Part3Overlay" } };
 export const finalRows = (table = "FINAL") => {
   const story = fs.readFileSync("src/story.ts", "utf8");
   const body = story.slice(story.indexOf(`export const ${table}: FinalShot[] = edit([`));

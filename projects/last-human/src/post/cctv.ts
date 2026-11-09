@@ -10,6 +10,7 @@ uniform float amount;
 uniform float seed;
 uniform float glitch;
 uniform float barrel;
+uniform float noise;   // 0..1: the picture dissolves into static (a dead camera)
 float h1(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
   if (amount <= 0.0) { outputColor = inputColor; return; }
@@ -36,6 +37,8 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   l = l * sl + roll + n * (0.085 + 0.1 * glitch);
   l *= 1.0 - 0.6 * smoothstep(0.45, 1.25, length(uv * 2.0 - 1.0));  // heavy vignette
   vec3 col = clamp(l, 0.0, 1.15) * vec3(0.76, 1.0, 0.83) * inside;
+  float sn = h1(floor(uv * resolution / 2.0) + seed * 3.7);
+  col = mix(col, vec3(sn * 0.85) * vec3(0.9, 1.0, 0.92), noise);
   outputColor = vec4(mix(inputColor.rgb, pow(col, vec3(2.2)), amount), inputColor.a);
 }`;
 
@@ -44,11 +47,12 @@ export class CctvEffect extends Effect {
     super("CctvEffect", frag, {
       blendFunction: BlendFunction.NORMAL,
       attributes: EffectAttribute.CONVOLUTION,
-      uniforms: new Map<string, Uniform>([["amount", new Uniform(0)], ["seed", new Uniform(0)], ["glitch", new Uniform(0)], ["barrel", new Uniform(0.2)]]),
+      uniforms: new Map<string, Uniform>([["amount", new Uniform(0)], ["seed", new Uniform(0)], ["glitch", new Uniform(0)], ["barrel", new Uniform(0.2)], ["noise", new Uniform(0)]]),
     });
   }
   set amount(v: number) { this.uniforms.get("amount")!.value = v; }
   set seed(v: number) { this.uniforms.get("seed")!.value = v; }
   set glitch(v: number) { this.uniforms.get("glitch")!.value = v; }
   set barrel(v: number) { this.uniforms.get("barrel")!.value = v; }
+  set noise(v: number) { this.uniforms.get("noise")!.value = v; }
 }

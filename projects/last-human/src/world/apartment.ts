@@ -41,6 +41,7 @@ export class Apartment {
   chainLoose: THREE.Group;
   chainLocked: THREE.Group;
   chainSlide: THREE.Group;   // Part 2: the chain coming off, link by link (setChainSlide)
+  doorPivot: THREE.Group;    // Part 3: rotation.y > 0 swings the door into the room
   blinds = new THREE.Group();
   phoneOnStand: THREE.Mesh;
   duvet!: THREE.Mesh;
@@ -132,7 +133,9 @@ export class Apartment {
     R.add(mesh(rbox(0.62, 2.25, 1.15, 0.02), std("#25232d", { roughness: 0.55 }), [-3.18, 1.125, -1.45]));
     R.add(mesh(new THREE.BoxGeometry(0.02, 2.1, 0.01), std("#111018"), [-2.86, 1.12, -1.45]));
     // door (south wall, x -2.6..-1.7)
-    const door = new THREE.Group(); door.position.set(-2.15, 0, 2.97); R.add(door);
+    // the door hangs on a hinge at its west edge (x -2.6); Part 3 swings it open
+    this.doorPivot = new THREE.Group(); this.doorPivot.position.set(-2.6, 0, 2.97); R.add(this.doorPivot);
+    const door = new THREE.Group(); door.position.set(0.45, 0, 0); this.doorPivot.add(door);
     door.add(mesh(rbox(0.9, 2.08, 0.05, 0.01), std("#3a3346", { roughness: 0.55 }), [0, 1.04, 0]));
     door.add(mesh(new THREE.BoxGeometry(1.02, 2.16, 0.04), std("#22202a"), [0, 1.06, 0.03]));
     const brass = std("#c9a55a", { metalness: 0.85, roughness: 0.3 });
@@ -260,6 +263,7 @@ export class Apartment {
     (this.fog.material as THREE.MeshBasicMaterial).opacity = 0;
     this.setBody(0.35, 0);
     this.chainSlide.visible = false;
+    this.doorPivot.rotation.y = 0;
   }
 }
 

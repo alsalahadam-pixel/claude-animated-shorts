@@ -13,15 +13,17 @@ import { useComposer } from "./post/Composer";
 import { LensBlur, GrainEffect } from "./post/lensblur";
 import { GradeEffect, GradeParams } from "./post/grade";
 import { World } from "./world/World";
-import { SHOTS, shotAt, FPS, TOTAL, Shot, PHOTO_SHOT, FILM_END, PROMPT_AT, FINAL, FINAL_TOTAL, finalAt, P2, P2_TOTAL, p2At, FinalShot } from "./story";
+import { SHOTS, shotAt, FPS, TOTAL, Shot, PHOTO_SHOT, FILM_END, PROMPT_AT, FINAL, FINAL_TOTAL, finalAt, P2, P2_TOTAL, p2At, P3, P3_TOTAL, p3At, P3_FEED_SHOT, FinalShot } from "./story";
 import { CctvEffect } from "./post/cctv";
 import captions from "./data/captions.json";
 import captionsFinal from "./data/captions_final.json";
 import captionsP2 from "./data/captions_part2.json";
+import captionsP3 from "./data/captions_part3.json";
 
 export const LAST_HUMAN_FRAMES = TOTAL;
 export const FINAL_FRAMES = FINAL_TOTAL;
 export const P2_FRAMES = P2_TOTAL;
+export const P3_FRAMES = P3_TOTAL;
 
 const GRADES: Record<Shot["grade"], GradeParams> = {
   warm: { ky: [0, 0.085, 0.25, 0.55, 0.8, 0.93, 1], sat: [1.0, 1.08, 1.05], tintS: [0.024, 0.006], tintM: [0.004, 0.002], tintH: [-0.014, 0.01], vig: [0.32, 0.32] },
@@ -43,6 +45,8 @@ class ExposureEffect extends Effect {
 const EXPOSURE: Record<string, number> = { S01: 1.32, S02: 1.1, S03: 1.1, S04: 1.0, S05: 1.1, S06: 1.0, S07: 1.1, S08: 1.0, S09: 1.32, S10: 1.27, S11: 1.2, S12: 1.32, S13: 1.38, S13B: 1.38, S14: 1.36, S15: 1.35, S16: 1.36, S17: 1.24, S18: 1.25, S19: 1.24, S20: 1.48, S21: 1.32, END: 1,
   HOOKCAM: 1.32, P1: 1.1, PIGEON: 1.0, E1: 1.32, E2: 1.3, E3: 1.4,
   // Part 2: brighter than Part 1 (it has to read in a bright TikTok feed)
+  T01: 1.55, T02: 1.5, T03: 1.5, T04: 1.6, T05: 1.35, T06: 1.4, T07: 1.35, T08: 1.9, T09: 1.9, T10A: 1.35, T10B: 1.35, T10C: 1.4,
+  T11: 1.7, T12: 1.8, T13: 1.6, T14: 1.8, T15: 1.9, T16A: 1.6, T16B: 1.5, T17: 1.5, T19: 1.5, T20A: 1.5, T20B: 1.5, P3FEED: 2.0,
   P2A: 1.9, P2B: 1.55, P2C: 1.9, P2D: 2.1, P2E: 1.9, P2F: 2.0, P2G: 1.6, P2H: 1.9, P2I: 1.55, P2J: 1.45, P2K: 1.9, P2L: 1.55 };
 
 type Toggles = { lens: boolean; bloom: boolean; grade: boolean; grain: boolean; msaa: number };
@@ -59,9 +63,9 @@ const resolveIn = (at: (F: number) => FinalShot): Resolve => (F) => {
   const f = (fs.from ?? re?.a ?? 0) + (F - fs.a);
   return { shot: { ...src, cam: fs.cam ?? src.cam, dof: fs.dof ?? src.dof }, f };
 };
-const resolveFinal = resolveIn(finalAt), resolveP2 = resolveIn(p2At);
+const resolveFinal = resolveIn(finalAt), resolveP2 = resolveIn(p2At), resolveP3 = resolveIn(p3At);
 
-const Inner: React.FC<{ photo: THREE.Texture | null; override?: Shot; resolve?: Resolve; msg?: HTMLImageElement | null }> = ({ photo, override, resolve, msg }) => {
+const Inner: React.FC<{ photo: THREE.Texture | null; override?: Shot; resolve?: Resolve; msg?: HTMLImageElement | null; feed?: HTMLImageElement | null }> = ({ photo, override, resolve, msg, feed }) => {
   const F = useCurrentFrame();
   const R = resolve ? resolve(F) : null;
   const f = R ? R.f : F;
@@ -87,6 +91,7 @@ const Inner: React.FC<{ photo: THREE.Texture | null; override?: Shot; resolve?: 
   ], { msaa: on.msaa });
   if (photo) applyPhoto(world, photo);
   if (msg && !world.msgImg) world.msgImg = msg;
+  if (feed && !world.feedImg) world.feedImg = feed;
 
   const shot = R ? R.shot : override ?? shotAt(f);
   const cam = camera as THREE.PerspectiveCamera;
@@ -112,7 +117,8 @@ const Inner: React.FC<{ photo: THREE.Texture | null; override?: Shot; resolve?: 
   const gtag = fx.grade as unknown as { _g?: string };
   if (gtag._g !== shot.grade) { fx.grade.set(GRADES[shot.grade]); gtag._g = shot.grade; }
   fx.grain.seed = F;
-  fx.cctv.amount = shot.grade === "cctv" ? 1 : 0; fx.cctv.seed = F; fx.cctv.glitch = shot.post?.(f).glitch ?? 0;
+  const post = shot.post?.(f);
+  fx.cctv.amount = shot.grade === "cctv" ? 1 : 0; fx.cctv.seed = F; fx.cctv.glitch = post?.glitch ?? 0; fx.cctv.noise = post?.noise ?? 0;
   return null;
 };
 
@@ -528,3 +534,140 @@ export const Part2Cover: React.FC = () => {
     </AbsoluteFill>
   );
 };
+
+
+// ---------------------------------------------------------------- PART 3 (TikTok): "It has your face."
+export const Part3Plate: React.FC = () => {
+  const photo = usePhoto();
+  const feed = useImage("feed3.jpg");
+  return (
+    <AbsoluteFill style={{ background: "#000" }}>
+      <ThreeCanvas width={1080} height={1920} shadows gl={{ antialias: false, stencil: false, powerPreference: "high-performance" }} camera={{ fov: 36, near: 0.05, far: 2000 }}>
+        <Inner photo={photo} resolve={resolveP3} feed={feed} />
+      </ThreeCanvas>
+      {p3At(useCurrentFrame()).black && <AbsoluteFill style={{ background: "#000" }} />}
+    </AbsoluteFill>
+  );
+};
+/** one frame: the feed on his phone (rendered once to public/feed3.jpg) */
+export const Part3FeedSrc: React.FC = () => (
+  <AbsoluteFill style={{ background: "#000" }}>
+    <ThreeCanvas width={1080} height={1440} shadows gl={{ antialias: false, stencil: false }} camera={{ fov: 50, near: 0.05, far: 2000 }}>
+      <Inner photo={null} override={P3_FEED_SHOT} />
+    </ThreeCanvas>
+  </AbsoluteFill>
+);
+
+const CAPS_P3 = captionsP3 as Cap[];
+const RUN_AT = [11.9, 88.1];
+const CaptionsP3: React.FC<{ f: number }> = ({ f }) => {
+  const t = f / FPS;
+  const cap = CAPS_P3.find((c) => t >= c.s && t < c.e);
+  if (!cap) return null;
+  const id = p3At(f).id;
+  const top = id === "T13" ? 300 : 1160;
+  const age = (t - cap.s) * FPS;
+  const pop = interpolate(age, [0, 4], [0.86, 1], { extrapolateRight: "clamp" });
+  const quiet = t > 108;
+  return (
+    <div style={{ position: "absolute", left: 70, right: 180, top, display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "0 34px", transform: `scale(${pop})`, transformOrigin: "50% 50%" }}>
+      {cap.words.map((w, i) => {
+        const active = t >= w.s - 0.03 && (t < w.e || i === cap.words.length - 1);
+        const spoken = t >= w.s - 0.03;
+        return (
+          <span key={i} style={{
+            fontFamily: "Montserrat", fontWeight: 800, fontSize: 74, lineHeight: 1.12, letterSpacing: 0.5, textTransform: "uppercase",
+            color: active && !quiet ? "#ffb35c" : spoken ? "#ffffff" : "rgba(255,255,255,0.92)", ...STROKE_P2,
+            transform: active && !quiet ? "translateY(-3px) scale(1.06)" : "none", display: "inline-block",
+          }}>{w.w}</span>
+        );
+      })}
+    </div>
+  );
+};
+/** frame 0: the hook, already on screen (also the thumbnail) */
+const HookP3: React.FC<{ f: number }> = ({ f }) => {
+  if (f >= 88) return null;
+  const o = interpolate(f, [76, 86], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const big: React.CSSProperties = { fontFamily: "Montserrat", fontWeight: 800, fontSize: 112, lineHeight: 1.02, color: "#ffffff", textAlign: "center", ...STROKE_P2, WebkitTextStroke: "14px #07060c" };
+  return (
+    <div style={{ position: "absolute", top: 300, left: 30, right: 30, opacity: o, display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <div style={{ fontFamily: "Anton", fontSize: 50, letterSpacing: 12, color: "#ffb35c", ...STROKE_P2, WebkitTextStroke: "8px #07060c", marginBottom: 10 }}>PART 3</div>
+      <div style={big}>IT HAS</div>
+      <div style={{ ...big, color: "#ff5a4a" }}>YOUR FACE</div>
+    </div>
+  );
+};
+/** RUN!: slammed onto the screen, shaking, gone in under a second */
+const RunSlam: React.FC<{ f: number }> = ({ f }) => {
+  const t = f / FPS;
+  const at = RUN_AT.find((a) => t >= a - 0.02 && t < a + 0.85);
+  if (at === undefined) return null;
+  const age = (t - at) * FPS;
+  const sc = interpolate(age, [0, 3, 6], [2.2, 0.95, 1], { extrapolateRight: "clamp" });
+  const o = interpolate(age, [0, 1, 20, 25], [0, 1, 1, 0], { extrapolateRight: "clamp" });
+  const jx = Math.sin(age * 3.1) * Math.max(0, 14 - age) * 1.2, jy = Math.cos(age * 2.3) * Math.max(0, 14 - age) * 0.9;
+  return (
+    <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
+      <div style={{ transform: `translate(${jx}px, ${jy - 120}px) scale(${sc})`, opacity: o, fontFamily: "Anton", fontSize: 260, letterSpacing: 10, color: "#ff3a2a", ...STROKE_P2, WebkitTextStroke: "16px #07060c", textShadow: "0 0 40px rgba(255,60,40,0.6)" }}>RUN!</div>
+    </AbsoluteFill>
+  );
+};
+const P3_FEED: Record<string, string> = { T08: "CAM 12 · 5TH ST", T09: "CAM 03 · LAUNDRY" };
+const FeedUI3: React.FC<{ f: number }> = ({ f }) => {
+  const fs = p3At(f);
+  const cam = P3_FEED[fs.id];
+  if (!cam) return null;
+  const sf = (fs.from ?? 0) + (f - fs.a);
+  const post = fs.src?.post?.(sf);
+  const g = post?.glitch ?? 0, dead = (post?.noise ?? 0) >= 1;
+  const jx = g > 0 ? Math.round(Math.sin(f * 12.9898) * 18 * g) : 0;
+  const rec = Math.floor(f / 15) % 2 === 0;
+  const mono: React.CSSProperties = { fontFamily: "JetBrains Mono", fontWeight: 500, fontSize: 32, letterSpacing: 2, color: "rgba(235,255,240,0.9)", textShadow: "0 0 6px rgba(160,255,190,0.45), 0 2px 4px rgba(0,0,0,0.8)" };
+  return (
+    <AbsoluteFill style={{ transform: `translateX(${jx}px)` }}>
+      {!dead && <>
+        <div style={{ ...mono, position: "absolute", left: 86, top: 262, display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ display: "inline-block", width: 22, height: 22, borderRadius: 11, background: rec ? "#ff3b3b" : "transparent", boxShadow: rec ? "0 0 10px #ff3b3b" : "none" }} />REC
+        </div>
+        <div style={{ ...mono, position: "absolute", right: 86, top: 262, textAlign: "right" }}>{cam}</div>
+        <div style={{ ...mono, position: "absolute", right: 86, top: 306, textAlign: "right" }}>LIVE  06:12:00</div>
+      </>}
+      {dead && <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
+        <div style={{ ...mono, fontSize: 64, letterSpacing: 10, background: "rgba(0,0,0,0.6)", padding: "18px 40px" }}>NO SIGNAL</div>
+      </AbsoluteFill>}
+    </AbsoluteFill>
+  );
+};
+/** the end: black, then PART 4 · FINALE */
+const End3: React.FC<{ f: number }> = ({ f }) => {
+  const fs = p3At(f);
+  if (fs.id !== "END3") return null;
+  const age = f - fs.a;
+  const o = interpolate(age, [8, 26], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  return (
+    <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", opacity: o }}>
+      <div style={{ fontFamily: "Anton", fontSize: 170, letterSpacing: 16, color: "#f2efe9", lineHeight: 1 }}>PART 4</div>
+      <div style={{ fontFamily: "JetBrains Mono", fontWeight: 500, fontSize: 44, letterSpacing: 18, color: "#ffb35c", marginTop: 18 }}>FINALE</div>
+    </AbsoluteFill>
+  );
+};
+export const Part3Overlay: React.FC = () => {
+  const f = useCurrentFrame();
+  useFonts();
+  return (
+    <AbsoluteFill>
+      <FeedUI3 f={f} />
+      <HookP3 f={f} />
+      <CaptionsP3 f={f} />
+      <RunSlam f={f} />
+      <End3 f={f} />
+    </AbsoluteFill>
+  );
+};
+export const Part3Preview: React.FC = () => (
+  <AbsoluteFill style={{ background: "#000" }}>
+    <Part3Plate />
+    <Part3Overlay />
+  </AbsoluteFill>
+);

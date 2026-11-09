@@ -1,0 +1,19 @@
+{"voice": "am_michael", "speed": 1.0, "lines": [
+ ["Q01", "You turned around... and it was already inside."],
+ ["Q02", "It looks exactly like you."],
+ ["Q03", "It moves... nothing like you."],
+ ["RUN1", "Run!", 1.1],
+ ["Q05", "And every camera in the city... wakes up."],
+ ["Q06", "It's already there."],
+ ["Q06B", "You run the other way. It's there too."],
+ ["Q07", "It can go anywhere a camera can see you."],
+ ["Q08", "So you break them."],
+ ["Q09", "One by one."],
+ ["Q10", "There's only one place in this city with no cameras."],
+ ["Q11", "Underground."],
+ ["Q12A", "Your phone buzzes. A live feed... of you."],
+ ["Q12", "There are no cameras down here."],
+ ["RUN2", "Run!", 1.1],
+ ["Q14", "For three days, nothing moved. Now... the train does."],
+ ["Q15", "You're not alone on this train.", 0.86]
+]}

@@ -7,8 +7,9 @@ import { SkyDome, Skyline, SkyLook } from "./skyline";
 import { Card } from "../char/card";
 import { drawCharacter, Frame, Light, Pose } from "../char/draw";
 import { aimCctv } from "./props";
+import { fireEscape, hallway, Sparks, Subway, subwayEntrance } from "./part3";
 
-export type Look = "sunrise" | "morning" | "overcast" | "dusk" | "night" | "aptNight" | "photo";
+export type Look = "sunrise" | "morning" | "overcast" | "dusk" | "night" | "aptNight" | "photo" | "subway";
 
 const SKY: Record<Look, SkyLook> = {
   sunrise: { top: "#16204a", mid: "#5a4a86", horizon: "#ff9a62", below: "#2a2236", sunDir: [1, 0.07, -0.32], sunCol: "#ffb070", sunSize: 0.0028, glow: 1.3, clouds: 0.65, cloudCol: "#c87a78", stars: 0 },
@@ -18,10 +19,11 @@ const SKY: Record<Look, SkyLook> = {
   night: { top: "#04060f", mid: "#0c1230", horizon: "#2a2452", below: "#0a0a14", sunDir: [0, -1, 0], sunCol: "#000000", sunSize: 0, glow: 0, clouds: 0.35, cloudCol: "#3a2c62", stars: 0.5 },
   aptNight: { top: "#04060f", mid: "#0c1230", horizon: "#2c2456", below: "#0a0a14", sunDir: [0, -1, 0], sunCol: "#000000", sunSize: 0, glow: 0, clouds: 0.35, cloudCol: "#3a2c62", stars: 0.5 },
   photo: { top: "#04060f", mid: "#0c1230", horizon: "#2c2456", below: "#0a0a14", sunDir: [0, -1, 0], sunCol: "#000000", sunSize: 0, glow: 0, clouds: 0.3, cloudCol: "#3a2c62", stars: 0.4 },
+  subway: { top: "#000000", mid: "#020206", horizon: "#04040a", below: "#000000", sunDir: [0, -1, 0], sunCol: "#000000", sunSize: 0, glow: 0, clouds: 0, cloudCol: "#000000", stars: 0 },
 };
 const FOG: Record<Look, [string, number]> = {
   sunrise: ["#3a2c4a", 0.012], morning: ["#3a3050", 0.012], overcast: ["#8a96aa", 0.0125], dusk: ["#6a4a6e", 0.011],
-  night: ["#151838", 0.02], aptNight: ["#0a0c1c", 0.02], photo: ["#0a0c1c", 0.02],
+  night: ["#151838", 0.02], aptNight: ["#0a0c1c", 0.02], photo: ["#0a0c1c", 0.02], subway: ["#050608", 0.03],
 };
 
 export class World {
@@ -48,6 +50,14 @@ export class World {
   envs = new Map<string, THREE.Texture>();
   phone: THREE.Group;
   phoneScreen: THREE.Mesh;
+  // Part 3
+  sub = new Subway();
+  hall = hallway();
+  escape = fireEscape();
+  subEntrance = subwayEntrance();
+  sparks = [1, 2, 3, 4, 5, 6, 7, 8].map((k) => new Sparks(70, k));
+  feedImg: HTMLImageElement | null = null;
+  feedTex: THREE.Texture | null = null;
 
   constructor() {
     const S = this.scene;
@@ -57,7 +67,10 @@ export class World {
     this.skyline.root.position.set(0, 0, 0);
     this.aptRoot.add(this.skyline.root);
     this.cityRoot.add(this.city.root);
-    S.add(this.aptRoot, this.cityRoot);
+    S.add(this.aptRoot, this.cityRoot, this.sub.root);
+    this.aptRoot.add(this.hall.group, this.escape);
+    this.subEntrance.position.set(-9.6, 0.15, -14.0); this.subEntrance.rotation.y = Math.PI / 2; this.cityRoot.add(this.subEntrance);
+    for (const sp of this.sparks) S.add(sp.points);
     for (const c of [this.hero, this.refl, this.cu, this.watcher, this.pigeon, this.hand, this.glow]) c.add(S);
     this.glow.mat.blending = THREE.AdditiveBlending; this.glow.mat.depthWrite = false; this.glow.mat.alphaTest = 0; this.glow.mat.color.setScalar(2.6);
     this.glow.mesh.renderOrder = 40; this.glow.blob.visible = false;
@@ -78,13 +91,23 @@ export class World {
     const [fc, fd] = FOG[look];
     this.fog.color.set(fc); this.fog.density = fd;
     const inApt = look === "sunrise" || look === "morning" || look === "aptNight" || look === "photo";
-    this.aptRoot.visible = inApt; this.cityRoot.visible = !inApt;
+    const inSub = look === "subway";
+    this.aptRoot.visible = inApt; this.cityRoot.visible = !inApt && !inSub; this.sub.root.visible = inSub;
+    this.hall.light.intensity = 0;
+    for (const sp of this.sparks) { sp.points.visible = false; (sp.points.material as THREE.PointsMaterial).color.set("#ffffff"); sp.glass = false; }
+    this.subEntrance.visible = false;
+    for (const c of [this.hero, this.refl, this.cu, this.watcher, this.glow, this.hand]) c.pivot.scale.setScalar(1);
+    this.hero.mat.opacity = 1;
+    for (const c of this.city.cams) c.led.visible = true;
+    this.sub.torch.intensity = 0; this.sub.beam.visible = false; this.sub.train.position.set(0, 0, 0); this.sub.trainLight.intensity = 0;
+    this.sub.setDoors(0); this.sub.setClock("06:12"); this.sub.lamp.intensity = 0; this.sub.topGlow.intensity = 2.2; this.sub.exitLight.intensity = 0.9;
+    for (const fg of this.sub.figures) { fg.body.visible = false; fg.eyes.visible = false; fg.body.rotation.set(0, 0, 0); fg.eyes.rotation.set(0, 0, 0); fg.body.position.copy(fg.base); fg.eyes.position.copy(fg.base); }
     if (inApt) {
       this.apt.setLook(look === "aptNight" || look === "photo" ? "night" : (look as "sunrise" | "morning"), t, frame);
       this.skyline.setNight(look === "aptNight" || look === "photo" ? 1 : 0, t);
       // the skyline sits outside the window; fog there is thinner so the city reads
       this.fog.density = look === "sunrise" || look === "morning" ? 0.0042 : 0.0045;
-    } else this.city.setLook(look as "overcast" | "dusk" | "night", t);
+    } else if (!inSub) this.city.setLook(look as "overcast" | "dusk" | "night", t);
     this.hero.visible = false; this.refl.visible = false; this.cu.visible = false; this.watcher.visible = false;
     this.pigeon.visible = false; this.hand.visible = false; this.glow.visible = false;
     for (const c of [this.hero, this.refl, this.cu]) c.pivot.rotation.set(0, 0, 0);
@@ -128,6 +151,27 @@ export class World {
     if (m.map !== this.msgTex) { m.map = this.msgTex; m.color.setScalar(1.2); m.needsUpdate = true; }
   }
 
+  /** Part 3: the phone shows a live night-vision feed of you, from behind, on the platform */
+  feedScreen(blink: boolean) {
+    if (this.feedTex && !this.feedTex.userData.hasImg && this.feedImg) { this.feedTex.dispose(); this.feedTex = null; }   // built before the image loaded
+    if (!this.feedTex) {
+      const c = document.createElement("canvas"); c.width = 680; c.height = 1460;
+      const x = c.getContext("2d")!;
+      x.fillStyle = "#050806"; x.fillRect(0, 0, 680, 1460);
+      const img = this.feedImg;
+      if (img) { const ih = (680 * img.height) / img.width; x.drawImage(img, 0, (1460 - ih) / 2, 680, ih); }
+      x.fillStyle = "rgba(0,0,0,0.55)"; x.fillRect(0, 0, 680, 150); x.fillRect(0, 1310, 680, 150);
+      x.fillStyle = "#e8fff0"; x.font = "600 40px monospace"; x.fillText("LIVE", 92, 92);
+      x.font = "500 32px monospace"; x.textAlign = "right"; x.fillText("CAM 00 · PLATFORM 2", 646, 92);
+      x.textAlign = "left"; x.fillText("06:12:00", 40, 1395);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; t.userData.hasImg = !!img;
+      this.feedTex = t;
+    }
+    const m = this.phoneScreen.material as THREE.MeshBasicMaterial;
+    if (m.map !== this.feedTex) { m.map = this.feedTex; m.needsUpdate = true; }
+    m.color.setScalar(blink ? 1.35 : 1.2);
+  }
+
   /** the phone shows its lock screen: no service, the frozen clock, nothing new */
   lockScreen() {
     if (!this.lockTex) {
@@ -161,7 +205,7 @@ export class World {
 
   /** prefiltered environment for reflections (wet road, cars, glass): the look's sky plus a few glowing panels */
   envFor(look: Look, gl: THREE.WebGLRenderer) {
-    const key = look === "aptNight" || look === "photo" ? "night" : look === "morning" ? "sunrise" : look;
+    const key = look === "aptNight" || look === "photo" || look === "subway" ? "night" : look === "morning" ? "sunrise" : look;
     const hit = this.envs.get(key); if (hit) return hit;
     const es = new THREE.Scene();
     const sky = new SkyDome(40); sky.set(SKY[key as Look]); es.add(sky.mesh);

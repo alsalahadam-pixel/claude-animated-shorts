@@ -754,7 +754,8 @@ function hairLocks(pt: Painter, view: HeadView, sh: string, li: string) {
 // ---------------------------------------------------------------- public draw
 export type Frame = { x0: number; y0: number; w: number; h: number };   // character-space rect mapped to the canvas
 
-export function drawCharacter(ctx: Ctx, P: Pose, L: Light, F: Frame, opts: { lineK?: number; clear?: boolean; phoneLight?: boolean; onHead?: (m: DOMMatrix) => void } = {}) {
+export type HandPts = { wrL: Vec; wrR: Vec; elL: Vec; elR: Vec; pt: Painter };
+export function drawCharacter(ctx: Ctx, P: Pose, L: Light, F: Frame, opts: { lineK?: number; clear?: boolean; phoneLight?: boolean; onHead?: (m: DOMMatrix) => void; onHands?: (ctx: Ctx, h: HandPts) => void } = {}) {
   const W = ctx.canvas.width, Hc = ctx.canvas.height;
   if (opts.clear !== false) ctx.clearRect(0, 0, W, Hc);
   ctx.save();
@@ -849,6 +850,7 @@ export function drawCharacter(ctx: Ctx, P: Pose, L: Light, F: Frame, opts: { lin
     }
     if (!back) for (const { k } of sides) pt.part(limbPath([[m[0] + k * (hw + 0.6), y0 + 2.6], [m[0] + k * (hw - 1.4 * fx), y0 + 5.0], [m[0] + k * (hw - 2.6 * fx), y0 + 6.4]], [2.3, 2.0, 1.7]), PAL.skin, { dim: 1, shade: 0.35, lw: 0.55, rim: 0.2 });
   }
+  if (opts.onHands) opts.onHands(ctx, { wrL: R.proj(R.wrL), wrR: R.proj(R.wrR), elL: R.proj(R.elL), elR: R.proj(R.elR), pt });
   ctx.restore();
 }
 
@@ -884,6 +886,13 @@ function possessedGrin(pt: Painter, s: number) {
   c.restore();
 }
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+/** Part 3: the same glow drawn in the head's own space (call after setting the transform captured by onHead) */
+export function possessedGlowHead(ctx: Ctx, eyes: number, smile: number) {
+  ctx.fillStyle = "#cfe0ff";
+  const o = clamp01((eyes - 0.25) / 0.75);
+  if (o > 0) for (const side of [-1, 1]) { ctx.beginPath(); ctx.ellipse(side * 3.9 + side * 0.2, -0.85, 2.2, 1.25 * o, side * 0.18, 0, Math.PI * 2); ctx.fill(); }
+  if (smile > 0.02) { ctx.globalAlpha = 0.28; ctx.fill(grinPath(smile).p); ctx.globalAlpha = 1; }
+}
 /** Part 2: only the entity's white eyes and grin on his face, for the additive glow card (same frame and tilt as drawHeadOnly) */
 export function possessedGlow(ctx: Ctx, F: Frame, eyes: number, smile: number, tilt = 0) {
   const W = ctx.canvas.width, Hc = ctx.canvas.height;
