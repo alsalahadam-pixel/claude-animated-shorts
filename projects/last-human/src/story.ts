@@ -1130,9 +1130,10 @@ export const p2At = (F: number) => P2.find((s) => F >= s.a && F < s.b) ?? P2[P2.
 type Fr = { x0: number; y0: number; w: number; h: number };
 const COPY_FACE: Partial<Face> = { open: 1.0, pupil: 0.85, shine: false, brow: -0.15, browIn: -0.1, mouth: "neutral", mouthOpen: 0 };
 const HALL_BACK: Light = { key: "#aab6e0", keyK: 0.58, amb: "#343a6a", ambK: 0.52, dir: 70, rim: { color: "#e6efff", k: 1.2, dir: 75, w: 1.6 } };
-const ROOM_P3: Light = { ...NIGHT_ROOM, keyK: 0.68, ambK: 0.58 };
+// moonlight on skin: pale and cool, not purple (the room's purple stays in the set)
+const ROOM_P3: Light = { key: "#d8d4f2", keyK: 0.66, amb: "#383e74", ambK: 0.56, dir: 20, rim: { color: "#4fd8d0", k: 0.6, dir: 15, w: 1.0 } };
 const TORCH_L: Light = { key: "#eef2ff", keyK: 1.0, amb: "#181b2c", ambK: 0.32, dir: 30, rim: { color: "#6a7cff", k: 0.3, dir: 20, w: 0.7 } };
-const BACKLIT_TORCH: Light = { key: "#3a4060", keyK: 0.35, amb: "#0c0e18", ambK: 0.3, dir: 90, rim: { color: "#e8eeff", k: 0.9, dir: 80, w: 1.2 } };
+const BACKLIT_TORCH: Light = { key: "#4a5278", keyK: 0.5, amb: "#12141f", ambK: 0.38, dir: 90, rim: { color: "#e8eeff", k: 1.0, dir: 80, w: 1.3 } };
 const TRAIN_L: Light = { key: "#c2ceff", keyK: 0.78, amb: "#2a3060", ambK: 0.52, dir: 95, rim: { color: "#6a7cff", k: 0.35, dir: 30, w: 0.8 } };
 const P3_BODY: Fr = { x0: -70, y0: -8, w: 140, h: 210 };
 const FIGURE_FR: Fr = { x0: -60, y0: -8, w: 120, h: 205 };
@@ -1155,6 +1156,23 @@ function placeHim(w: World, card: Card3, pose: Pose, L: Light, F: Fr, p: THREE.V
   card.stand(p, cam.position); card.visible = true; card.blob.visible = o.blob ?? true;
 }
 type Card3 = World["hero"];
+/** capture his fists while the card is drawn (rig space -> card space), to put 3D things in them once the card is placed */
+type HandsCap = { L: THREE.Vector3; R: THREE.Vector3 };
+const newCap = (): HandsCap => ({ L: new THREE.Vector3(), R: new THREE.Vector3() });
+function capHands(F: Fr, out: HandsCap, also?: (ctx: CanvasRenderingContext2D, h: HandPts) => void) {
+  return (ctx: CanvasRenderingContext2D, h: HandPts) => {
+    const m = ctx.getTransform(), W = ctx.canvas.width, H = ctx.canvas.height;
+    const map = (wr: [number, number], el: [number, number], v: THREE.Vector3) => {
+      const dx = wr[0] - el[0], dy = wr[1] - el[1], l = Math.hypot(dx, dy) || 1;   // the middle of the fist, a little past the wrist
+      const q = m.transformPoint(new DOMPoint(wr[0] + (dx / l) * 6, wr[1] + (dy / l) * 6));
+      v.set((F.x0 + (q.x * F.w) / W) / 100, (F.y0 + ((H - q.y) * F.h) / H) / 100, 0);
+    };
+    map(h.wrL, h.elL, out.L); map(h.wrR, h.elR, out.R);
+    also?.(ctx, h);
+  };
+}
+/** a captured card-space point, in the world (after the card has been placed) */
+function onCard(card: Card3, v: THREE.Vector3) { card.pivot.updateMatrixWorld(true); return card.pivot.localToWorld(v.clone()); }
 /** a metal pipe in both hands: through the hands, along the line between them (or the forearm), well past the front hand */
 const pipeHands = (ctx: CanvasRenderingContext2D, h: HandPts) => {
   let dx = h.wrR[0] - h.wrL[0], dy = h.wrR[1] - h.wrL[1], L = Math.hypot(dx, dy);
@@ -1181,12 +1199,13 @@ function run(psi: number, phase: number, face: Partial<Face>): Pose {
   return p;
 }
 function scramble(psi: number, t: number, face: Partial<Face>): Pose {
+  // on his backside, leaning far back on both hands planted behind him, heels kicking at the floor to shove himself away
   const p = floorSit(t, face, { psi, hands: "fist" });
-  const c = Math.sin(t * 2 * Math.PI * 1.7);
-  p.lean = -16; p.hip = [0, 17, 0];
-  p.legL = [112 + 16 * c, 14, 100 + 22 * c]; p.legR = [112 - 16 * c, 18, 100 - 22 * c];
-  p.armL = [-52, 20, 8]; p.armR = [-52, 20, 8]; p.handL = "open"; p.handR = "open"; p.phoneGlow = 0;
-  p.headNod = -12; p.breathe = Math.sin(t * 2 * Math.PI * 1.4);
+  const c = Math.sin(t * 2 * Math.PI * 1.7), c2 = Math.sin(t * 2 * Math.PI * 1.7 + 1.3);
+  p.lean = -32 + 4 * c2; p.hip = [0, 14, 0]; p.legsFront = false;
+  p.legL = [96 + 18 * c, 12, 92 + 26 * c]; p.legR = [96 - 18 * c, 16, 92 - 26 * c];
+  p.armL = [-30 + 8 * c, 28, -6]; p.armR = [-30 - 8 * c, 28, -6]; p.handL = "open"; p.handR = "open"; p.phoneGlow = 0;
+  p.headNod = 8; p.breathe = Math.sin(t * 2 * Math.PI * 1.4);
   return p;
 }
 function crouch(psi: number, t: number, face: Partial<Face>): Pose {
@@ -1228,12 +1247,15 @@ const T01: Shot = {
 /** 0:03 you scramble backwards across the floor; it steps in, in jerks */
 const T02: Shot = {
   id: "T02", a: 0, b: 180, look: "aptNight", grade: "night",
-  cam: glide(0, 180, { pos: [-0.85, 0.78, -0.35], look: [-2.1, 1.0, 2.9], fov: 44 }, { pos: [-0.8, 0.78, -0.55], look: [-2.05, 1.0, 2.7], fov: 42 }),
+  // low, behind him: he shoves himself backwards across the floor toward us, leaning back on his hands; it comes in
+  cam: glide(0, 180, { pos: [-1.2, 0.55, -0.15], look: [-2.0, 1.1, 2.7], fov: 50 }, { pos: [-1.18, 0.52, -0.3], look: [-1.98, 1.15, 2.55], fov: 50 }),
   dof: () => ({ cInf: 5, focus: [-2.1, 1.2, 2.6] }),
+  // the copy skips like a broken video: a small tear on every other jump, a big one on the long skip
+  post: (f) => ({ glitch: f === 119 || f === 120 ? 0.85 : f > 0 && f % 10 === 0 ? 0.2 : 0 }),
   act: (f, w, cam) => {
     p3Room(w); w.apt.doorPivot.rotation.y = 1.72;
     const t = f / FPS;
-    const hp = V([-2.0, 0, 2.15]).lerp(V([-1.55, 0, 1.15]), ss(f / 150));
+    const hp = V([-2.0, 0, 2.2]).lerp(V([-1.78, 0, 1.2]), ss(f / 150));
     const pose = scramble(World.psi(hp, V([-0.3, 0, 1]), cam), t, { ...SCARED, look: [0, 0.5] });
     pose.headPsi = World.psi(hp, V([-0.3, 0, 1]), cam);
     placeHim(w, w.hero, pose, ROOM_P3, P3_BODY, hp, cam);
@@ -1283,7 +1305,7 @@ const T04: Shot = {
   id: "T04", a: 0, b: 210, look: "aptNight", grade: "night",
   // outside, from the top of the stairs: he crashes through the window, crouches, runs at us and down past us.
   // Then the camera turns to the wall beside the window: it comes out, upside down, and crawls down after him.
-  cam: (f) => { const k = ss((f - 100) / 36); return { pos: lerp3([4.6, 1.5, 2.3], [5.45, 1.35, -0.55], k), look: lerp3([3.6, 0.95, 0.25], [3.56, 1.55, -2.95], k), fov: lerp(56, 36, k) }; },
+  cam: (f) => { const k = ss((f - 100) / 36), d = ss((f - 150) / 60); return { pos: lerp3([4.6, 1.5, 2.3], [5.65, 1.3, -0.35], k), look: lerp3([3.6, 0.95, 0.25], [3.56, 1.95 - 0.25 * d, -2.9], k), fov: lerp(56, 46, k) }; },
   dof: () => ({ cInf: 0 }),
   act: (f, w, cam) => {
     p3Room(w, 0.6); w.apt.doorPivot.rotation.y = 1.72;
@@ -1307,9 +1329,15 @@ const T04: Shot = {
       const g = stutter(f - 96, 5);
       const out = f >= 128;
       const pose = stand(0, g / FPS, {});
-      pose.breathe = 0; pose.headTilt = out ? 0 : lerp(0, 70, ss((f - 104) / 16)); pose.headNod = out ? -20 : -8;
-      if (out) { const ph = g / 10; pose.armL = [165 + 10 * Math.sin(ph), 18, 20]; pose.armR = [165 - 10 * Math.sin(ph), 18, 20]; pose.legL = [12 * Math.sin(ph), 10, 30]; pose.legR = [-12 * Math.sin(ph), 10, 30]; }
-      const pw = out ? V([3.56, 2.95 - Math.min(0.9, (g - 32) * 0.012), -2.95]) : V([3.25, 0.32, -0.15]);
+      pose.breathe = 0; pose.headTilt = out ? 14 * Math.sin(g * 0.21) : lerp(0, 70, ss((f - 104) / 16)); pose.headNod = out ? -26 : -8;
+      if (out) {
+        // a spider on the wall, head first: arms and legs splayed wide and bent, reaching one limb at a time
+        const ph = g / 9, a = Math.sin(ph), b = Math.sin(ph + Math.PI);
+        pose.armL = [10, 78 + 14 * a, 128 + 26 * a]; pose.armR = [10, 78 + 14 * b, 128 + 26 * b];
+        pose.legL = [14, 44 + 10 * b, 70 + 22 * b]; pose.legR = [14, 44 + 10 * a, 70 + 22 * a];
+        pose.handL = "open"; pose.handR = "open"; pose.lean = 0;
+      }
+      const pw = out ? V([3.56, 3.05 - Math.min(0.62, (g - 32) * 0.008), -2.9]) : V([3.25, 0.32, -0.15]);
       placeCopy(w, pose, { ...ROOM_P3, keyK: 0.8 }, P3_BODY, pw, cam, { blob: false });
       if (out) { w.refl.pivot.rotation.set(0, Math.PI / 2, 0); w.refl.pivot.rotateZ(Math.PI); w.glow.pivot.quaternion.copy(w.refl.pivot.quaternion); w.glow.pivot.position.copy(w.refl.pivot.position); }
     }
@@ -1335,11 +1363,13 @@ const T05: Shot = {
 const COPY_FAR = V([10.15, 0.15, -26]);
 const T06: Shot = {
   id: "T06", a: 0, b: 120, look: "night", grade: "night",
-  cam: (f) => ({ pos: lerp3([10.75, 1.72, -3.9], [10.72, 1.7, -4.3], ss(f / 120)), look: [10.35, 1.35, -26], fov: lerp(24, 19, ss(f / 120)) }),
-  dof: () => ({ cInf: 6, focus: [10.15, 1.5, -26] }),
+  // over his shoulder, long lens: the back of his head dark at the edge of frame, and far down the street, under a camera, it
+  cam: (f) => ({ pos: lerp3([10.62, 1.86, -3.6], [10.6, 1.84, -4.0], ss(f / 120)), look: [10.25, 1.3, -26], fov: lerp(22, 17, ss(f / 120)) }),
+  dof: () => ({ cInf: 2.2, focus: [10.15, 1.5, -26] }),
+  post: (f) => ({ glitch: f === 72 ? 0.45 : 0 }),
   act: (f, w, cam) => {
     p3Street(w);
-    const me = V([10.98, 0.15, -6.4]);
+    const me = V([11.12, 0.15, -6.0]);
     const pose = stand(World.psi(me, V([0, 0, -1]), cam), f / FPS, SCARED); pose.breathe = Math.sin(f * 0.5); pose.lean = 10;
     placeHim(w, w.hero, pose, NEON, P3_BODY, me, cam);
     w.aimCams(me.clone().add(V([0, 1.6, 0])), 1);
@@ -1350,16 +1380,20 @@ const T06: Shot = {
 const COPY_NEAR = V([10.55, 0.15, 2.4]);
 const T07: Shot = {
   id: "T07", a: 0, b: 150, look: "night", grade: "night",
+  // in front of him first (he is looking back at it, far up the street, past us), then he spins and runs the other way,
+  // away from us, and the camera runs after him: it is standing right in front of him
   cam: (f) => {
-    const whip = ss((f - 8) / 9);
     const zMe = lerp(-6, -0.4, clamp((f - 12) / 40));
-    return { pos: [lerp(10.9, 9.6, whip), 1.55, zMe - lerp(1.2, 2.8, whip)], look: lerp3([10.2, 1.45, -26], [10.5, 1.4, 4], whip), fov: lerp(30, 44, whip) };
+    return { pos: [lerp(10.25, 9.55, ss((f - 14) / 30)), 1.55, zMe - lerp(2.3, 2.9, ss(f / 40))], look: [10.5, 1.4, 4], fov: lerp(38, 44, ss((f - 8) / 30)) };
   },
-  dof: () => ({ cInf: 3, focus: [10.5, 1.4, 2] }),
+  dof: (f) => ({ cInf: 2.5, focus: f < 40 ? [10.4, 1.5, lerp(-6, -0.4, clamp((f - 12) / 40))] : [10.55, 1.5, 2.4] }),
+  post: (f) => ({ glitch: f === 44 ? 0.9 : f === 45 ? 0.5 : 0 }),
   act: (f, w, cam) => {
     p3Street(w);
     const runK = clamp((f - 12) / 40), z = lerp(-6, -0.4, runK), me = V([10.4, 0.15, z]);
-    const pose = f >= 12 && f < 52 ? run(World.psi(me, V([0, 0, 1]), cam), (z + 6) / 2.5, SCARED) : stand(World.psi(me, V([0, 0, f < 12 ? -1 : 1]), cam), f / FPS, SCARED);
+    const turn = ss((f - 4) / 8), dir = V([Math.sin(Math.PI * (1 - turn)) * 0.3, 0, -Math.cos(Math.PI * turn)]);
+    const pose = f >= 12 && f < 52 ? run(World.psi(me, V([0, 0, 1]), cam), (z + 6) / 2.5, SCARED) : stand(World.psi(me, f < 12 ? dir : V([0, 0, 1]), cam), f / FPS, SCARED);
+    if (f < 12) { pose.headNod = -4; pose.lean = 6; pose.breathe = Math.sin(f * 0.6); }
     if (f >= 52) { pose.lean = -6; pose.breathe = Math.sin(f * 0.5); }
     placeHim(w, w.hero, pose, NEON, P3_BODY, me, cam);
     w.aimCams(me.clone().add(V([0, 1.6, 0])), 1);
@@ -1391,19 +1425,31 @@ function irLight3(w: World, at: THREE.Vector3) { w.practical(2, [at.x, at.y, at.
 const LAUNDRY_LENS = V([12.55, 2.42, -11.35]);
 const T09: Shot = {
   id: "T09", a: 0, b: 120, look: "night", grade: "cctv",
-  cam: (f) => { const hit = f >= 78 ? Math.sin((f - 78) * 2.2) * Math.exp(-(f - 78) / 4) : 0; return { pos: [LAUNDRY_LENS.x, LAUNDRY_LENS.y, LAUNDRY_LENS.z], look: [11.1 + hit * 0.3, 1.0 - hit * 0.5, -10.4], fov: 56, roll: hit * 12 }; },
+  cam: (f) => { const hit = f >= 78 ? Math.sin((f - 78) * 2.2) * Math.exp(-(f - 78) / 4) : 0; return { pos: [LAUNDRY_LENS.x, LAUNDRY_LENS.y, LAUNDRY_LENS.z], look: [11.15 + hit * 0.3, 1.25 - hit * 0.5, -10.45], fov: 62, roll: hit * 12 }; },
   dof: () => ({ cInf: 0 }),
   post: (f) => ({ glitch: f >= 76 ? Math.min(1, (f - 76) / 4) : f >= 30 && f < 33 ? 0.3 : 0, noise: f >= 82 ? 1 : f >= 78 ? (f - 78) / 4 : 0 }),
   act: (f, w, cam) => {
     p3Street(w); irLight3(w, cam.position);
-    const me = V([11.25, 0.15, -10.55]);
-    const raise = ramp(f, 34, 60), swing = ramp(f, 72, 79);
+    const raise = ramp(f, 34, 58), swing = ramp(f, 72, 78);
+    const toLens = LAUNDRY_LENS.clone().setY(0).sub(V([11.25, 0, -10.55])).normalize();
+    const me = V([11.25, 0.15, -10.55]).addScaledVector(toLens, 0.45 * ss(swing));   // he steps in with the swing
     const pose = stand(World.psi(me, V([0.6, 0, -0.5]), cam), f / FPS, { open: 1.2, pupil: 0.55, brow: -0.4, browIn: -0.6, mouth: "tight", look: [0, 0.6] });
     pose.headNod = -24; pose.headPsi = World.psi(me, V([0.55, 0, -0.6]), cam);
-    const up = lerp(lerp(10, 158, raise), 42, swing);
-    pose.armL = [up, 14, lerp(20, 40, raise)]; pose.armR = [up + 6, 10, lerp(20, 34, raise)]; pose.handL = "fist"; pose.handR = "fist";
-    pose.lean = lerp(2, -8, raise) + 22 * swing;
-    placeHim(w, w.hero, pose, NEON, P3_BODY, me, cam, pipeHands);
+    // both fists on the pipe at his waist; up over his head, cocked back; then swung, hard, at the lens
+    const sh = (a: number, b: number, c: number) => lerp(lerp(a, b, raise), c, swing);
+    pose.armL = [sh(34, 164, 122), sh(-16, 6, -6), sh(62, 26, 4)]; pose.armR = [sh(30, 158, 118), sh(-12, 10, -4), sh(66, 30, 6)];
+    pose.handL = "fist"; pose.handR = "fist";
+    pose.lean = lerp(2, -10, raise) + 26 * swing;
+    const hc = newCap();
+    placeHim(w, w.hero, pose, NEON, P3_BODY, me, cam, capHands(P3_BODY, hc));
+    const H = onCard(w.hero, hc.L).add(onCard(w.hero, hc.R)).multiplyScalar(0.5);
+    // the pipe (in 3D, so it can come at the lens): hanging from his fists, then back over his shoulder, then at the lens
+    const up = V([0, 1, 0]), side = toLens.clone().cross(up).normalize();
+    const dRest = side.clone().multiplyScalar(0.5).addScaledVector(up, -0.8).addScaledVector(toLens, 0.3).normalize();
+    const dUp = up.clone().multiplyScalar(0.75).addScaledVector(toLens, -0.6).addScaledVector(side, 0.25).normalize();
+    const dHit = LAUNDRY_LENS.clone().sub(H).normalize();
+    const d = dRest.clone().lerp(dUp, ss(raise)).normalize().lerp(dHit, ss(swing)).normalize();
+    w.pipe.set([H.clone().addScaledVector(d, -0.14), H.clone().addScaledVector(d, 0.98)]);
   },
 };
 // ---- breaking them
@@ -1412,60 +1458,74 @@ function droop(c: { pan: THREE.Group; tilt: THREE.Group; led: THREE.Mesh }, k: n
 /** 0:46 across the street: the laundry camera hangs dead, sparking; you rip the cable down the facade and the grid dies, pair by pair */
 const T10A: Shot = {
   id: "T10A", a: 0, b: 120, look: "night", grade: "night",
-  cam: glide(0, 120, { pos: [7.4, 1.25, -7.9], look: [12.5, 4.6, -11.6], fov: 52 }, { pos: [7.7, 1.3, -8.3], look: [12.5, 5.6, -11.6], fov: 50 }),
-  dof: () => ({ cInf: 2, focus: [12.0, 4.0, -11.5] }),
+  // across the street, low and wide, the whole facade: the laundry camera hangs dead over the door, sparking. He grabs its
+  // cable and rips it up the wall in three yanks; each time it tears out of a pair of cameras above, they die in sparks
+  cam: glide(0, 120, { pos: [5.5, 1.3, -6.3], look: [12.2, 5.4, -11.5], fov: 66 }, { pos: [5.8, 1.35, -6.7], look: [12.2, 5.9, -11.5], fov: 64 }),
+  dof: () => ({ cInf: 1.2, focus: [12.2, 4, -11.5] }),
   act: (f, w, cam) => {
     p3Street(w);
-    const me = V([11.9, 0.15, -11.0]);
-    const yank = ramp(f, 38, 50);
-    const pose = stand(World.psi(me, V([1, 0, 0]), cam), f / FPS, { open: 1.2, brow: -0.4, browIn: -0.6, mouth: "tight" });
-    pose.armL = [lerp(150, 100, yank), 20, 30]; pose.armR = [lerp(140, 95, yank), 14, 26]; pose.lean = lerp(-4, 14, yank); pose.handL = "fist"; pose.handR = "fist"; pose.headNod = -18;
-    placeHim(w, w.hero, pose, NEON, P3_BODY, me, cam, pipeHands);
+    const me = V([12.0, 0.15, -11.35]);
+    const YANK = [26, 48, 68];
+    const pull = YANK.reduce((a, s0) => a + (f >= s0 && f < s0 + 6 ? ss((f - s0) / 6) : f >= s0 + 6 && f < s0 + 18 ? 1 - ss((f - s0 - 6) / 12) : 0), 0);
+    const pose = stand(World.psi(me, V([1, 0, 0.15]), cam), f / FPS, { open: 1.2, brow: -0.5, browIn: -0.7, mouth: "tight" });
+    pose.armL = [lerp(156, 92, pull), 12, lerp(24, 70, pull)]; pose.armR = [lerp(148, 88, pull), 14, lerp(30, 74, pull)];
+    pose.lean = lerp(-8, 16, pull); pose.hip = [pose.hip[0], pose.hip[1] - 10 * pull, 0]; pose.handL = "fist"; pose.handR = "fist"; pose.headNod = lerp(-22, 4, pull);
+    const hc = newCap();
+    placeHim(w, w.hero, pose, NEON, P3_BODY, me, cam, capHands(P3_BODY, hc));
+    const H = onCard(w.hero, hc.L).add(onCard(w.hero, hc.R)).multiplyScalar(0.5);
+    // the cable: from the dead laundry camera down to his fists, and from his fists up to where it still clings to the wall
+    const peel = 2.9 + 2.95 * ss((f - 26) / 9) + 2.8 * ss((f - 48) / 9) + 2.9 * ss((f - 68) / 9);
+    const top = V([12.8, 11.6, -11.5]);
+    w.cable.set([V([12.72, 2.25, -11.45]), H, V([12.8, Math.min(peel, 11.6), -11.5]), top]);
     w.aimCams(me.clone().add(V([0, 1.6, 0])), 1);
     const cams = w.city.cams;
     droop(cams[0], 1, 0.08 * Math.sin(f * 0.4));
-    w.sparks[0].burst(LAUNDRY_LENS, f / FPS);
+    w.sparks[0].burst(LAUNDRY_LENS.clone().add(V([0.2, 0, 0])), (f % 26) / FPS);
     GRID.forEach((ci, i) => {
-      const t0 = 52 + i * 8, k = f >= t0 ? 1 : 0;
-      droop(cams[ci], ss((f - t0) / 4) * k);
-      if (i < 7) w.sparks[1 + (i % 7)].burst(cams[ci].group.position.clone().add(V([-0.3, 0, 0])), (f - t0) / FPS);
+      const t0 = 26 + 22 * Math.floor(i / 2) + 7 + (i % 2);   // the pair dies as the cable tears out of it
+      droop(cams[ci], f >= t0 ? ss((f - t0) / 4) : 0);
+      w.sparks[1 + i].burst(cams[ci].group.position.clone().add(V([-0.3, 0, 0])), (f - t0) / FPS);
     });
   },
 };
 /** 0:50 you run north; at the crossing the cameras still alive swing to you, and under them it is already standing */
-const COPY_CROSS = V([-1.2, 0.15, -29.4]);
+const COPY_CROSS = V([-4.3, 0.15, -29.8]);   // in the road, under the cameras on the traffic-light arm
 const T10B: Shot = {
   id: "T10B", a: 0, b: 120, look: "night", grade: "night",
-  cam: (f) => { const z = lerp(-12, -18.5, clamp(f / 64)); return { pos: [6.2, 2.15, z + 3.6], look: [0.6, 1.5, -29], fov: 40 }; },
-  dof: () => ({ cInf: 2, focus: [-4.5, 2, -29] }),
+  // behind him, to his right, as he runs up the middle of the road; he pulls up: at the crossing, under the cameras, it stands
+  cam: (f) => { const z = lerp(-11.5, -18.5, clamp(f / 64)) + 4.5; return { pos: [0.2, 1.72, z], look: [-1.45, 1.5, z - 14.9], fov: 44 }; },
+  dof: (f) => ({ cInf: 2, focus: f < 54 ? [0.4, 1.4, lerp(-11.5, -18.5, clamp(f / 64))] : [-4.0, 1.5, -29.6] }),
+  post: (f) => ({ glitch: f === 54 ? 0.85 : f === 55 ? 0.4 : 0 }),
   act: (f, w, cam) => {
     p3Street(w);
-    const z = lerp(-12, -18.5, clamp(f / 64)), me = V([4.2, 0.15, z]);
-    const pose = f < 64 ? run(World.psi(me, V([-0.25, 0, -1]), cam), -z / 2.5, SCARED) : stand(World.psi(me, V([-0.6, 0, -1]), cam), f / FPS, SCARED);
+    const z = lerp(-11.5, -18.5, clamp(f / 64)), me = V([0.4, 0.15, z]);
+    const pose = f < 64 ? run(World.psi(me, V([-0.1, 0, -1]), cam), -z / 2.5, SCARED) : stand(World.psi(me, V([-0.35, 0, -1]), cam), f / FPS, SCARED);
     if (f >= 64) { pose.lean = -8; pose.breathe = Math.sin(f * 0.5); }
     placeHim(w, w.hero, pose, NEON, P3_BODY, me, cam);
     const head = me.clone().add(V([0, 1.6, 0]));
     w.aimCams(head, 0, [18, 19, 20, 21, 12, 13, 14, 15, 16, 17, 7, 8, 9, 10, 11]);
-    w.aimCams(head, ramp(f, 40, 46), [18, 19, 20, 21, 12, 13, 14, 15, 16, 17, 7, 8, 9, 10, 11]);
+    w.aimCams(head, ramp(f, 34, 40), [18, 19, 20, 21, 12, 13, 14, 15, 16, 17, 7, 8, 9, 10, 11]);
     w.aimCams(head, 0, [0, 1, 2, 3, 4, 5, 6]);
     for (const ci of [0, ...GRID]) droop(w.city.cams[ci], 1);
     if (f >= 54) {
-      const cpose = stand(World.psi(COPY_CROSS, V([1, 0, 0.6]), cam), 0, {}); cpose.breathe = 0; cpose.headTilt = 9;
+      const cpose = stand(World.psi(COPY_CROSS, cam.position.clone().sub(COPY_CROSS), cam), 0, {}); cpose.breathe = 0; cpose.headTilt = 9;
       placeCopy(w, cpose, NEON, P3_BODY, COPY_CROSS, cam);
     }
   },
 };
 /** 0:54 the subway entrance across the road: you run for it and down into the dark */
-const SUB_ENTRY = V([-9.6, 0.15, -14.0]);
 const T10C: Shot = {
   id: "T10C", a: 0, b: 120, look: "night", grade: "night",
-  cam: (f) => ({ pos: [-4.0, 1.4, -6.5], look: lerp3([-7.5, 1.3, -14], [-9.6, 0.4, -14.5], ss((f - 50) / 60)), fov: 44 }),
-  dof: () => ({ cInf: 2, focus: [-9.5, 0.8, -14] }),
+  // after him across the road to the subway steps on the west sidewalk; he goes down them into the black
+  cam: (f) => { const k = ss(f / 100); return { pos: lerp3([-0.8, 1.75, -16.0], [-6.4, 1.55, -13.3], k), look: lerp3([-6.5, 1.0, -15.0], [-11.4, 0.0, -14.2], k), fov: 46 }; },
+  dof: () => ({ cInf: 1.5, focus: [-9.5, 0.6, -14] }),
   act: (f, w, cam) => {
     p3Street(w); w.subEntrance.visible = true;
-    const k = clamp(f / 70), p = V([lerp(2.0, -9.4, k), 0.15 - Math.max(0, f - 70) * 0.04, lerp(-18.5, -14.3, k)]);
-    const pose = run(World.psi(p, V([-1, 0, 0.35]), cam), k * 4.5, SCARED);
-    if (f < 110) placeHim(w, w.hero, pose, NEON, P3_BODY, p, cam);
+    // across the road to the top step (x -9.1), then down the stairs (they drop 1.08 m over 2.5 m toward the building)
+    const a = clamp(f / 62), b = clamp((f - 62) / 34);
+    const p = f < 62 ? V([lerp(-2.6, -9.0, a), 0.15, lerp(-16.8, -14.05, a)]) : V([lerp(-9.0, -11.6, b), 0.15 - 1.15 * b, -14.05]);
+    const pose = run(World.psi(p, f < 62 ? V([-1, 0, 0.42]) : V([-1, 0, 0]), cam), f < 62 ? a * 4.6 : 4.6 + b * 2.2, SCARED);
+    if (f < 104) placeHim(w, w.hero, pose, NEON, P3_BODY, p, cam, undefined, { blob: f < 62 });
     for (const ci of [0, ...GRID]) droop(w.city.cams[ci], 1);
     w.aimCams(p.clone().add(V([0, 1.6, 0])), 1, [7, 9, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]);
   },
@@ -1485,17 +1545,19 @@ function crowdLight(w: World, from: THREE.Vector3, to: THREE.Vector3) {
 /** 0:58 down the stairs into the dark, toward us; the green EXIT sign the only light */
 const T11: Shot = {
   id: "T11", a: 0, b: 210, look: "subway", grade: "night",
-  cam: (f) => ({ pos: [3.3, 1.25, 16.4], look: lerp3([3.4, 4.6, 27], [3.4, 1.6, 22], ss((f - 90) / 80)), fov: 44 }),
-  dof: () => ({ cInf: 3, focus: [3.4, 2.5, 22] }),
+  // down the stairwell toward us, lit cold from above; the EXIT sign's green only on his edge. He swerves past us at the bottom.
+  cam: (f) => ({ pos: [3.15, 1.3, 16.2], look: lerp3([3.4, 3.9, 25], [3.4, 1.5, 21], ss((f - 70) / 90)), fov: 46 }),
+  dof: () => ({ cInf: 2.5, focus: [3.4, 2.0, 21] }),
   act: (f, w, cam) => {
-    const k = clamp(f / 150), z = lerp(29.5, 17.4, k), y = Math.max(0, (z - 18.3) / 0.55 * 0.25 + 0.25);
-    const p = V([3.4, z > 18.3 ? y : 0, z]);
-    const pose = run(World.psi(p, V([0, -0.4, -1]).normalize(), cam), (29.5 - z) / 2.0, SCARED);
-    pose.lean = 10;
-    const EXIT_L: Light = { key: "#7affb0", keyK: 0.62, amb: "#141c2a", ambK: 0.42, dir: 80, rim: { color: "#8a96ff", k: 0.7, dir: 100, w: 1.1 } };
+    const k = clamp(f / 170), z = lerp(26.0, 16.9, k);
+    const y = z > 18.3 ? ((z - 18.3) / 0.55) * 0.25 + 0.25 : 0;
+    const p = V([3.4 - 0.75 * ss((f - 130) / 50), y, z]);
+    const pose = run(World.psi(p, V([0, 0, -1]), cam), (26 - z) / 1.9, SCARED);
+    pose.lean = 12;
+    const EXIT_L: Light = { key: "#c6d0ff", keyK: 0.62, amb: "#1a2036", ambK: 0.5, dir: 80, rim: { color: "#5cff9a", k: 0.75, dir: 100, w: 1.2 } };
     placeHim(w, w.hero, pose, EXIT_L, P3_BODY, p, cam, undefined, { blob: false });
-    w.sub.exitLight.intensity = 3.2; w.sub.topGlow.intensity = 7;
-    w.sub.lamp.color.set("#7a86d8"); w.sub.lamp.position.set(3.4, 3.4, 23); w.sub.lamp.intensity = 3.5; w.sub.lamp.distance = 9;
+    w.sub.exitLight.intensity = 2.4; w.sub.topGlow.intensity = 7;
+    w.sub.lamp.color.set("#9aa6ff"); w.sub.lamp.position.set(3.4, 4.2, 22.5); w.sub.lamp.intensity = 5; w.sub.lamp.distance = 10;
   },
 };
 const ME_PLAT = V([1.3, 0, 7.5]);   // near the platform edge, clear of the pillars, the train beside him
@@ -1518,39 +1580,46 @@ const T12: Shot = {
 /** 1:12 the phone buzzes in his hand: a live night-vision feed of him, from behind, on this platform */
 const T13: Shot = {
   id: "T13", a: 0, b: 180, look: "subway", grade: "night",
-  // from in front of him: the phone between us, its screen to us, his face above it lit by it
-  cam: (f) => keys([{ f: 0, pos: [1.06, 1.58, 6.25], look: [1.28, 1.42, 7.4], fov: 42 }, { f: 40, pos: [1.07, 1.56, 6.3], look: [1.28, 1.4, 7.4], fov: 41 }, { f: 120, pos: [1.2, 1.36, 6.9], look: [1.28, 1.26, 7.32], fov: 32 }, { f: 180, pos: [1.22, 1.33, 6.97], look: [1.28, 1.25, 7.31], fov: 29 }], f),
-  dof: () => ({ cInf: 5, focus: [1.28, 1.26, 7.32] }),
+  // from in front of him: the phone in both his hands, its screen to us, his face above it lit by it; then into the screen
+  cam: (f) => keys([{ f: 0, pos: [1.06, 1.56, 6.25], look: [1.28, 1.4, 7.4], fov: 42 }, { f: 40, pos: [1.07, 1.54, 6.3], look: [1.28, 1.38, 7.4], fov: 41 }, { f: 120, pos: [1.22, 1.3, 6.86], look: [1.29, 1.2, 7.4], fov: 32 }, { f: 180, pos: [1.25, 1.27, 6.94], look: [1.29, 1.19, 7.4], fov: 29 }], f),
+  dof: () => ({ cInf: 5, focus: [1.29, 1.2, 7.4] }),
   act: (f, w, cam) => {
     const buzz = (f >= 2 && f < 9) || (f >= 14 && f < 21) ? 0.0018 * Math.sin(f * 2.9) : 0;
-    w.phone.visible = true; w.phone.position.set(1.28 + buzz, 1.24, 7.3); w.phone.lookAt(cam.position); w.phone.rotateZ(-0.04);
-    w.feedScreen(f % 30 < 15);
     const pose = stand(World.psi(ME_PLAT, V([0, 0, -1]), cam), f / FPS, { ...SCARED, look: [0, -0.75] });
-    pose.armR = [52, 10, 80]; pose.armL = [48, 12, 80]; pose.handL = "fist"; pose.handR = "fist"; pose.headNod = 20;
-    placeHim(w, w.hero, pose, { ...TORCH_L, key: "#cfe6ff", keyK: 0.85, dir: -70 }, P3_BODY, ME_PLAT, cam, undefined, { blob: false });
+    pose.armL = [62, -26, 72]; pose.armR = [62, -26, 72]; pose.handL = "fist"; pose.handR = "fist"; pose.headNod = 20;
+    const hc = newCap();
+    placeHim(w, w.hero, pose, { ...TORCH_L, key: "#cfe6ff", keyK: 0.85, dir: -70 }, P3_BODY, ME_PLAT, cam, capHands(P3_BODY, hc), { blob: false });
+    // the phone between his fists, a little in front of them
+    const H = onCard(w.hero, hc.L).add(onCard(w.hero, hc.R)).multiplyScalar(0.5);
+    const toCam = cam.position.clone().sub(H).normalize();
+    w.phone.visible = true; w.phone.position.copy(H).addScaledVector(toCam, 0.045).add(V([buzz, 0.03, 0])); w.phone.lookAt(cam.position); w.phone.rotateZ(-0.04);
+    w.feedScreen(f % 30 < 15);
     w.sub.exitLight.intensity = 1.2;
-    w.sub.lamp.color.set("#cfe8ff"); w.sub.lamp.position.set(1.28, 1.3, 7.2); w.sub.lamp.intensity = 1.6; w.sub.lamp.distance = 2.2;
+    w.sub.lamp.color.set("#cfe8ff"); w.sub.lamp.position.copy(H).add(V([0, 0.05, -0.15])); w.sub.lamp.intensity = 1.6; w.sub.lamp.distance = 2.2;
   },
 };
 /** 1:18 he spins round with the light: nothing behind him. Then, slowly, he turns it on the tunnel. */
 const T14: Shot = {
   id: "T14", a: 0, b: 150, look: "subway", grade: "night",
-  // from in front of him: he spins to look behind (his back to us, the light sweeping the empty platform), then turns back
-  // to us, the light coming up the platform toward the lens
-  cam: (f) => ({ pos: [0.95, 1.4, 4.6], look: [1.3, 1.3, 7.5], fov: 44 }),
+  // from behind him, about where the camera in the feed would have to be: he spins round with the light, straight at us.
+  // Nothing. The light searches the stairs. Then he turns back and lifts it down the platform, into the dark.
+  cam: (f) => ({ pos: lerp3([1.85, 1.62, 10.1], [1.8, 1.6, 9.75], ss(f / 150)), look: [1.25, 1.3, 3.5], fov: 48 }),
   dof: () => ({ cInf: 2, focus: [1.3, 1.4, 7.5] }),
   act: (f, w, cam) => {
     w.sub.exitLight.intensity = 1.2;
-    const spin = ss(f / 10), back = ss((f - 62) / 30);
-    const yaw = lerp(lerp(Math.PI, 0, spin), Math.PI - 0.05, back);
+    const spin = ss((f - 2) / 9), back = ss((f - 70) / 26);
+    const yaw = lerp(lerp(Math.PI, 0.12, spin), Math.PI + 0.06, back);   // facing down the platform, round at us, back again
     const dir = V([Math.sin(yaw), 0, Math.cos(yaw)]);
-    const hand = ME_PLAT.clone().add(dir.clone().multiplyScalar(0.35)).add(V([0, 1.35, 0]));
-    const raise = ramp(f, 100, 140);
-    const to = hand.clone().add(dir.clone().multiplyScalar(10)).add(V([0, lerp(-1.6, -0.25, raise), 0]));
+    const hand = ME_PLAT.clone().add(dir.clone().multiplyScalar(0.38)).add(V([0, 1.32, 0]));
+    const raise = ramp(f, 100, 136);
+    const search = (1 - back) * spin * 0.42 * Math.sin((f - 10) * 0.09);   // the light darts across the empty stairs
+    const aim = V([Math.sin(yaw + search), 0, Math.cos(yaw + search)]);
+    const to = hand.clone().add(aim.multiplyScalar(10)).add(V([0, lerp(-1.4, -0.2, raise) + 0.9 * (1 - back) * spin, 0]));
     subTorch(w, hand, to, 1);
-    const pose = stand(World.psi(ME_PLAT, dir, cam), f / FPS, SCARED);
-    pose.armR = [lerp(60, 86, raise), 8, 18]; pose.handR = "fist"; pose.breathe = Math.sin(f * 0.35);
-    placeHim(w, w.hero, pose, TORCH_L, P3_BODY, ME_PLAT, cam, torchHand, { blob: false });
+    const facing = Math.cos(yaw) > 0.1;
+    const pose = stand(World.psi(ME_PLAT, dir, cam), f / FPS, { ...SCARED, look: [0.55 * Math.sin(f * 0.17), 0.15] });
+    pose.armR = [lerp(72, 88, raise), 8, 14]; pose.handR = "fist"; pose.breathe = Math.sin(f * 0.35);
+    placeHim(w, w.hero, pose, facing ? TORCH_L : BACKLIT_TORCH, P3_BODY, ME_PLAT, cam, torchHand, { blob: false });
   },
 };
 /** 1:23 the tunnel is full of them. Hundreds. All facing him. Their eyes open. They lean, all together. */
@@ -1574,7 +1643,7 @@ const T15: Shot = {
   },
 };
 /** 1:28 RUN: along the platform to the train standing in the dark, doors open; he dives in */
-const T16A_FLASH = [62, 63, 74, 86, 87, 96, 104, 105, 112, 116, 117];
+const T16A_FLASH: [number, number][] = [[62, 64], [73, 75], [84, 87], [95, 97], [103, 106], [110, 112], [115, 118]];
 const T16A: Shot = {
   id: "T16A", a: 0, b: 120, look: "subway", grade: "night",
   cam: (f) => ({ pos: [2.1, 1.7, lerp(11.2, 9.6, ss(f / 120))], look: [0.6, 1.3, lerp(-4, -10, ss(f / 120))], fov: 46 }),
@@ -1583,13 +1652,14 @@ const T16A: Shot = {
     w.sub.trainLight.intensity = 3.2; w.sub.exitLight.intensity = 1.0;
     const k = clamp(f / 50), p = V([lerp(1.3, 0.15, ss(k)), 0, lerp(7.5, 4.5, k)]);
     const dive = f >= 50 ? ss((f - 50) / 10) : 0;
-    const pose = run(World.psi(p, V([-0.4, 0, -1]), cam), k * 2.0, SCARED);
+    const pose = run(World.psi(p, V([-0.4, 0, -1]), cam), k * 4.2, SCARED);
     pose.lean = 15 + 50 * dive;
     if (f < 64) placeHim(w, w.hero, pose, TRAIN_L, P3_BODY, p.clone().add(V([-0.9 * dive, -0.2 * dive, 0])), cam, undefined, { blob: false });
     subTorch(w, p.clone().add(V([0, 1.3, -0.2])), V([1.6, 1.0, -12]), f < 50 ? 0.7 : 0);
     // the far end of the platform: their eyes in the dark. Once he is in, the dead ceiling lights stutter on: in every
     // flash they are closer, surging down the platform toward the train
-    const flash = T16A_FLASH.includes(f);
+    const flash = T16A_FLASH.some(([a, b]) => f >= a && f < b);
+    w.sub.fill.intensity = 0.22;
     if (flash) { w.sub.fill.intensity = 1.6; w.sub.lamp.color.set("#dfe6ff"); w.sub.lamp.position.set(2.9, 3.4, -6); w.sub.lamp.intensity = 40; w.sub.lamp.distance = 34; }
     w.sub.poseCrowd(p, () => (flash ? 0.85 : 0.05), 1, 0, "AB");
     const adv = f < 50 ? Math.floor(f / 18) * 0.5 : 1.0 + Math.floor((f - 50) / 11) * 1.5;
@@ -1599,21 +1669,24 @@ const T16A: Shot = {
 /** 1:32 inside the car: the doors slam shut by themselves; one of them presses its face to the door window */
 const T16B: Shot = {
   id: "T16B", a: 0, b: 120, look: "subway", grade: "night",
-  cam: (f) => ({ pos: [-2.35, 1.18, 5.55], look: [-0.2, 1.48, 4.5], fov: 36 }),
-  dof: () => ({ cInf: 3, focus: [0.0, 1.5, 4.2] }),
+  // inside the car, low: he has slid to the floor with his back to the doors as they slam shut. He breathes. Behind him, in
+  // the door window above his head, out of the dark: his own face, pressed to the glass, grinning. He doesn't see it.
+  cam: (f) => ({ pos: lerp3([-3.05, 0.95, 5.3], [-2.85, 0.98, 5.15], ss(f / 120)), look: [-0.75, 1.22, 4.66], fov: 46 }),
+  dof: () => ({ cInf: 2, focus: [-1.0, 1.0, 4.6] }),
+  post: (f) => ({ glitch: f === 50 ? 0.8 : f === 51 ? 0.35 : 0 }),
   act: (f, w, cam) => {
     w.sub.trainLight.intensity = 3.2;
-    w.sub.setDoors(ss((f - 8) / 4));
-    const me = V([-1.85, 0.05, 5.15]);
-    const pose = floorSit(f / FPS, { ...SCARED, look: [0.6, 0.2] }, { psi: World.psi(me, V([1, 0, -0.3]), cam), hands: "fist" });
-    pose.breathe = Math.sin(f * 0.6); pose.lean = -6;
+    w.sub.lamp.color.set("#c8d2ff"); w.sub.lamp.position.set(-2.2, 2.9, 4.9); w.sub.lamp.intensity = 5; w.sub.lamp.distance = 6;
+    w.sub.setDoors(ss((f - 6) / 4));
+    const me = V([-1.12, 0.05, 4.5]);
+    const pose = floorSit(f / FPS, { ...SCARED, look: [0.35, -0.25] }, { psi: World.psi(me, cam.position.clone().sub(me), cam), hands: "fist" });
+    pose.breathe = Math.sin(f * 0.6); pose.lean = -4 + 3 * Math.sin(f * 0.6); pose.headNod = 6 + 3 * Math.sin(f * 0.6);
     placeHim(w, w.hero, pose, TRAIN_L, P3_BODY, me, cam, undefined, { blob: false });
-    // outside the door glass, out of the dark: your face, grinning, pressed to the window
     if (f >= 50) {
-      const k = ss((f - 50) / 10);
-      const cp = V([0.18 - 0.1 * k, 0.0, 4.45]);   // its face lines up with the right-hand door window from where we sit
-      const cpose = stand(World.psi(cp, V([-1, 0, 0]), cam), 0, {}); cpose.breathe = 0; cpose.headTilt = 6; cpose.lean = 8; cpose.headNod = 4;
-      placeCopy(w, cpose, { ...TRAIN_L, keyK: 0.4 + 0.4 * k }, P3_BODY, cp, cam, { blob: false, smile: ramp(f, 58, 90) });
+      const k = ss((f - 50) / 8);
+      const cp = V([-0.42 - 0.12 * k, -0.08, 4.81]);   // just outside the right-hand leaf: its face fills that door window
+      const cpose = stand(World.psi(cp, cam.position.clone().sub(cp), cam), 0, {}); cpose.breathe = 0; cpose.headTilt = 8 + 6 * k; cpose.lean = 6;
+      placeCopy(w, cpose, { ...TRAIN_L, keyK: 0.35 + 0.35 * k }, P3_BODY, cp, cam, { blob: false, smile: ramp(f, 60, 96) });
       w.refl.mat.opacity = k;
     }
   },
@@ -1651,47 +1724,48 @@ function reflect(cam: THREE.PerspectiveCamera, q: THREE.Vector3) {
 }
 const T19: Shot = {
   id: "T19", a: 0, b: 180, look: "subway", grade: "night",
-  // over his shoulder at the dark window opposite: his reflection, and the other one beside it
+  // across the car at the dark window opposite: his reflection, the tunnel lamps streaking past behind it. Beside the
+  // reflection two eyes open in the dark; then the rest of it, sitting right next to him; then it grins
   cam: (f) => ({ pos: [-3.02, 1.42, 1.62], look: [1.85, 1.28, 0.95], fov: lerp(30, 25, ss(f / 180)) }),
   dof: () => ({ cInf: 3, focus: [-0.75, 1.4, 1.0] }),
   act: (f, w, cam) => {
     w.sub.trainLight.intensity = 3.0; w.sub.setDoors(1);
     w.sub.train.position.z = 0;
+    w.sub.runStreaks(f);
     const face: Partial<Face> = { ...SCARED, mouth: "part", mouthOpen: 0.3, look: [0, 0] };
-    // his real self in the near foreground, out of focus: the back of his head and shoulder
-    const real = seated(World.psi(SEAT_ME, V([1, 0, 0]), cam), f / FPS, face); real.breathe = Math.sin(f * 0.25); real.lean = 14;
-    w.cu.setFrame({ x0: -48, y0: 30, w: 96, h: 110 });
-    w.cu.draw((ctx, F) => drawCharacter(ctx, real, TRAIN_L, F, { lineK: 0.8 }));
-    w.cu.stand(SEAT_ME, cam.position); w.cu.visible = true; w.cu.blob.visible = false;
     // his reflection, facing us out of the glass
     const r = reflect(cam, SEAT_ME);
     const refl = seated(-12, f / FPS, face); refl.breathe = Math.sin(f * 0.25); refl.lean = 14;
     const c = w.hero; c.setFrame(P3_BODY); c.draw((ctx, F) => drawCharacter(ctx, refl, TRAIN_L, F));
     c.pivot.position.copy(r.pos); c.pivot.scale.setScalar(r.scale); c.pivot.rotation.set(0, Math.atan2(cam.position.x - r.pos.x, cam.position.z - r.pos.z), 0);
     c.mat.opacity = 0.62; c.visible = true; c.blob.visible = false;
-    // and the other one, sitting right next to him, only in the glass
+    // and the other one, sitting right next to him, only in the glass: first its eyes, then the rest of it, then the grin
     if (f >= 40) {
       const rc = reflect(cam, SEAT_ME.clone().add(V([0, 0, -0.6])));
       const cpose = seated(14, 0, {}); cpose.breathe = 0; cpose.headTilt = 8; cpose.lean = 10;
-      const sm = ramp(f, 60, 110);
-      cpose.face = { ...FACE0, ...TIRED, ...COPY_FACE, possessed: { eyes: 1, smile: sm }, shine: false };
+      const ey = ramp(f, 40, 46), sm = ramp(f, 82, 118);
+      cpose.face = { ...FACE0, ...TIRED, ...COPY_FACE, possessed: { eyes: ey, smile: sm }, shine: false };
       const cc = w.refl; let head: DOMMatrix | null = null;
       cc.setFrame(P3_BODY); cc.draw((ctx, F) => drawCharacter(ctx, cpose, TRAIN_L, F, { onHead: (m) => { head = m; } }));
       cc.pivot.position.copy(rc.pos); cc.pivot.scale.setScalar(rc.scale); cc.pivot.rotation.set(0, Math.atan2(cam.position.x - rc.pos.x, cam.position.z - rc.pos.z), 0);
-      cc.mat.opacity = lerp(0, 0.66, ss((f - 40) / 20)); cc.visible = true; cc.blob.visible = false;
-      if (head) { const hm = head as DOMMatrix; w.glowOver(cc, (ctx) => { ctx.save(); ctx.setTransform(hm); possessedGlowHead(ctx, 1, sm); ctx.restore(); }); w.glow.pivot.scale.setScalar(rc.scale); }
+      cc.mat.opacity = lerp(0, 0.66, ss((f - 56) / 22)); cc.visible = cc.mat.opacity > 0.01; cc.blob.visible = false;
+      if (head) { const hm = head as DOMMatrix; w.glowOver(cc, (ctx) => { ctx.save(); ctx.setTransform(hm); possessedGlowHead(ctx, ey, sm); ctx.restore(); }); w.glow.pivot.scale.setScalar(rc.scale); }
     }
   },
 };
 /** 1:54 he looks beside him: the seat is empty */
 const T20A: Shot = {
   id: "T20A", a: 0, b: 45, look: "subway", grade: "night",
-  cam: () => ({ pos: [-2.45, 1.2, 1.15], look: [-3.35, 0.62, 0.45], fov: 46 }),
-  dof: () => ({ cInf: 3, focus: [-3.3, 0.6, 0.5] }),
+  // from across the aisle: he turns his head to the seat on his left. It is empty.
+  cam: (f) => ({ pos: lerp3([-1.55, 1.12, 1.02], [-1.62, 1.1, 0.95], ss(f / 45)), look: [-3.35, 0.82, 0.92], fov: 52 }),
+  dof: () => ({ cInf: 2, focus: [-3.35, 0.8, 0.9] }),
   act: (f, w, cam) => {
-    w.sub.trainLight.intensity = 3.0; w.sub.setDoors(1);
-    // his knee and hand at the edge of frame; the seat beside him: empty
-    const real = seated(World.psi(SEAT_ME, V([1, 0, 0]), cam), f / FPS, { ...SCARED });
+    w.sub.trainLight.intensity = 3.0; w.sub.setDoors(1); w.sub.train.position.z = 0;
+    w.sub.runStreaks(180 + f);
+    w.sub.lamp.color.set("#c8d2ff"); w.sub.lamp.position.set(-2.5, 2.6, 0.7); w.sub.lamp.intensity = 4; w.sub.lamp.distance = 5;
+    const real = seated(World.psi(SEAT_ME, V([1, 0, 0]), cam), f / FPS, { ...SCARED, mouth: "part", mouthOpen: 0.3 });
+    real.headPsi = lerp(World.psi(SEAT_ME, V([1, 0, 0]), cam), World.psi(SEAT_ME, V([0.1, 0, -1]), cam), ss((f - 3) / 13));
+    real.breathe = Math.sin(f * 0.25); real.lean = 10;
     placeHim(w, w.hero, real, TRAIN_L, P3_BODY, SEAT_ME, cam, undefined, { blob: false });
   },
 };
@@ -1701,6 +1775,7 @@ const T20B: Shot = {
   cam: (f) => ({ pos: [-3.02, 1.42, 1.62], look: [1.85, 1.3, 0.95], fov: lerp(25, 18, ss(f / 105)) }),
   act: (f, w, cam) => {
     T19.act(179, w, cam);
+    w.sub.runStreaks(225 + f);
     const lean = ss(f / 70);
     const rc = reflect(cam, SEAT_ME.clone().add(V([0, 0, lerp(-0.6, -0.32, lean)])));
     w.refl.pivot.position.copy(rc.pos); w.refl.mat.opacity = 0.7;

@@ -1,7 +1,7 @@
 // Part 2: the look of a cheap night-vision security camera. Its own pass at the very end of the chain.
 // Wide-lens barrel distortion, a slight colour fringe, monochrome grey-green IR response with a soft shoulder,
 // 4 px scanlines, per-frame noise, a heavy vignette, and glitch bands (horizontal tears) driven by `glitch`.
-// amount 0 = bypass (every non-camera shot).
+// amount 0 = bypass (every non-camera shot), unless `glitch` > 0: then only the tear, on the ordinary picture.
 import { BlendFunction, Effect, EffectAttribute } from "postprocessing";
 import { Uniform } from "three";
 
@@ -13,7 +13,18 @@ uniform float barrel;
 uniform float noise;   // 0..1: the picture dissolves into static (a dead camera)
 float h1(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
-  if (amount <= 0.0) { outputColor = inputColor; return; }
+  if (amount <= 0.0 && glitch <= 0.0) { outputColor = inputColor; return; }
+  if (amount <= 0.0) {
+    // an ordinary picture that tears for a frame (the copy skipping like a broken video): shifted bands, a colour split
+    vec2 e = uv;
+    float rw = floor(e.y * 30.0);
+    float pk = step(1.0 - 0.4 * glitch, h1(vec2(rw, floor(seed))));
+    e.x += glitch * (pk * (h1(vec2(rw, seed + 3.0)) - 0.5) * 0.12 + (h1(vec2(seed, 9.0)) - 0.5) * 0.01);
+    float cb = 0.006 * glitch;
+    vec3 cc = vec3(texture2D(inputBuffer, e + vec2(cb, 0.0)).r, texture2D(inputBuffer, e).g, texture2D(inputBuffer, e - vec2(cb, 0.0)).b);
+    outputColor = vec4(cc, inputColor.a);
+    return;
+  }
   vec2 p = uv * 2.0 - 1.0;
   p.x *= aspect;
   float r2 = dot(p, p) / (aspect * aspect + 1.0);                   // 0 at the centre, 1 in the corners

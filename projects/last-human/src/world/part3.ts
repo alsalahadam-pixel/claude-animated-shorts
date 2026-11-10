@@ -109,6 +109,7 @@ export class Subway {
   trainLight: THREE.PointLight;
   topGlow: THREE.PointLight;
   lamp: THREE.PointLight;      // a work light for a shot: an IR lamp, the phone's glow
+  streaks = new THREE.Group(); // tunnel lamps outside the far windows, for the moving train
   windows: THREE.Mesh[] = [];
 
   constructor() {
@@ -173,6 +174,10 @@ export class Subway {
     bx.fillStyle = grd; bx.fillRect(0, 0, 4, 256);
     this.beam = new THREE.Mesh(bg, new THREE.MeshBasicMaterial({ map: tex(bc.c), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, opacity: 0.5 }));
     this.beam.visible = false; R.add(this.beam);
+    // tunnel lamps going past the far-side windows (the train is moving): small hard lights that bloom into streaks
+    const lm = new THREE.MeshBasicMaterial({ color: "#d8e0ff" }); lm.color.multiplyScalar(2.2);
+    for (let i = 0; i < 6; i++) this.streaks.add(mesh(new THREE.BoxGeometry(0.06, 0.05, 1.1), lm, [0.55, 1.95, 0], false));
+    this.streaks.visible = false; R.add(this.streaks);
     // the train
     this.buildTrain();
     R.add(this.train);
@@ -239,6 +244,12 @@ export class Subway {
     for (const side of [-0.6, 0.6]) T.add(mesh(new THREE.BoxGeometry(0.12, 0.03, L - 0.4), new THREE.MeshBasicMaterial({ color: "#8a96b8" }), [x0 + side, 3.08, 0], false));
   }
 
+  /** the tunnel lamps sliding past outside (relative to a train standing at z 0), every 4 m */
+  runStreaks(f: number, speed = 0.45) {
+    this.streaks.children.forEach((m, i) => { const z = (((i * 4 - f * speed) % 24) + 24) % 24; m.position.z = 12 - z; });
+    this.streaks.visible = true;
+  }
+
   /** open (0) / closed (1) */
   setDoors(k: number) {
     this.doors.forEach((d, i) => { const rest = this.doorRest[i], dz = rest - (i % 2 ? 4.5 : -4.5) * 0; void dz; const sgn = i % 2 === 0 ? -1 : 1; d.position.z = rest + sgn * 0.6 * (1 - k); });
@@ -251,9 +262,14 @@ export class Subway {
     const bx = bc.getContext("2d")!;
     drawWatcher(bx, F, { eyes: 0, smile: 0, rim: 0.95, tilt: 0, lean: 0 });
     // lift the black to a dark slate, so a figure caught in the light reads as a body, not a hole
-    bx.save(); bx.globalCompositeOperation = "source-atop"; bx.fillStyle = "rgba(78,80,104,0.5)"; bx.fillRect(0, 0, 256, 720); bx.restore();
+    // (only a little: in the torch light they should still read as dark shapes against the lit tiles)
+    bx.save(); bx.globalCompositeOperation = "source-atop"; bx.fillStyle = "rgba(58,60,84,0.34)"; bx.fillRect(0, 0, 256, 720); bx.restore();
     const ec = document.createElement("canvas"); ec.width = 256; ec.height = 720;
-    drawWatcher(ec.getContext("2d")!, F, { eyes: 1, smile: 0, rim: 0, tilt: 0, lean: 0, glowOnly: true });
+    const ex = ec.getContext("2d")!;
+    drawWatcher(ex, F, { eyes: 1, smile: 0, rim: 0, tilt: 0, lean: 0, glowOnly: true });
+    // a halo round the eyes, so they still read as two points of light from the far end of the platform
+    const hc = document.createElement("canvas"); hc.width = 256; hc.height = 720; hc.getContext("2d")!.drawImage(ec, 0, 0);
+    ex.save(); ex.globalCompositeOperation = "lighter"; ex.filter = "blur(4px)"; ex.drawImage(hc, 0, 0); ex.filter = "blur(9px)"; ex.globalAlpha = 0.8; ex.drawImage(hc, 0, 0); ex.restore();
     const bt = new THREE.CanvasTexture(bc); bt.colorSpace = THREE.SRGBColorSpace;
     const et = new THREE.CanvasTexture(ec); et.colorSpace = THREE.SRGBColorSpace;
     const geo = new THREE.PlaneGeometry(0.9, 2.55); geo.translate(0, 2.55 / 2 - 0.04, 0);
@@ -314,7 +330,7 @@ export class Sparks {
     g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(n * 3), 3));
     g.setAttribute("color", new THREE.BufferAttribute(new Float32Array(n * 3), 3));
     const c = canvas(64, 64); const x = c.x; const rg = x.createRadialGradient(32, 32, 0, 32, 32, 32);
-    rg.addColorStop(0, "rgba(255,255,255,1)"); rg.addColorStop(0.3, "rgba(255,220,150,0.8)"); rg.addColorStop(1, "rgba(255,140,40,0)");
+    rg.addColorStop(0, "rgba(255,255,255,1)"); rg.addColorStop(0.3, "rgba(255,255,255,0.75)"); rg.addColorStop(1, "rgba(255,255,255,0)");   // neutral: the colour comes from the vertices
     x.fillStyle = rg; x.fillRect(0, 0, 64, 64);
     this.points = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.09, map: tex(c.c), vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true }));
     this.points.frustumCulled = false; this.points.renderOrder = 45;
@@ -330,8 +346,9 @@ export class Sparks {
     for (let i = 0; i < this.n; i++) {
       const life = this.v[i * 4 + 3], a = Math.max(0, 1 - t / life);
       p.setXYZ(i, origin.x + this.v[i * 4] * t, origin.y + this.v[i * 4 + 1] * t - 4.9 * t * t, origin.z + this.v[i * 4 + 2] * t);
-      if (this.glass) c.setXYZ(i, 1.05 * a, 1.25 * a, 1.6 * a); else c.setXYZ(i, 3 * a, 2.2 * a * a, 0.9 * a * a * a);
+      if (this.glass) c.setXYZ(i, 1.1 * a, 1.3 * a, 1.7 * a); else c.setXYZ(i, 3 * a, 1.5 * a * a, 0.45 * a * a * a);
     }
+    (this.points.material as THREE.PointsMaterial).size = this.glass ? 0.035 : 0.09;   // shards of glass: small, hard, blue-white
     p.needsUpdate = true; c.needsUpdate = true; this.points.visible = true;
   }
 }
@@ -353,4 +370,30 @@ export function subwayEntrance() {
   g.add(sign);
   const l = new THREE.PointLight("#6aff9a", 1.6, 6, 1.6); l.position.set(-1.1, 2.4, 1.4); g.add(l);
   return g;
+}
+
+
+// ---------------------------------------------------------------- a thin rod or cable through points (the pipe, the torn cable)
+export class Rod {
+  group = new THREE.Group();
+  segs: THREE.Mesh[] = [];
+  constructor(n: number, r: number, color: string, o: { metal?: number; rough?: number } = {}) {
+    const m = std(color, { roughness: o.rough ?? 0.6, metalness: o.metal ?? 0.2 });
+    for (let i = 0; i < n; i++) { const g = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1, 8), m); this.group.add(g); this.segs.push(g); }
+    this.group.visible = false;
+  }
+  /** lay the segments evenly along the polyline pts */
+  set(pts: THREE.Vector3[]) {
+    const L: number[] = [0];
+    for (let i = 1; i < pts.length; i++) L.push(L[i - 1] + pts[i].distanceTo(pts[i - 1]));
+    const tot = L[L.length - 1] || 1e-6, n = this.segs.length;
+    const at = (d: number) => { let i = 1; while (i < pts.length - 1 && L[i] < d) i++; const k = (d - L[i - 1]) / Math.max(1e-6, L[i] - L[i - 1]); return pts[i - 1].clone().lerp(pts[i], Math.min(1, Math.max(0, k))); };
+    const Y = new THREE.Vector3(0, 1, 0);
+    for (let i = 0; i < n; i++) {
+      const a = at((tot * i) / n), b = at((tot * (i + 1)) / n), d = b.clone().sub(a), l = d.length();
+      const g = this.segs[i]; g.position.copy(a).add(b).multiplyScalar(0.5); g.scale.set(1, Math.max(1e-4, l * 1.04), 1);
+      g.quaternion.setFromUnitVectors(Y, l > 1e-6 ? d.multiplyScalar(1 / l) : Y);
+    }
+    this.group.visible = true;
+  }
 }

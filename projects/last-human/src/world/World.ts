@@ -7,7 +7,7 @@ import { SkyDome, Skyline, SkyLook } from "./skyline";
 import { Card } from "../char/card";
 import { drawCharacter, Frame, Light, Pose } from "../char/draw";
 import { aimCctv } from "./props";
-import { fireEscape, hallway, Sparks, Subway, subwayEntrance } from "./part3";
+import { fireEscape, hallway, Rod, Sparks, Subway, subwayEntrance } from "./part3";
 
 export type Look = "sunrise" | "morning" | "overcast" | "dusk" | "night" | "aptNight" | "photo" | "subway";
 
@@ -58,6 +58,8 @@ export class World {
   sparks = [1, 2, 3, 4, 5, 6, 7, 8].map((k) => new Sparks(70, k));
   feedImg: HTMLImageElement | null = null;
   feedTex: THREE.Texture | null = null;
+  pipe = new Rod(1, 0.022, "#7a7e88", { metal: 0.7, rough: 0.35 });   // the pipe he swings at the laundry camera
+  cable = new Rod(28, 0.03, "#5a5a66", { rough: 0.45, metal: 0.3 });                              // the camera cable he rips down the facade
 
   constructor() {
     const S = this.scene;
@@ -69,7 +71,9 @@ export class World {
     this.cityRoot.add(this.city.root);
     S.add(this.aptRoot, this.cityRoot, this.sub.root);
     this.aptRoot.add(this.hall.group, this.escape);
-    this.subEntrance.position.set(-9.6, 0.15, -14.0); this.subEntrance.rotation.y = Math.PI / 2; this.cityRoot.add(this.subEntrance);
+    // on the west sidewalk, the stairs going down away from the road
+    this.subEntrance.position.set(-10.6, 0.15, -14.0); this.subEntrance.rotation.y = -Math.PI / 2; this.cityRoot.add(this.subEntrance);
+    S.add(this.pipe.group, this.cable.group);
     for (const sp of this.sparks) S.add(sp.points);
     for (const c of [this.hero, this.refl, this.cu, this.watcher, this.pigeon, this.hand, this.glow]) c.add(S);
     this.glow.mat.blending = THREE.AdditiveBlending; this.glow.mat.depthWrite = false; this.glow.mat.alphaTest = 0; this.glow.mat.color.setScalar(2.6);
@@ -95,12 +99,12 @@ export class World {
     this.aptRoot.visible = inApt; this.cityRoot.visible = !inApt && !inSub; this.sub.root.visible = inSub;
     this.hall.light.intensity = 0;
     for (const sp of this.sparks) { sp.points.visible = false; (sp.points.material as THREE.PointsMaterial).color.set("#ffffff"); sp.glass = false; }
-    this.subEntrance.visible = false;
+    this.subEntrance.visible = false; this.pipe.group.visible = false; this.cable.group.visible = false;
     for (const c of [this.hero, this.refl, this.cu, this.watcher, this.glow, this.hand]) c.pivot.scale.setScalar(1);
     this.hero.mat.opacity = 1;
     for (const c of this.city.cams) c.led.visible = true;
     this.sub.torch.intensity = 0; this.sub.beam.visible = false; this.sub.train.position.set(0, 0, 0); this.sub.trainLight.intensity = 0;
-    this.sub.setDoors(0); this.sub.setClock("06:12"); this.sub.lamp.intensity = 0; this.sub.topGlow.intensity = 2.2; this.sub.exitLight.intensity = 0.9; this.sub.fill.intensity = 0.12;
+    this.sub.streaks.visible = false; this.sub.setDoors(0); this.sub.setClock("06:12"); this.sub.lamp.intensity = 0; this.sub.topGlow.intensity = 2.2; this.sub.exitLight.intensity = 0.9; this.sub.fill.intensity = 0.12;
     for (const fg of this.sub.figures) { fg.body.visible = false; fg.eyes.visible = false; fg.body.rotation.set(0, 0, 0); fg.eyes.rotation.set(0, 0, 0); fg.body.position.copy(fg.base); fg.eyes.position.copy(fg.base); }
     if (inApt) {
       this.apt.setLook(look === "aptNight" || look === "photo" ? "night" : (look as "sunrise" | "morning"), t, frame);
