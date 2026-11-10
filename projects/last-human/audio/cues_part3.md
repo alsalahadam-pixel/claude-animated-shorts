@@ -22,6 +22,7 @@
 |  78.00 | T14 the spin (whoosh), nothing; then a slow riser as he lifts the light to the tunnel |
 |  83.40 | T15 THE TUNNEL: their eyes open: the biggest hit of the film; a low choir of breath; the lean: a wave of creaks |
 |  88.00 | T16A RUN!: sprinting steps echoing; behind him a rumble of many feet stepping together; the dive |
+|  90.07 | the dead lights stutter on: a zap and a buzz on every flash, and each time they are closer (a surge of feet) |
 |  92.00 | T16B the doors slam (hiss, clunk); muffled silence inside; its face at the door glass (a slap, a sting) |
 |  97.67 | T17 the train lurches (brakes release, clunk), the motor whines up, the wheels start to clatter; a tick as the clock flips |
 | 108.00 | T19 slumped on the seat: steady muffled rumble and clatter; when the other one appears, a slow breath close in the right ear |

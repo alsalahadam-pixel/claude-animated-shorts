@@ -361,6 +361,12 @@ def build():
             add(sub, lp(S.footstep("dry", 0.08), 700), t0 + R.uniform(0, 0.05), 1.0, R.uniform(-0.9, -0.2))
     add(sfx, lp(colored(ns(0.3), R, 1.0), 400) * np.exp(-T(ns(0.3)) / 0.05) * 0.8, ft("T16A", 60), 1.0, 0.0)
     add(music, S.riser(en("T16A") - st("T16A"), 300, 2400, 0.6), st("T16A"), until=en("T16A"))
+    cue(ft("T16A", 62), "the dead lights stutter on: a zap and a buzz on every flash, and each time they are closer (a surge of feet)")
+    for k in (62, 74, 86, 96, 104, 112, 116):
+        add(sfx, zap(0.12, 0.35), ft("T16A", k), 1.0, 0.3)
+        add(sub, P2.relay(0.3), ft("T16A", k), 1.0, 0.3)
+        for _ in range(10):
+            add(sub, lp(S.footstep("dry", 0.1), 700), ft("T16A", k) + R.uniform(0, 0.08), 1.0, R.uniform(-0.6, 0.3))
 
     # ---- in the train
     cue(st("T16B"), "T16B the doors slam (hiss, clunk); muffled silence inside; its face at the door glass (a slap, a sting)")

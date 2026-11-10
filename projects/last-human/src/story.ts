@@ -1574,6 +1574,7 @@ const T15: Shot = {
   },
 };
 /** 1:28 RUN: along the platform to the train standing in the dark, doors open; he dives in */
+const T16A_FLASH = [62, 63, 74, 86, 87, 96, 104, 105, 112, 116, 117];
 const T16A: Shot = {
   id: "T16A", a: 0, b: 120, look: "subway", grade: "night",
   cam: (f) => ({ pos: [2.1, 1.7, lerp(11.2, 9.6, ss(f / 120))], look: [0.6, 1.3, lerp(-4, -10, ss(f / 120))], fov: 46 }),
@@ -1586,9 +1587,13 @@ const T16A: Shot = {
     pose.lean = 15 + 50 * dive;
     if (f < 64) placeHim(w, w.hero, pose, TRAIN_L, P3_BODY, p.clone().add(V([-0.9 * dive, -0.2 * dive, 0])), cam, undefined, { blob: false });
     subTorch(w, p.clone().add(V([0, 1.3, -0.2])), V([1.6, 1.0, -12]), f < 50 ? 0.7 : 0);
-    // the far end of the platform: their eyes in the dark, and every few beats they are closer
-    w.sub.poseCrowd(p, () => 0.04, 1, 0, "AB");
-    for (const fg of w.sub.figures) { const adv = Math.floor(f / 18) * 0.8; fg.body.position.z = fg.base.z + adv; fg.eyes.position.z = fg.base.z + adv + 0.001; }
+    // the far end of the platform: their eyes in the dark. Once he is in, the dead ceiling lights stutter on: in every
+    // flash they are closer, surging down the platform toward the train
+    const flash = T16A_FLASH.includes(f);
+    if (flash) { w.sub.fill.intensity = 1.6; w.sub.lamp.color.set("#dfe6ff"); w.sub.lamp.position.set(2.9, 3.4, -6); w.sub.lamp.intensity = 40; w.sub.lamp.distance = 34; }
+    w.sub.poseCrowd(p, () => (flash ? 0.85 : 0.05), 1, 0, "AB");
+    const adv = f < 50 ? Math.floor(f / 18) * 0.5 : 1.0 + Math.floor((f - 50) / 11) * 1.5;
+    for (const fg of w.sub.figures) { fg.body.position.z = fg.base.z + adv; fg.eyes.position.z = fg.base.z + adv + 0.001; }
   },
 };
 /** 1:32 inside the car: the doors slam shut by themselves; one of them presses its face to the door window */

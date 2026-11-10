@@ -100,7 +100,7 @@ export class World {
     this.hero.mat.opacity = 1;
     for (const c of this.city.cams) c.led.visible = true;
     this.sub.torch.intensity = 0; this.sub.beam.visible = false; this.sub.train.position.set(0, 0, 0); this.sub.trainLight.intensity = 0;
-    this.sub.setDoors(0); this.sub.setClock("06:12"); this.sub.lamp.intensity = 0; this.sub.topGlow.intensity = 2.2; this.sub.exitLight.intensity = 0.9;
+    this.sub.setDoors(0); this.sub.setClock("06:12"); this.sub.lamp.intensity = 0; this.sub.topGlow.intensity = 2.2; this.sub.exitLight.intensity = 0.9; this.sub.fill.intensity = 0.12;
     for (const fg of this.sub.figures) { fg.body.visible = false; fg.eyes.visible = false; fg.body.rotation.set(0, 0, 0); fg.eyes.rotation.set(0, 0, 0); fg.body.position.copy(fg.base); fg.eyes.position.copy(fg.base); }
     if (inApt) {
       this.apt.setLook(look === "aptNight" || look === "photo" ? "night" : (look as "sunrise" | "morning"), t, frame);
