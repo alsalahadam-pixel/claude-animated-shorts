@@ -59,8 +59,8 @@ A 2:02 action-horror episode for TikTok: 3660 frames at 30 fps, 1080×1920. It s
 
 ## Delivery
 
-- **Upload copy:** `out/last_human_PART3_upload.mp4`, CRF 22, 107 MB.
+- **Upload copy:** `out/last_human_PART3_upload.mp4`, CRF 22, 110 MB.
 - **Master:** `out/last_human_PART3.mp4`.
-- **Both:** 3660 frames; mix at -14.1 LUFS integrated.
-- **QA:** every shot was reviewed in stills before rendering, over four rounds, and the full video was checked after assembly.
-- **Dark frames:** the only near-black frames are intentional: the torch clicking on, the dark between the light flashes and the end-card fade.
+- **Both:** 3660 frames; mix at -14.2 LUFS integrated, peak -0.8 dBFS.
+- **Polish pass:** every shot was restaged or relit after a frame-by-frame review of the first cut (skin no longer purple, the copy's face always drawn head-on so its eyes and grin line up, hands holding what they hold, the street and subway shots framed so he and the copy are always in the picture), then checked again in stills and in the assembled video.
+- **Dark frames:** the only near-black frames are intentional: the torch clicking on, the dark between the light flashes and the end-card fade. Mean brightness 0.125.
