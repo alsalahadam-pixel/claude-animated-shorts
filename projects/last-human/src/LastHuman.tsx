@@ -45,8 +45,8 @@ class ExposureEffect extends Effect {
 const EXPOSURE: Record<string, number> = { S01: 1.32, S02: 1.1, S03: 1.1, S04: 1.0, S05: 1.1, S06: 1.0, S07: 1.1, S08: 1.0, S09: 1.32, S10: 1.27, S11: 1.2, S12: 1.32, S13: 1.38, S13B: 1.38, S14: 1.36, S15: 1.35, S16: 1.36, S17: 1.24, S18: 1.25, S19: 1.24, S20: 1.48, S21: 1.32, END: 1,
   HOOKCAM: 1.32, P1: 1.1, PIGEON: 1.0, E1: 1.32, E2: 1.3, E3: 1.4,
   // Part 2: brighter than Part 1 (it has to read in a bright TikTok feed)
-  T01: 1.55, T02: 1.5, T03: 1.5, T04: 1.6, T05: 1.35, T06: 1.4, T07: 1.35, T08: 1.9, T09: 1.9, T10A: 1.35, T10B: 1.35, T10C: 1.4,
-  T11: 1.7, T12: 1.8, T13: 1.6, T14: 1.8, T15: 1.9, T16A: 1.6, T16B: 1.5, T17: 1.5, T19: 1.5, T20A: 1.5, T20B: 1.5, P3FEED: 2.0,
+  T01: 1.55, T02: 1.55, T03: 1.5, T04: 1.65, T05: 1.4, T06: 1.45, T07: 1.4, T08: 1.9, T09: 1.9, T10A: 1.45, T10B: 1.45, T10C: 1.55,
+  T11: 1.85, T12: 2.0, T13: 1.6, T14: 1.85, T15: 1.9, T16A: 1.8, T16B: 1.5, T17: 1.7, T19: 1.75, T20A: 1.55, T20B: 1.75, P3FEED: 2.0,
   P2A: 1.9, P2B: 1.55, P2C: 1.9, P2D: 2.1, P2E: 1.9, P2F: 2.0, P2G: 1.6, P2H: 1.9, P2I: 1.55, P2J: 1.45, P2K: 1.9, P2L: 1.55 };
 
 type Toggles = { lens: boolean; bloom: boolean; grade: boolean; grain: boolean; msaa: number };

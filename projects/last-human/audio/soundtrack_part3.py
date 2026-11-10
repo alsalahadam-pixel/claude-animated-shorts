@@ -297,10 +297,11 @@ def build():
     add(amb, S.hum(en("T10C") - st("T10A"), 0.045), st("T10A"), 1.0, 0.25, until=en("T10C"))
     add(sfx, crackle(1.4, 0.5), st("T10A"), 1.0, 0.4)
     add(sfx, zap(0.6, 0.5), st("T10A") + 0.05, 1.0, 0.4)
-    add(sfx, scrape(0.5, 0.5), ft("T10A", 38), 1.0, 0.3)
-    add(sfx, clang(260, 0.5, 0.25), ft("T10A", 50), 1.0, 0.3)
+    for y0 in (26, 48, 68):   # three yanks: the cable shrieks off the wall, a clang as it tears out of a pair
+        add(sfx, scrape(0.4, 0.5), ft("T10A", y0), 1.0, 0.3)
+        add(sfx, clang(260, 0.45, 0.22), ft("T10A", y0 + 7), 1.0, 0.3)
     for i in range(6):
-        t0 = ft("T10A", 52 + i * 8)
+        t0 = ft("T10A", 26 + 22 * (i // 2) + 7 + (i % 2))
         add(sfx, zap(0.35, 0.45), t0, 1.0, 0.35 - i * 0.02)
         add(sfx, crackle(0.6, 0.35), t0, 1.0, 0.35)
     add(music, S.riser(en("T10A") - st("T10A"), 220, 1800, 0.45), st("T10A"), until=en("T10A"))
@@ -362,7 +363,7 @@ def build():
     add(sfx, lp(colored(ns(0.3), R, 1.0), 400) * np.exp(-T(ns(0.3)) / 0.05) * 0.8, ft("T16A", 60), 1.0, 0.0)
     add(music, S.riser(en("T16A") - st("T16A"), 300, 2400, 0.6), st("T16A"), until=en("T16A"))
     cue(ft("T16A", 62), "the dead lights stutter on: a zap and a buzz on every flash, and each time they are closer (a surge of feet)")
-    for k in (62, 74, 86, 96, 104, 112, 116):
+    for k in (62, 73, 84, 95, 103, 110, 115):
         add(sfx, zap(0.12, 0.35), ft("T16A", k), 1.0, 0.3)
         add(sub, P2.relay(0.3), ft("T16A", k), 1.0, 0.3)
         for _ in range(10):
@@ -382,7 +383,7 @@ def build():
     add(sfx, motor(en("T17") - ft("T17", 50), 40, 380, 0.12), ft("T17", 50), 1.0, 0.0, until=en("T17"))
     add(amb, rumble(en("T17") - ft("T17", 50), 0.25), ft("T17", 50), 1.0, 0.0, until=en("T17"))
     clatter(ft("T17", 60), en("T17"), sfx, lambda t: 2.4 * (t - ft("T17", 50)) + 0.5, 0.5)
-    add(sfx, S.clink(4200, 0.08), ft("T17", 82), 1.0, 0.3)
+    add(sfx, S.clink(4200, 0.08), ft("T17", 36), 1.0, 0.3)
     add(music, S.cluster([987.8, 1046.5, 1108.7], en("T17") - ft("T17", 140), 2.0, 0.3, 0.1, trem=9), ft("T17", 140), until=en("T17"))
     t = ft("T17", 190)
     while t < en("T17"):

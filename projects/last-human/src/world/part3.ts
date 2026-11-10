@@ -110,6 +110,7 @@ export class Subway {
   topGlow: THREE.PointLight;
   lamp: THREE.PointLight;      // a work light for a shot: an IR lamp, the phone's glow
   streaks = new THREE.Group(); // tunnel lamps outside the far windows, for the moving train
+  flare: THREE.Sprite;         // the torch seen head-on: a glare at the phone
   windows: THREE.Mesh[] = [];
 
   constructor() {
@@ -174,6 +175,11 @@ export class Subway {
     bx.fillStyle = grd; bx.fillRect(0, 0, 4, 256);
     this.beam = new THREE.Mesh(bg, new THREE.MeshBasicMaterial({ map: tex(bc.c), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, opacity: 0.5 }));
     this.beam.visible = false; R.add(this.beam);
+    const fc = canvas(128, 128), fx = fc.x, fg = fx.createRadialGradient(64, 64, 0, 64, 64, 64);
+    fg.addColorStop(0, "rgba(255,255,255,1)"); fg.addColorStop(0.12, "rgba(235,242,255,0.85)"); fg.addColorStop(0.4, "rgba(170,190,255,0.22)"); fg.addColorStop(1, "rgba(150,170,255,0)");
+    fx.fillStyle = fg; fx.fillRect(0, 0, 128, 128);
+    this.flare = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex(fc.c), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    (this.flare.material as THREE.SpriteMaterial).color.setScalar(2.2); this.flare.renderOrder = 46; this.flare.visible = false; R.add(this.flare);
     // tunnel lamps going past the far-side windows (the train is moving): small hard lights that bloom into streaks
     const lm = new THREE.MeshBasicMaterial({ color: "#d8e0ff" }); lm.color.multiplyScalar(2.2);
     for (let i = 0; i < 6; i++) this.streaks.add(mesh(new THREE.BoxGeometry(0.06, 0.05, 1.1), lm, [0.55, 1.95, 0], false));
@@ -242,6 +248,15 @@ export class Subway {
     }
     for (const z of [-6.5, -2, 2, 6.5]) T.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 3.0, 8), std("#c0c4cc", { metalness: 0.9, roughness: 0.2 }), [x0, 1.6, z]));
     for (const side of [-0.6, 0.6]) T.add(mesh(new THREE.BoxGeometry(0.12, 0.03, L - 0.4), new THREE.MeshBasicMaterial({ color: "#8a96b8" }), [x0 + side, 3.08, 0], false));
+  }
+
+  /** the glare of the torch when it points at the camera */
+  torchFlare(cam: THREE.Vector3) {
+    const d = this.torch.target.position.clone().sub(this.torch.position).normalize();
+    const toCam = cam.clone().sub(this.torch.position).normalize();
+    const k = Math.min(1, Math.max(0, (d.dot(toCam) - 0.72) / 0.26)) * Math.min(1, this.torch.intensity / 40);
+    this.flare.position.copy(this.torch.position).addScaledVector(toCam, 0.04);
+    this.flare.scale.setScalar(0.08 + 0.34 * k * k); (this.flare.material as THREE.SpriteMaterial).opacity = k; this.flare.visible = k > 0.01;
   }
 
   /** the tunnel lamps sliding past outside (relative to a train standing at z 0), every 4 m */
