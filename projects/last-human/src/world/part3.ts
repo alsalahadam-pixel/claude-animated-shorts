@@ -131,7 +131,12 @@ export class Subway {
     // walls: tiled behind the platform, darker across the tracks; the ceiling
     const back = mesh(new THREE.PlaneGeometry(60, 3.6), tileM, [4.5, 1.8, 0], false); back.rotation.y = -Math.PI / 2; R.add(back);
     const across = mesh(new THREE.PlaneGeometry(200, 4.8), tileD, [-4.4, 1.2, -70], false); across.rotation.y = Math.PI / 2; R.add(across);
-    const ceil = mesh(new THREE.PlaneGeometry(9, 60), darkM, [0.05, 3.6, 0], false); ceil.rotation.x = Math.PI / 2; R.add(ceil);
+    // the ceiling, open over the stairwell (x 2.38..4.42, z 18..30), which gets its own ceiling sloping up with the stairs
+    const ceil = mesh(new THREE.PlaneGeometry(9, 48), darkM, [0.05, 3.6, -6], false); ceil.rotation.x = Math.PI / 2; R.add(ceil);
+    const ceil2 = mesh(new THREE.PlaneGeometry(6.83, 12), darkM, [-1.035, 3.6, 24], false); ceil2.rotation.x = Math.PI / 2; R.add(ceil2);
+    const rise = Math.atan2(8.5 - 3.6, 30.6 - 18), run = Math.hypot(8.5 - 3.6, 30.6 - 18);
+    const sc = mesh(new THREE.PlaneGeometry(2.1, run), std("#16161b", { roughness: 0.9, side: THREE.DoubleSide }), [3.4, (3.6 + 8.5) / 2, (18 + 30.6) / 2], false); sc.rotation.x = Math.PI / 2 - rise;
+    R.add(sc);
     // the platform's end wall, and the tunnel beyond it (only the track width)
     R.add(mesh(new THREE.BoxGeometry(4.5, 4.8, 0.3), tileM, [2.25, 1.2, -30.15]));
     const tw = mesh(new THREE.PlaneGeometry(140, 4.8), darkM, [0, 1.2, -100], false); tw.rotation.y = -Math.PI / 2; R.add(tw);
