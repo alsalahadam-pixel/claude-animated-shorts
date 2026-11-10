@@ -1761,7 +1761,7 @@ const T20A: Shot = {
   id: "T20A", a: 0, b: 45, look: "subway", grade: "night",
   // from across the aisle: he turns his head to the seat on his left. It is empty.
   // him at the left edge; the rest of the frame is the seat beside him
-  cam: (f) => ({ pos: lerp3([-1.6, 1.1, 0.72], [-1.68, 1.06, 0.62], ss(f / 45)), look: [-3.4, 0.72, 0.62], fov: 52 }),
+  cam: (f) => ({ pos: lerp3([-1.1, 1.12, 0.84], [-1.2, 1.08, 0.78], ss(f / 45)), look: [-3.4, 0.8, 0.8], fov: 56 }),
   dof: () => ({ cInf: 2, focus: [-3.35, 0.7, 0.62] }),
   act: (f, w, cam) => {
     w.sub.trainLight.intensity = 3.0; w.sub.setDoors(1); w.sub.train.position.z = 0;
